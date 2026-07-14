@@ -27,13 +27,14 @@ const norm = (v: unknown) => String(v ?? "").toUpperCase().normalize("NFD").repl
 const findCode = (map: Record<string, number>, value: string) => Object.entries(map).find(([key]) => norm(key) === norm(value))?.[1];
 
 type ViewKey = "estadisticas" | "productores" | "establecimientos" | "campanas" | "sanidad" | "renspa" | "agenda-rural" | "pacientes" | "historia" | "vacunas" | "desparasitaciones" | "estudios" | "recordatorios" | "agenda-clinica" | "turnos" | "sigatm";
-const LARGE_MENU: [ViewKey,string][] = [["agenda-rural","Agenda rural"],["productores","Productores"]];
+const LARGE_MENU: [ViewKey,string][] = [["productores","Productores"],["agenda-rural","Agenda rural"]];
 const SMALL_MENU: [ViewKey,string][] = [["pacientes","Pacientes"],["historia","Historia clínica"],["vacunas","Vacunas"],["desparasitaciones","Desparasitaciones"],["estudios","Estudios"],["recordatorios","Recordatorios"],["agenda-clinica","Agenda"]];
 
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewKey>("sigatm");
   const [largeOpen, setLargeOpen] = useState(false);
   const [smallOpen, setSmallOpen] = useState(false);
+  const [producers, setProducers] = useState<Producer[]>(INITIAL_PRODUCERS);
   const [species, setSpecies] = useState("BOVINO");
   const [defaultAnimal, setDefaultAnimal] = useState("Animal sano");
   const [defaultId, setDefaultId] = useState("Caravana");
@@ -101,7 +102,7 @@ export default function Home() {
     </aside>
 
     <section className="workspace">
-      {activeView!=="sigatm" ? <ModuleView view={activeView} /> : <>
+      {activeView!=="sigatm" ? <ModuleView view={activeView} producers={producers} setProducers={setProducers} /> : <>
       <header className="topbar"><div><span className="eyebrow">GRANDES ANIMALES</span><h1>Conversor SIGATM</h1><p>Convertí tu planilla de animales al formato oficial, sin cargar datos del productor.</p></div><div className="status-pill"><i /> Procesamiento local y privado</div></header>
 
       <div className="steps"><div className={rows.length ? "done" : "current"}><b>1</b><span><strong>Cargar planilla</strong><small>Excel del veterinario</small></span></div><hr/><div className={rows.length ? "current" : ""}><b>2</b><span><strong>Revisar datos</strong><small>Validar y corregir</small></span></div><hr/><div className={ready ? "current" : ""}><b>3</b><span><strong>Descargar</strong><small>Excel para SIGATM</small></span></div></div>
@@ -154,8 +155,9 @@ const VIEW_CONTENT: Record<Exclude<ViewKey,"sigatm">,{eyebrow:string;title:strin
   turnos:{eyebrow:"AGENDA",title:"Turnos",description:"Todos los compromisos del consultorio en una sola agenda.",action:"Nuevo turno",stats:[["Hoy","8","actividades"],["Grandes animales","2","visitas"],["Pequeños animales","6","consultas"],["Pendientes","2","confirmaciones"]],columns:["Fecha","Hora","Tipo","Cliente / paciente","Actividad","Estado"],rows:[["15/07/2026","08:30","Grandes animales","Est. La Esperanza","Sangrado BPA","Confirmado"],["15/07/2026","09:00","Pequeños animales","Mora · Lucía Pérez","Control anual","Confirmado"],["15/07/2026","15:00","Grandes animales","Los Aromos","Revisación toros","Confirmado"]]}
 };
 
-function ModuleView({view}:{view:Exclude<ViewKey,"sigatm">}) {
-  if(view==="productores") return <ProducersPanel/>;
+function ModuleView({view,producers,setProducers}:{view:Exclude<ViewKey,"sigatm">;producers:Producer[];setProducers:React.Dispatch<React.SetStateAction<Producer[]>>}) {
+  if(view==="productores") return <ProducersPanel producers={producers} setProducers={setProducers}/>;
+  if(view==="agenda-rural") return <RuralAgenda producers={producers}/>;
   const data=VIEW_CONTENT[view];
   return <><header className="topbar module-topbar"><div><span className="eyebrow">{data.eyebrow}</span><h1>{data.title}</h1><p>{data.description}</p></div><button className="primary">＋ {data.action}</button></header>
     <div className="module-stats">{data.stats.map(([label,value,note])=><article className="panel stat-card" key={label}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}</div>
@@ -173,10 +175,10 @@ const INITIAL_PRODUCERS: Producer[] = [
   {id:3,name:"María González",renspa:"01.041.0.98812/00",establishment:"El Ombú",address:"Cuartel III, Rauch",phone:"2494 55-0311",email:"maria@elombu.com.ar",animals:196,works:[{date:"29/07/2026",type:"Sangrado",detail:"Control anual",animals:"86 animales",status:"Pendiente"}]}
 ];
 
-function ProducersPanel(){
-  const [producers,setProducers]=useState(INITIAL_PRODUCERS); const [selected,setSelected]=useState<Producer|null>(null); const [showProducer,setShowProducer]=useState(false); const [showWork,setShowWork]=useState(false); const [workType,setWorkType]=useState("Sangrado");
+function ProducersPanel({producers,setProducers}:{producers:Producer[];setProducers:React.Dispatch<React.SetStateAction<Producer[]>>}){
+  const [selected,setSelected]=useState<Producer|null>(null); const [showProducer,setShowProducer]=useState(false); const [showWork,setShowWork]=useState(false); const [workType,setWorkType]=useState("Sangrado");
   function addProducer(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const p:Producer={id:Date.now(),name:String(f.get("name")),renspa:String(f.get("renspa")),establishment:String(f.get("establishment")),address:String(f.get("address")),phone:String(f.get("phone")),email:String(f.get("email")),animals:0,works:[]};setProducers(v=>[p,...v]);setShowProducer(false)}
-  function addWork(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(!selected)return;const f=new FormData(e.currentTarget);const work={date:String(f.get("date")).split("-").reverse().join("/"),type:workType,detail:String(f.get("detail")),animals:`${String(f.get("animals")||0)} animales`,status:"Pendiente"};const updated={...selected,works:[work,...selected.works]};setProducers(v=>v.map(p=>p.id===updated.id?updated:p));setSelected(updated);setShowWork(false)}
+  function addWork(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(!selected)return;const f=new FormData(e.currentTarget);const iso=String(f.get("date"));const status=new Date(`${iso}T23:59:59`)>=new Date()?"Pendiente":"Realizado";const work={date:iso.split("-").reverse().join("/"),type:workType,detail:String(f.get("detail")),animals:`${String(f.get("animals")||0)} animales`,status};const updated={...selected,works:[work,...selected.works]};setProducers(v=>v.map(p=>p.id===updated.id?updated:p));setSelected(updated);setShowWork(false)}
   return <><header className="topbar module-topbar"><div><span className="eyebrow">GRANDES ANIMALES</span><h1>{selected?selected.name:"Productores"}</h1><p>{selected?`${selected.establishment} · RENSPA ${selected.renspa}`:"El centro administrativo de tus trabajos con grandes animales."}</p></div>{selected?<div className="header-actions"><button className="ghost" onClick={()=>setSelected(null)}>← Volver</button><button className="primary" onClick={()=>setShowWork(true)}>＋ Nuevo trabajo</button></div>:<button className="primary" onClick={()=>setShowProducer(true)}>＋ Nuevo productor</button>}</header>
     {!selected?<><div className="module-stats producer-summary"><article className="panel stat-card"><span>Productores activos</span><strong>{producers.length}</strong><small>cartera actual</small></article><article className="panel stat-card"><span>Animales registrados</span><strong>{producers.reduce((a,p)=>a+p.animals,0)}</strong><small>en todos los establecimientos</small></article><article className="panel stat-card"><span>Trabajos pendientes</span><strong>{producers.flatMap(p=>p.works).filter(w=>w.status==="Pendiente").length}</strong><small>próximas actividades</small></article><article className="panel stat-card"><span>Archivos SIGATM</span><strong>1</strong><small>listo para generar</small></article></div>
       <section className="panel producer-list"><div className="module-toolbar"><div><h2>Listado de productores</h2><p>Seleccioná un productor para ver su ficha e historial.</p></div><label>⌕ <input placeholder="Buscar productor..."/></label></div>{producers.map(p=><button className="producer-row" key={p.id} onClick={()=>setSelected(p)}><span className="producer-avatar">{p.name.slice(0,2).toUpperCase()}</span><span><b>{p.name}</b><small>{p.establishment} · {p.address}</small></span><span><small>RENSPA</small><b>{p.renspa}</b></span><span><small>Animales</small><b>{p.animals}</b></span><span><small>Último trabajo</small><b>{p.works[0]?.date||"Sin trabajos"}</b></span><i>→</i></button>)}</section></>:
@@ -184,6 +186,22 @@ function ProducersPanel(){
       <section className="panel work-history"><div className="module-toolbar"><div><h2>Historial de trabajos</h2><p>Registro cronológico de actividades realizadas y pendientes.</p></div></div><div className="work-head"><span>Fecha</span><span>Trabajo</span><span>Alcance</span><span>Estado</span><span>Archivo SIGATM</span></div>{selected.works.map((w,i)=><article className="work-row" key={i}><time className="work-date">{w.date}</time><div className={`work-icon ${w.type==="Sangrado"?"blood":""}`}>{w.type==="Sangrado"?"◉":"✓"}</div><div className="work-detail"><b>{w.type}</b><span>{w.detail}</span></div><div><b>{w.animals}</b></div><span className={w.status.includes("SIGATM")?"sigatm-badge":"table-status"}>{w.status}</span><div>{w.type==="Sangrado"&&<label className="attach-excel">⌕ <span>Adjuntar Excel para SIGATM</span><input type="file" accept=".xlsx,.xls"/></label>}</div></article>)}</section></>}
     {showProducer&&<div className="modal-backdrop"><form className="modal-card" onSubmit={addProducer}><div><h2>Nuevo productor</h2><button type="button" onClick={()=>setShowProducer(false)}>×</button></div><p>Cargá los datos básicos. Más adelante podrá tener varios establecimientos.</p><label>Razón social o nombre<input name="name" required/></label><div className="form-grid"><label>Establecimiento<input name="establishment" required/></label><label>RENSPA<input name="renspa" required placeholder="00.000.0.00000/00"/></label><label>Dirección<input name="address"/></label><label>Teléfono<input name="phone"/></label><label>Correo electrónico<input name="email" type="email"/></label></div><footer><button type="button" className="ghost" onClick={()=>setShowProducer(false)}>Cancelar</button><button className="primary">Guardar productor</button></footer></form></div>}
     {showWork&&selected&&<div className="modal-backdrop"><form className="modal-card work-modal" onSubmit={addWork}><div><h2>Nuevo trabajo</h2><button type="button" onClick={()=>setShowWork(false)}>×</button></div><p>{selected.name} · {selected.establishment}</p><div className="work-types">{["Sangrado","Vacunación","Revisión","Tacto","Otro"].map(t=><button type="button" className={workType===t?"chosen":""} key={t} onClick={()=>setWorkType(t)}>{t}</button>)}</div><div className="form-grid"><label>Fecha<input name="date" type="date" required/></label><label>Cantidad estimada<input name="animals" type="number" min="0"/></label></div><label>Detalle del trabajo<textarea name="detail" placeholder="Análisis, campaña u observaciones..."/></label><footer><button type="button" className="ghost" onClick={()=>setShowWork(false)}>Cancelar</button><button className="primary">Guardar trabajo</button></footer></form></div>}
+  </>;
+}
+
+function RuralAgenda({producers}:{producers:Producer[]}){
+  const [filter,setFilter]=useState<"pendientes"|"realizados">("pendientes");
+  const all=producers.flatMap(producer=>producer.works.map(work=>({producer,work,date:new Date(work.date.split("/").reverse().join("-")+"T12:00:00")})));
+  const now=new Date(); now.setHours(0,0,0,0);
+  const pending=all.filter(item=>item.date>=now).sort((a,b)=>a.date.getTime()-b.date.getTime());
+  const completed=all.filter(item=>item.date<now).sort((a,b)=>b.date.getTime()-a.date.getTime());
+  const visible=filter==="pendientes"?pending:completed;
+  return <><header className="topbar"><div><span className="eyebrow">GRANDES ANIMALES</span><h1>Agenda rural</h1><p>Se genera automáticamente con los trabajos cargados desde cada productor.</p></div><div className="status-pill"><i/> Agenda sincronizada</div></header>
+    <div className="agenda-stats"><article className="panel"><span>Próximos trabajos</span><strong>{pending.length}</strong><small>actividades pendientes</small></article><article className="panel"><span>Trabajos realizados</span><strong>{completed.length}</strong><small>registrados en el historial</small></article><article className="panel"><span>Próxima visita</span><strong>{pending[0]?.work.date||"—"}</strong><small>{pending[0]?.producer.name||"Sin actividades"}</small></article></div>
+    <section className="panel agenda-panel"><div className="agenda-toolbar"><div><h2>Trabajos rurales</h2><p>La fecha define automáticamente en qué listado aparece cada trabajo.</p></div><div className="agenda-filters"><button className={filter==="pendientes"?"selected":""} onClick={()=>setFilter("pendientes")}>Pendientes <b>{pending.length}</b></button><button className={filter==="realizados"?"selected":""} onClick={()=>setFilter("realizados")}>Realizados <b>{completed.length}</b></button></div></div>
+      <div className="agenda-head"><span>Fecha</span><span>Productor / establecimiento</span><span>Trabajo</span><span>Alcance</span><span>Estado</span></div>
+      {visible.length?visible.map(({producer,work},i)=><article className="agenda-row" key={`${producer.id}-${i}-${work.date}`}><time><b>{work.date}</b><small>{filter==="pendientes"?"Programado":"Registrado"}</small></time><div><b>{producer.name}</b><span>{producer.establishment} · {producer.renspa}</span></div><div><b>{work.type}</b><span>{work.detail}</span></div><b>{work.animals}</b><span className="table-status">{filter==="pendientes"?"Pendiente":"Realizado"}</span></article>):<div className="empty-agenda"><b>No hay trabajos {filter}</b><span>Creá un nuevo trabajo desde la ficha de un productor.</span></div>}
+    </section><div className="draft-note"><b>Agenda automática</b><span>No se cargan turnos desde esta pantalla: todo nace en Productores y se organiza según su fecha.</span></div>
   </>;
 }
 
