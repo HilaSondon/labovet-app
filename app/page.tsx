@@ -26,7 +26,7 @@ const AGES: Record<string, Record<string, number>> = {
 const norm = (v: unknown) => String(v ?? "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\([^)]*\)/g, "").replace(/\./g, "").replace(/\s+/g, " ").trim();
 const findCode = (map: Record<string, number>, value: string) => Object.entries(map).find(([key]) => norm(key) === norm(value))?.[1];
 
-type ViewKey = "estadisticas" | "productores" | "establecimientos" | "campanas" | "sanidad" | "renspa" | "agenda-rural" | "pacientes" | "historia" | "vacunas" | "desparasitaciones" | "estudios" | "recordatorios" | "agenda-clinica" | "turnos" | "sigatm";
+type ViewKey = "estadisticas" | "productores" | "establecimientos" | "campanas" | "sanidad" | "renspa" | "agenda-rural" | "pacientes" | "historia" | "vacunas" | "desparasitaciones" | "estudios" | "recordatorios" | "agenda-clinica" | "turnos" | "sigatm" | "planes";
 const LARGE_MENU: [ViewKey,string][] = [["productores","Productores"],["agenda-rural","Agenda rural"]];
 const SMALL_MENU: [ViewKey,string][] = [["pacientes","Pacientes"],["historia","Historia clínica"],["vacunas","Vacunas"],["desparasitaciones","Desparasitaciones"],["estudios","Estudios"],["recordatorios","Recordatorios"],["agenda-clinica","Agenda"]];
 const WORK_CATALOG: Record<string,{label:string;scope:string}[]> = {
@@ -109,6 +109,7 @@ export default function Home() {
         <button className={SMALL_MENU.some(([key])=>key===activeView)?"active":""} onClick={()=>setSmallOpen(v=>!v)}><span>♧</span> Pequeños animales <i>{smallOpen?"⌃":"⌄"}</i></button>
         {smallOpen&&<div className="submenu">{SMALL_MENU.map(([key,label])=><button key={key} className={activeView===key?"selected":""} onClick={()=>setActiveView(key)}>{label}</button>)}</div>}
         <p>HERRAMIENTAS</p><button className={activeView==="sigatm"?"active":""} onClick={()=>setActiveView("sigatm")}><span>⇄</span> Conversor SIGATM</button>
+        <p>SUSCRIPCIONES</p><button className={activeView==="planes"?"active":""} onClick={()=>setActiveView("planes")}><span>◇</span> Elegir plan</button>
       </nav>
       <div className="sidebar-bottom"><div className="mini-avatar">HS</div><div><b>Hilario</b><small>Administrador</small></div><span>⋮</span></div>
     </aside>
@@ -149,7 +150,7 @@ export default function Home() {
   </main>;
 }
 
-const VIEW_CONTENT: Record<Exclude<ViewKey,"sigatm">,{eyebrow:string;title:string;description:string;action:string;stats:[string,string,string][];columns:string[];rows:string[][]}> = {
+const VIEW_CONTENT: Record<Exclude<ViewKey,"sigatm"|"planes">,{eyebrow:string;title:string;description:string;action:string;stats:[string,string,string][];columns:string[];rows:string[][]}> = {
   estadisticas:{eyebrow:"RESUMEN GENERAL",title:"Estadísticas",description:"Una mirada rápida a la actividad de tu consultorio.",action:"Exportar estadísticas",stats:[["Protocolos","128","+12% este año"],["Muestras","3.842","420 este mes"],["Pacientes","86","12 nuevos"],["Archivos SIGATM","37","generados"]],columns:["Fecha","Actividad","Tipo","Estado"],rows:[["Hoy, 10:30","Campaña de saneamiento · La Esperanza","Grandes animales","Completado"],["Ayer, 17:15","Vacuna séxtuple · Mora","Pequeños animales","Registrado"],["11/07/2026","Archivo SIGATM · 93 animales","Conversión","Generado"]]},
   productores:{eyebrow:"GRANDES ANIMALES",title:"Productores",description:"Productores, datos de contacto y actividad sanitaria.",action:"Nuevo productor",stats:[["Productores activos","32","5 nuevos este año"],["Establecimientos","41","con RENSPA"],["Campañas","18","últimos 90 días"],["Muestras","3.842","acumuladas"]],columns:["Productor","CUIT","Establecimiento","Localidad","Último trabajo","Estado"],rows:[["Est. La Esperanza","30-71234567-8","La Esperanza","Azul","09/07/2026","Activo"],["Los Aromos S.A.","30-69876543-2","Los Aromos","Tandil","06/07/2026","Activo"],["María González","27-24567890-4","El Ombú","Rauch","28/06/2026","Activo"]]},
   establecimientos:{eyebrow:"GRANDES ANIMALES",title:"Establecimientos",description:"Campos y establecimientos vinculados a cada productor.",action:"Nuevo establecimiento",stats:[["Establecimientos","41","activos"],["Con RENSPA","39","95%"],["Bovinos","34","principal especie"],["Localidades","8","alcance regional"]],columns:["Establecimiento","Productor","RENSPA","Localidad","Especie","Acciones"],rows:[["La Esperanza","Est. La Esperanza","01.023.0.12345/00","Azul","Bovino","Ver ficha"],["Los Aromos","Los Aromos S.A.","01.017.0.55421/00","Tandil","Bovino","Ver ficha"],["El Ombú","María González","01.041.0.98812/00","Rauch","Ovino","Ver ficha"]]},
@@ -168,6 +169,7 @@ const VIEW_CONTENT: Record<Exclude<ViewKey,"sigatm">,{eyebrow:string;title:strin
 };
 
 function ModuleView({view,producers,setProducers}:{view:Exclude<ViewKey,"sigatm">;producers:Producer[];setProducers:React.Dispatch<React.SetStateAction<Producer[]>>}) {
+  if(view==="planes") return <SubscriptionPlans/>;
   if(view==="productores") return <ProducersPanel producers={producers} setProducers={setProducers}/>;
   if(view==="agenda-rural") return <RuralAgenda producers={producers}/>;
   const data=VIEW_CONTENT[view];
@@ -178,6 +180,10 @@ function ModuleView({view,producers,setProducers}:{view:Exclude<ViewKey,"sigatm"
     </section>
     <div className="draft-note"><b>Primera maqueta navegable</b><span>Estos datos son demostrativos. En los próximos pasos definiremos juntos formularios, acciones y qué información guardar en Firebase.</span></div>
   </>;
+}
+
+function SubscriptionPlans(){
+  return <><header className="topbar module-topbar"><div><span className="eyebrow">SUSCRIPCIONES</span><h1>Elegí cómo usar LabOVet</h1><p>Administrá tu actividad directamente o deleganos la carga y organización de la información.</p></div></header><section className="plan-grid"><article className="panel plan-card"><span className="plan-tag">AUTOGESTIÓN</span><h2>Plan Básico</h2><p>Para veterinarios que quieren usar LabOVet y gestionar personalmente sus registros.</p><div className="plan-price"><strong>Precio a definir</strong><small>Suscripción mensual</small></div><ul><li>Productores y agenda rural</li><li>Carga manual y mediante Excel</li><li>Historial sanitario por animal</li><li>Conversión y archivos SIGATM</li><li>Acceso personal al sistema</li></ul><button className="outline-btn plan-action">Elegir Plan Básico</button></article><article className="panel plan-card premium"><span className="plan-tag">SERVICIO ADMINISTRADO</span><h2>Servicio Premium</h2><p>Para veterinarios que prefieren enviarnos la información y que nuestro equipo gestione el sistema.</p><div className="plan-price"><strong>Presupuesto personalizado</strong><small>Según volumen de trabajo</small></div><ul><li>Todo lo incluido en el Plan Básico</li><li>Carga de planillas y protocolos por nuestro equipo</li><li>Organización de productores y trabajos</li><li>Preparación de archivos para SIGATM</li><li>Acompañamiento personalizado</li></ul><button className="primary plan-action">Solicitar Servicio Premium</button></article></section><section className="panel plan-note"><span>i</span><div><b>Modalidades iniciales de LabOVet</b><p>Más adelante definiremos precios, medios de pago y el proceso de contratación.</p></div></section></>;
 }
 
 type Producer = {id:number;name:string;renspa:string;establishment:string;address:string;phone:string;email:string;animals:number;works:{date:string;type:string;detail:string;animals:string;status:string}[]};
