@@ -3022,7 +3022,6 @@ function ProducerDetail({
       await saveProducerData(uid, updated);
       setProducers((v) => v.map((p) => (p.id === updated.id ? updated : p)));
       setSelected(updated);
-      setUploadFeedback({ count: records.length, file: file.name });
       setEditing(false);
     } catch {
       window.alert("No pudimos actualizar el productor en Firebase.");
@@ -3096,6 +3095,7 @@ function ProducerDetail({
       await saveWorkData(uid, updated.id, updated.works[workIndex]);
       setProducers((v) => v.map((p) => (p.id === updated.id ? updated : p)));
       setSelected(updated);
+      setUploadFeedback({ count: records.length, file: file.name });
     } catch (error) {
       window.alert(
         error instanceof Error ? error.message : "No pude leer la planilla",
