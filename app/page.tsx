@@ -1,7 +1,10 @@
 "use client";
 
-import { ChangeEvent, DragEvent, useMemo, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
+import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, updateProfile, User } from "firebase/auth";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { auth, db } from "../lib/firebase";
 
 type AnimalRow = { tube: string; animal: string; idType: string; identifier: string; category: string; age: string; vaccination: string; notes: string };
 type ErrorMap = Record<string, string>;
@@ -43,6 +46,8 @@ const WORK_CATALOG: Record<string,{label:string;scope:string}[]> = {
 };
 
 export default function Home() {
+  const [authUser,setAuthUser]=useState<User|null>(null);
+  const [authLoading,setAuthLoading]=useState(true);
   const [activeView, setActiveView] = useState<ViewKey>("sigatm");
   const [largeOpen, setLargeOpen] = useState(false);
   const [smallOpen, setSmallOpen] = useState(false);
@@ -62,10 +67,13 @@ export default function Home() {
   const [message, setMessage] = useState("Elegí una planilla para comenzar");
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(()=>onAuthStateChanged(auth,user=>{setAuthUser(user);setAuthLoading(false)}),[]);
 
   const errors = useMemo(() => validateRows(rows, species), [rows, species]);
   const errorRows = new Set(Object.keys(errors).map((key) => key.split(":")[0])).size;
   const ready = rows.length > 0 && Object.keys(errors).length === 0;
+  if(authLoading)return <div className="auth-loading"><span className="brand-mark">L</span><p>Preparando LabOVet…</p></div>;
+  if(!authUser)return <AuthScreen/>;
 
   async function loadFile(file?: File) {
     if (!file) return;
@@ -120,7 +128,7 @@ export default function Home() {
         <p>HERRAMIENTAS</p><button className={activeView==="sigatm"?"active":""} onClick={()=>setActiveView("sigatm")}><span>⇄</span> Conversor SIGATM</button>
         <p>SUSCRIPCIONES</p><button className={activeView==="planes"?"active":""} onClick={()=>setActiveView("planes")}><span>◇</span> Elegir plan</button>
       </nav>
-      <div className="sidebar-bottom"><div className="mini-avatar">HS</div><div><b>Hilario</b><small>Administrador</small></div><span>⋮</span></div>
+      <div className="sidebar-bottom"><div className="mini-avatar">{(authUser.displayName||authUser.email||"V").slice(0,2).toUpperCase()}</div><div><b>{authUser.displayName||"Veterinario"}</b><small>{authUser.email}</small></div><button title="Cerrar sesión" onClick={()=>signOut(auth)}>↪</button></div>
     </aside>
 
     <section className="workspace">
@@ -157,6 +165,12 @@ export default function Home() {
       </>}
     </section>
   </main>;
+}
+
+function AuthScreen(){
+  const [register,setRegister]=useState(false);const [loading,setLoading]=useState(false);const [error,setError]=useState("");
+  async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();setLoading(true);setError("");const f=new FormData(e.currentTarget);const email=String(f.get("email")).trim();const password=String(f.get("password"));try{if(register){const name=String(f.get("name")).trim();const credential=await createUserWithEmailAndPassword(auth,email,password);await updateProfile(credential.user,{displayName:name});await setDoc(doc(db,"users",credential.user.uid),{name,email,role:"veterinarian",plan:"unassigned",createdAt:serverTimestamp()})}else await signInWithEmailAndPassword(auth,email,password)}catch(err){const code=String((err as {code?:string}).code||"");setError(code.includes("email-already-in-use")?"Ese correo ya está registrado.":code.includes("invalid-credential")?"Correo o contraseña incorrectos.":code.includes("weak-password")?"La contraseña debe tener al menos 6 caracteres.":code.includes("invalid-email")?"Ingresá un correo electrónico válido.":"No pudimos completar el acceso. Intentá nuevamente.")}finally{setLoading(false)}}
+  return <main className="auth-page"><section className="auth-brand"><div className="brand-mark">L</div><span className="eyebrow">GESTIÓN VETERINARIA</span><h1>Todo tu trabajo veterinario, organizado.</h1><p>Productores, pacientes, historiales sanitarios y archivos SIGATM en un único lugar.</p><div className="auth-points"><span>✓ Información privada por veterinario</span><span>✓ Grandes y pequeños animales</span><span>✓ Preparación rápida para SIGATM</span></div></section><section className="auth-card panel"><div><span className="eyebrow">LABOVET</span><h2>{register?"Crear una cuenta":"Ingresar"}</h2><p>{register?"Completá tus datos para comenzar.":"Accedé a tu panel veterinario."}</p></div><form onSubmit={submit}>{register&&<label>Nombre y apellido<input name="name" required autoComplete="name"/></label>}<label>Correo electrónico<input name="email" type="email" required autoComplete="email"/></label><label>Contraseña<input name="password" type="password" minLength={6} required autoComplete={register?"new-password":"current-password"}/></label>{error&&<div className="auth-error">{error}</div>}<button className="primary" disabled={loading}>{loading?"Procesando…":register?"Crear cuenta":"Ingresar"}</button></form><button className="auth-switch" onClick={()=>{setRegister(v=>!v);setError("")}}>{register?"Ya tengo una cuenta":"Crear una cuenta nueva"}</button></section></main>;
 }
 
 const VIEW_CONTENT: Record<Exclude<ViewKey,"sigatm"|"planes">,{eyebrow:string;title:string;description:string;action:string;stats:[string,string,string][];columns:string[];rows:string[][]}> = {
