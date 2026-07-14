@@ -367,13 +367,17 @@ export default function Home() {
         setPatients(data.patients as Patient[]);
         setDataError("");
       })
-      .catch(
-        () =>
-          active &&
-          setDataError(
-            "No pudimos cargar tus datos. Revisá la conexión e intentá nuevamente.",
-          ),
-      )
+      .catch((error: unknown) => {
+        console.error("Error al cargar los datos veterinarios", error);
+        if (!active) return;
+        const detail =
+          error && typeof error === "object" && "code" in error
+            ? ` (${String(error.code)})`
+            : "";
+        setDataError(
+          `No pudimos cargar tus datos desde Firebase${detail}. Intentá nuevamente.`,
+        );
+      })
       .finally(() => active && setDataLoading(false));
     return () => {
       active = false;
