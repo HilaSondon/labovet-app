@@ -3,12 +3,11 @@ import {
   deleteDoc,
   doc,
   getDocs,
-  getDocsFromServer,
   query,
   setDoc,
   where,
   writeBatch,
-} from "firebase/firestore";
+} from "firebase/firestore/lite";
 import { db } from "./firebase";
 
 export type StoredAnimal = {
@@ -71,7 +70,7 @@ export async function loadVeterinaryData(uid: string) {
   const [producerSnap, workSnap, animalSnap, patientSnap, eventSnap] =
     await Promise.all(
       ["producers", "works", "animals", "patients", "patientEvents"].map(
-        (name) => getDocsFromServer(userCollection(uid, name)),
+        (name) => getDocs(userCollection(uid, name)),
       ),
     );
   const animalsByWork = new Map<string, StoredAnimal[]>();
