@@ -3,6 +3,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  getDocsFromServer,
   query,
   setDoc,
   where,
@@ -70,7 +71,7 @@ export async function loadVeterinaryData(uid: string) {
   const [producerSnap, workSnap, animalSnap, patientSnap, eventSnap] =
     await Promise.all(
       ["producers", "works", "animals", "patients", "patientEvents"].map(
-        (name) => getDocs(userCollection(uid, name)),
+        (name) => getDocsFromServer(userCollection(uid, name)),
       ),
     );
   const animalsByWork = new Map<string, StoredAnimal[]>();

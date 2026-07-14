@@ -328,6 +328,7 @@ export default function Home() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState("");
+  const [dataReload, setDataReload] = useState(0);
   const [species, setSpecies] = useState("BOVINO");
   const [defaultAnimal, setDefaultAnimal] = useState("Animal sano");
   const [defaultId, setDefaultId] = useState("Caravana");
@@ -377,7 +378,7 @@ export default function Home() {
     return () => {
       active = false;
     };
-  }, [authUser]);
+  }, [authUser, dataReload]);
 
   const errors = useMemo(() => validateRows(rows, species), [rows, species]);
   const errorRows = new Set(Object.keys(errors).map((key) => key.split(":")[0]))
@@ -664,7 +665,17 @@ export default function Home() {
       </aside>
 
       <section className="workspace">
-        {dataError && <div className="data-error">{dataError}</div>}
+        {dataError && (
+          <div className="data-error">
+            <span>{dataError}</span>
+            <button
+              type="button"
+              onClick={() => setDataReload((value) => value + 1)}
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
         {activeView !== "sigatm" ? (
           <ModuleView
             view={activeView}
@@ -2233,7 +2244,10 @@ function PatientsPanel({
               </p>
             </div>
             <div className="header-actions">
-              <button className="danger-outline" onClick={() => setDeleteConfirm(true)}>
+              <button
+                className="danger-outline"
+                onClick={() => setDeleteConfirm(true)}
+              >
                 Eliminar paciente
               </button>
               <button className="primary" onClick={() => setNewEvent(true)}>
@@ -2405,14 +2419,23 @@ function PatientsPanel({
           <section className="modal-card feedback-modal">
             <div>
               <h2>Eliminar paciente</h2>
-              <button type="button" onClick={() => setDeleteConfirm(false)}>×</button>
+              <button type="button" onClick={() => setDeleteConfirm(false)}>
+                ×
+              </button>
             </div>
             <span className="feedback-icon danger">!</span>
             <h3>¿Eliminar a {selected.name}?</h3>
-            <p>También se eliminarán definitivamente todos sus registros sanitarios y recordatorios.</p>
+            <p>
+              También se eliminarán definitivamente todos sus registros
+              sanitarios y recordatorios.
+            </p>
             <footer>
-              <button className="ghost" onClick={() => setDeleteConfirm(false)}>Cancelar</button>
-              <button className="danger-button" onClick={removePatient}>Eliminar definitivamente</button>
+              <button className="ghost" onClick={() => setDeleteConfirm(false)}>
+                Cancelar
+              </button>
+              <button className="danger-button" onClick={removePatient}>
+                Eliminar definitivamente
+              </button>
             </footer>
           </section>
         </div>
@@ -2977,7 +3000,10 @@ function ProducerDetail({
   const [open, setOpen] = useState({ data: false, health: false, works: true });
   const [editing, setEditing] = useState(false);
   const [manualWork, setManualWork] = useState<number | null>(null);
-  const [uploadFeedback, setUploadFeedback] = useState<{count:number;file:string}|null>(null);
+  const [uploadFeedback, setUploadFeedback] = useState<{
+    count: number;
+    file: string;
+  } | null>(null);
   const [healthFilters, setHealthFilters] = useState({
     animal: "",
     work: "",
@@ -3456,12 +3482,24 @@ function ProducerDetail({
           <section className="modal-card feedback-modal">
             <div>
               <h2>Planilla cargada</h2>
-              <button type="button" onClick={() => setUploadFeedback(null)}>×</button>
+              <button type="button" onClick={() => setUploadFeedback(null)}>
+                ×
+              </button>
             </div>
             <span className="feedback-icon">✓</span>
             <h3>Carga completada correctamente</h3>
-            <p><b>{uploadFeedback.count} animales</b> fueron incorporados desde {uploadFeedback.file} y ya forman parte del historial sanitario.</p>
-            <footer><button className="primary" onClick={() => setUploadFeedback(null)}>Continuar</button></footer>
+            <p>
+              <b>{uploadFeedback.count} animales</b> fueron incorporados desde{" "}
+              {uploadFeedback.file} y ya forman parte del historial sanitario.
+            </p>
+            <footer>
+              <button
+                className="primary"
+                onClick={() => setUploadFeedback(null)}
+              >
+                Continuar
+              </button>
+            </footer>
           </section>
         </div>
       )}
@@ -3513,9 +3551,9 @@ function ManualAnimalEntry({
   const focus = (i: number, key: keyof ManualAnimal) =>
     requestAnimationFrame(() =>
       document
-        .querySelector<
-          HTMLInputElement | HTMLSelectElement
-        >(`[data-manual="${i}-${key}"]`)
+        .querySelector<HTMLInputElement | HTMLSelectElement>(
+          `[data-manual="${i}-${key}"]`,
+        )
         ?.focus(),
     );
   const next = (e: React.KeyboardEvent, i: number, key: keyof ManualAnimal) => {
