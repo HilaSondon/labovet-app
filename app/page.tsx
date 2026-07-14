@@ -26,7 +26,14 @@ const AGES: Record<string, Record<string, number>> = {
 const norm = (v: unknown) => String(v ?? "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\([^)]*\)/g, "").replace(/\./g, "").replace(/\s+/g, " ").trim();
 const findCode = (map: Record<string, number>, value: string) => Object.entries(map).find(([key]) => norm(key) === norm(value))?.[1];
 
+type ViewKey = "estadisticas" | "productores" | "establecimientos" | "campanas" | "sanidad" | "renspa" | "agenda-rural" | "pacientes" | "historia" | "vacunas" | "desparasitaciones" | "estudios" | "recordatorios" | "agenda-clinica" | "turnos" | "sigatm";
+const LARGE_MENU: [ViewKey,string][] = [["productores","Productores"],["establecimientos","Establecimientos"],["campanas","Campañas"],["sanidad","Historial sanitario"],["renspa","RENSPA"],["agenda-rural","Agenda rural"]];
+const SMALL_MENU: [ViewKey,string][] = [["pacientes","Pacientes"],["historia","Historia clínica"],["vacunas","Vacunas"],["desparasitaciones","Desparasitaciones"],["estudios","Estudios"],["recordatorios","Recordatorios"],["agenda-clinica","Agenda"]];
+
 export default function Home() {
+  const [activeView, setActiveView] = useState<ViewKey>("sigatm");
+  const [largeOpen, setLargeOpen] = useState(false);
+  const [smallOpen, setSmallOpen] = useState(false);
   const [species, setSpecies] = useState("BOVINO");
   const [defaultAnimal, setDefaultAnimal] = useState("Animal sano");
   const [defaultId, setDefaultId] = useState("Caravana");
@@ -82,11 +89,20 @@ export default function Home() {
   return <main className="app-shell">
     <aside className="sidebar">
       <div className="brand"><span className="brand-mark">L</span><div><b>LabOVet</b><small>Gestión veterinaria</small></div></div>
-      <nav><p>PRINCIPAL</p><button><span>⌂</span> Inicio</button><p>GRANDES ANIMALES</p><button className="active"><span>⇄</span> Conversor SIGATM</button><button disabled><span>▤</span> Historial <em>Próximamente</em></button></nav>
+      <nav className="main-nav"><p>PRINCIPAL</p>
+        <button className={activeView==="estadisticas"?"active":""} onClick={()=>setActiveView("estadisticas")}><span>▥</span> Estadísticas</button>
+        <button className={LARGE_MENU.some(([key])=>key===activeView)?"active":""} onClick={()=>setLargeOpen(v=>!v)}><span>♞</span> Grandes animales <i>{largeOpen?"⌃":"⌄"}</i></button>
+        {largeOpen&&<div className="submenu">{LARGE_MENU.map(([key,label])=><button key={key} className={activeView===key?"selected":""} onClick={()=>setActiveView(key)}>{label}</button>)}</div>}
+        <button className={SMALL_MENU.some(([key])=>key===activeView)?"active":""} onClick={()=>setSmallOpen(v=>!v)}><span>♧</span> Pequeños animales <i>{smallOpen?"⌃":"⌄"}</i></button>
+        {smallOpen&&<div className="submenu">{SMALL_MENU.map(([key,label])=><button key={key} className={activeView===key?"selected":""} onClick={()=>setActiveView(key)}>{label}</button>)}</div>}
+        <button className={activeView==="turnos"?"active":""} onClick={()=>setActiveView("turnos")}><span>□</span> Turnos</button>
+        <p>HERRAMIENTAS</p><button className={activeView==="sigatm"?"active":""} onClick={()=>setActiveView("sigatm")}><span>⇄</span> Conversor SIGATM</button>
+      </nav>
       <div className="sidebar-bottom"><div className="mini-avatar">HS</div><div><b>Hilario</b><small>Administrador</small></div><span>⋮</span></div>
     </aside>
 
     <section className="workspace">
+      {activeView!=="sigatm" ? <ModuleView view={activeView} /> : <>
       <header className="topbar"><div><span className="eyebrow">GRANDES ANIMALES</span><h1>Conversor SIGATM</h1><p>Convertí tu planilla de animales al formato oficial, sin cargar datos del productor.</p></div><div className="status-pill"><i /> Procesamiento local y privado</div></header>
 
       <div className="steps"><div className={rows.length ? "done" : "current"}><b>1</b><span><strong>Cargar planilla</strong><small>Excel del veterinario</small></span></div><hr/><div className={rows.length ? "current" : ""}><b>2</b><span><strong>Revisar datos</strong><small>Validar y corregir</small></span></div><hr/><div className={ready ? "current" : ""}><b>3</b><span><strong>Descargar</strong><small>Excel para SIGATM</small></span></div></div>
@@ -114,8 +130,38 @@ export default function Home() {
         <div className="actions"><button className="ghost" onClick={reset}>Limpiar y cargar otro</button><div><span>{ready ? "Archivo listo para exportar" : "Corregí los campos marcados en rojo"}</span><button className="primary" disabled={!ready} onClick={download}>Descargar Excel SIGATM <b>→</b></button></div></div>
       </section>}
       {!rows.length && <div className="privacy-note"><span>◉</span><div><b>Tus datos no salen de tu computadora</b><p>La planilla se procesa directamente en este navegador. En esta primera versión no se almacena ni se envía ningún archivo.</p></div></div>}
+      </>}
     </section>
   </main>;
+}
+
+const VIEW_CONTENT: Record<Exclude<ViewKey,"sigatm">,{eyebrow:string;title:string;description:string;action:string;stats:[string,string,string][];columns:string[];rows:string[][]}> = {
+  estadisticas:{eyebrow:"RESUMEN GENERAL",title:"Estadísticas",description:"Una mirada rápida a la actividad de tu consultorio.",action:"Exportar estadísticas",stats:[["Protocolos","128","+12% este año"],["Muestras","3.842","420 este mes"],["Pacientes","86","12 nuevos"],["Archivos SIGATM","37","generados"]],columns:["Fecha","Actividad","Tipo","Estado"],rows:[["Hoy, 10:30","Campaña de saneamiento · La Esperanza","Grandes animales","Completado"],["Ayer, 17:15","Vacuna séxtuple · Mora","Pequeños animales","Registrado"],["11/07/2026","Archivo SIGATM · 93 animales","Conversión","Generado"]]},
+  productores:{eyebrow:"GRANDES ANIMALES",title:"Productores",description:"Productores, datos de contacto y actividad sanitaria.",action:"Nuevo productor",stats:[["Productores activos","32","5 nuevos este año"],["Establecimientos","41","con RENSPA"],["Campañas","18","últimos 90 días"],["Muestras","3.842","acumuladas"]],columns:["Productor","CUIT","Establecimiento","Localidad","Último trabajo","Estado"],rows:[["Est. La Esperanza","30-71234567-8","La Esperanza","Azul","09/07/2026","Activo"],["Los Aromos S.A.","30-69876543-2","Los Aromos","Tandil","06/07/2026","Activo"],["María González","27-24567890-4","El Ombú","Rauch","28/06/2026","Activo"]]},
+  establecimientos:{eyebrow:"GRANDES ANIMALES",title:"Establecimientos",description:"Campos y establecimientos vinculados a cada productor.",action:"Nuevo establecimiento",stats:[["Establecimientos","41","activos"],["Con RENSPA","39","95%"],["Bovinos","34","principal especie"],["Localidades","8","alcance regional"]],columns:["Establecimiento","Productor","RENSPA","Localidad","Especie","Acciones"],rows:[["La Esperanza","Est. La Esperanza","01.023.0.12345/00","Azul","Bovino","Ver ficha"],["Los Aromos","Los Aromos S.A.","01.017.0.55421/00","Tandil","Bovino","Ver ficha"],["El Ombú","María González","01.041.0.98812/00","Rauch","Ovino","Ver ficha"]]},
+  campanas:{eyebrow:"GRANDES ANIMALES",title:"Campañas",description:"Organizá muestreos, saneamientos y campañas programadas.",action:"Nueva campaña",stats:[["Campañas activas","7","este mes"],["Muestras previstas","620","estimadas"],["Pendientes SIGATM","4","archivos"],["Finalizadas","18","últimos 90 días"]],columns:["Campaña","Establecimiento","Fecha","Análisis","Animales","Estado"],rows:[["Saneamiento BPA","La Esperanza","18/07/2026","Brucelosis","120","Programada"],["Tricho/Campy","Los Aromos","22/07/2026","Tricomoniasis","35","Pendiente"],["Control anual","El Ombú","29/07/2026","Brucelosis","86","Borrador"]]},
+  sanidad:{eyebrow:"GRANDES ANIMALES",title:"Historial sanitario",description:"Consultá trabajos, diagnósticos y resultados históricos.",action:"Exportar historial",stats:[["Trabajos","128","registrados"],["Muestras","3.842","procesadas"],["Positivos","42","1,1%"],["Productores","32","vinculados"]],columns:["Fecha","Productor","Establecimiento","Análisis","Resultado","Laboratorio"],rows:[["09/07/2026","Est. La Esperanza","La Esperanza","Brucelosis","93 negativos","Regional Sur"],["06/07/2026","Los Aromos S.A.","Los Aromos","Tricho/Campy","En proceso","Lab Azul"]]},
+  renspa:{eyebrow:"GRANDES ANIMALES",title:"RENSPA",description:"Buscá y administrá los RENSPA utilizados con frecuencia.",action:"Agregar RENSPA",stats:[["Registrados","39","activos"],["Verificados","36","92%"],["Pendientes","3","por revisar"],["Usados este mes","12","establecimientos"]],columns:["RENSPA","Establecimiento","Productor","Localidad","Especie","Último uso"],rows:[["01.023.0.12345/00","La Esperanza","Est. La Esperanza","Azul","Bovino","09/07/2026"],["01.017.0.55421/00","Los Aromos","Los Aromos S.A.","Tandil","Bovino","06/07/2026"]]},
+  "agenda-rural":{eyebrow:"GRANDES ANIMALES",title:"Agenda rural",description:"Visitas a campo y trabajos programados.",action:"Nueva visita",stats:[["Esta semana","8","visitas"],["Hoy","2","trabajos"],["Pendientes","4","confirmaciones"],["Kilómetros","286","estimados"]],columns:["Fecha y hora","Productor","Establecimiento","Trabajo","Localidad","Estado"],rows:[["15/07 · 08:30","Est. La Esperanza","La Esperanza","Sangrado BPA","Azul","Confirmado"],["15/07 · 15:00","Los Aromos S.A.","Los Aromos","Revisación toros","Tandil","Confirmado"]]},
+  pacientes:{eyebrow:"PEQUEÑOS ANIMALES",title:"Pacientes",description:"Fichas de pacientes y datos de sus propietarios.",action:"Nuevo paciente",stats:[["Pacientes activos","86","12 nuevos"],["Caninos","62","72%"],["Felinos","24","28%"],["Consultas","143","últimos 90 días"]],columns:["Paciente","Especie","Raza","Edad","Propietario","Teléfono","Última consulta"],rows:[["Mora","Canino","Labrador","6 años","Lucía Pérez","2494 555-120","13/07/2026"],["Simón","Felino","Europeo","3 años","Martín López","2494 555-843","12/07/2026"],["Frida","Canino","Mestiza","9 años","Ana Silva","2494 555-311","10/07/2026"]]},
+  historia:{eyebrow:"PEQUEÑOS ANIMALES",title:"Historia clínica",description:"Evoluciones, diagnósticos y tratamientos por paciente.",action:"Nueva entrada",stats:[["Entradas","412","históricas"],["Este mes","34","consultas"],["Tratamientos","11","activos"],["Controles","8","pendientes"]],columns:["Fecha","Paciente","Motivo","Diagnóstico","Tratamiento","Profesional"],rows:[["13/07/2026","Mora","Control anual","Paciente sana","Plan sanitario","Dr. Sondon"],["12/07/2026","Simón","Dermatitis","Alergia alimentaria","Dieta y control","Dr. Sondon"]]},
+  vacunas:{eyebrow:"PEQUEÑOS ANIMALES",title:"Vacunas",description:"Aplicaciones realizadas y próximos vencimientos.",action:"Registrar vacuna",stats:[["Aplicadas","124","este año"],["Vencen este mes","9","recordatorios"],["Caninos","82","66%"],["Felinos","42","34%"]],columns:["Paciente","Vacuna","Aplicación","Próxima dosis","Propietario","Estado"],rows:[["Mora","Séxtuple","13/07/2026","13/07/2027","Lucía Pérez","Al día"],["Simón","Triple felina","02/02/2026","02/02/2027","Martín López","Al día"]]},
+  desparasitaciones:{eyebrow:"PEQUEÑOS ANIMALES",title:"Desparasitaciones",description:"Control interno y externo de cada paciente.",action:"Registrar aplicación",stats:[["Aplicadas","98","este año"],["Próximas","7","este mes"],["Internas","64","registros"],["Externas","34","registros"]],columns:["Paciente","Producto","Tipo","Última aplicación","Próxima","Estado"],rows:[["Mora","Total Full","Interna","15/04/2026","15/07/2026","Próxima"],["Frida","Bravecto","Externa","10/05/2026","10/08/2026","Al día"]]},
+  estudios:{eyebrow:"PEQUEÑOS ANIMALES",title:"Estudios",description:"Solicitudes, archivos y resultados diagnósticos.",action:"Nuevo estudio",stats:[["Estudios","76","este año"],["Pendientes","5","resultados"],["Laboratorio","48","análisis"],["Imágenes","28","estudios"]],columns:["Fecha","Paciente","Estudio","Laboratorio","Resultado","Archivo"],rows:[["12/07/2026","Simón","Hemograma","Regional Sur","Recibido","Ver PDF"],["10/07/2026","Frida","Ecografía abdominal","Vet Imagen","Pendiente","—"]]},
+  recordatorios:{eyebrow:"PEQUEÑOS ANIMALES",title:"Recordatorios",description:"Seguimientos, vacunas y controles próximos.",action:"Nuevo recordatorio",stats:[["Pendientes","14","tareas"],["Hoy","3","avisos"],["WhatsApp","5","por enviar"],["Completados","28","este mes"]],columns:["Fecha","Paciente","Propietario","Motivo","Canal","Estado"],rows:[["15/07/2026","Mora","Lucía Pérez","Control anual","WhatsApp","Pendiente"],["18/07/2026","Simón","Martín López","Control dermatológico","Teléfono","Programado"]]},
+  "agenda-clinica":{eyebrow:"PEQUEÑOS ANIMALES",title:"Agenda clínica",description:"Consultas y procedimientos de pequeños animales.",action:"Nuevo turno",stats:[["Turnos hoy","6","consultas"],["Disponibles","3","horarios"],["Confirmados","5","pacientes"],["Urgencias","1","atendida"]],columns:["Hora","Paciente","Propietario","Motivo","Duración","Estado"],rows:[["09:00","Mora","Lucía Pérez","Control anual","30 min","Confirmado"],["10:00","Simón","Martín López","Control piel","30 min","Confirmado"],["11:30","Frida","Ana Silva","Ecografía","45 min","Pendiente"]]},
+  turnos:{eyebrow:"AGENDA",title:"Turnos",description:"Todos los compromisos del consultorio en una sola agenda.",action:"Nuevo turno",stats:[["Hoy","8","actividades"],["Grandes animales","2","visitas"],["Pequeños animales","6","consultas"],["Pendientes","2","confirmaciones"]],columns:["Fecha","Hora","Tipo","Cliente / paciente","Actividad","Estado"],rows:[["15/07/2026","08:30","Grandes animales","Est. La Esperanza","Sangrado BPA","Confirmado"],["15/07/2026","09:00","Pequeños animales","Mora · Lucía Pérez","Control anual","Confirmado"],["15/07/2026","15:00","Grandes animales","Los Aromos","Revisación toros","Confirmado"]]}
+};
+
+function ModuleView({view}:{view:Exclude<ViewKey,"sigatm">}) {
+  const data=VIEW_CONTENT[view];
+  return <><header className="topbar module-topbar"><div><span className="eyebrow">{data.eyebrow}</span><h1>{data.title}</h1><p>{data.description}</p></div><button className="primary">＋ {data.action}</button></header>
+    <div className="module-stats">{data.stats.map(([label,value,note])=><article className="panel stat-card" key={label}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}</div>
+    <section className="panel module-table"><div className="module-toolbar"><div><h2>{view==="estadisticas"?"Actividad reciente":data.title}</h2><p>Información de muestra para diseñar y validar esta sección.</p></div><label>⌕ <input placeholder="Buscar..."/></label></div>
+      <div className="table-scroll"><table><thead><tr>{data.columns.map(c=><th key={c}>{c}</th>)}</tr></thead><tbody>{data.rows.map((row,i)=><tr key={i}>{row.map((cell,j)=><td key={j}>{j===row.length-1?<span className="table-status">{cell}</span>:cell}</td>)}</tr>)}</tbody></table></div>
+    </section>
+    <div className="draft-note"><b>Primera maqueta navegable</b><span>Estos datos son demostrativos. En los próximos pasos definiremos juntos formularios, acciones y qué información guardar en Firebase.</span></div>
+  </>;
 }
 
 function validateRows(rows: AnimalRow[], species: string): ErrorMap {
