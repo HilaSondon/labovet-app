@@ -535,7 +535,12 @@ export default function Home() {
   }
   const sigatmWorks = producers
     .flatMap((producer) =>
-      producer.works.map((work, index) => ({ producer, work, index })),
+      producer.works.map((work, index) => ({
+        producer,
+        work,
+        index,
+        establishment: workEstablishment(producer, work),
+      })),
     )
     .filter(
       (item) =>
@@ -549,7 +554,7 @@ export default function Home() {
         (item.work.sigatmStatus || "Pendiente") === sigatmFilter) &&
       (!sigatmProducer || item.producer.name === sigatmProducer) &&
       (!sigatmEstablishment ||
-        item.producer.establishment === sigatmEstablishment) &&
+        item.establishment.name === sigatmEstablishment) &&
       (!sigatmDate ||
         item.work.date.split("/").reverse().join("-") === sigatmDate),
   );
@@ -926,7 +931,7 @@ export default function Home() {
                       <option value="">Todos</option>
                       {[
                         ...new Set(
-                          sigatmWorks.map((x) => x.producer.establishment),
+                          sigatmWorks.map((x) => x.establishment.name),
                         ),
                       ].map((name) => (
                         <option key={name}>{name}</option>
@@ -936,41 +941,43 @@ export default function Home() {
                 </div>
               </div>
               {visibleSigatmWorks.length ? (
-                visibleSigatmWorks.map(({ producer, work, index }) => {
-                  const status = work.sigatmStatus || "Pendiente";
-                  return (
-                    <article key={`${producer.id}-${index}`}>
-                      <div>
-                        <b>
-                          {work.type} · {producer.name}
-                        </b>
-                        <span>
-                          {producer.establishment} · {work.date} ·{" "}
-                          {work.animals} · RENSPA {producer.renspa}
+                visibleSigatmWorks.map(
+                  ({ producer, work, index, establishment }) => {
+                    const status = work.sigatmStatus || "Pendiente";
+                    return (
+                      <article key={`${producer.id}-${index}`}>
+                        <div>
+                          <b>
+                            {work.type} · {producer.name}
+                          </b>
+                          <span>
+                            {establishment.name} · {work.date} · {work.animals}{" "}
+                            · RENSPA {establishment.renspa}
+                          </span>
+                        </div>
+                        <span
+                          className={
+                            status === "Finalizado"
+                              ? "finished-badge"
+                              : "pending-badge"
+                          }
+                        >
+                          {status}
                         </span>
-                      </div>
-                      <span
-                        className={
-                          status === "Finalizado"
-                            ? "finished-badge"
-                            : "pending-badge"
-                        }
-                      >
-                        {status}
-                      </span>
-                      <button
-                        className={
-                          status === "Finalizado" ? "outline-btn" : "primary"
-                        }
-                        onClick={() => openSigatmWork(work, producer, index)}
-                      >
-                        {status === "Finalizado"
-                          ? "Volver a generar"
-                          : "Preparar Excel SIGATM"}
-                      </button>
-                    </article>
-                  );
-                })
+                        <button
+                          className={
+                            status === "Finalizado" ? "outline-btn" : "primary"
+                          }
+                          onClick={() => openSigatmWork(work, producer, index)}
+                        >
+                          {status === "Finalizado"
+                            ? "Volver a generar"
+                            : "Preparar Excel SIGATM"}
+                        </button>
+                      </article>
+                    );
+                  },
+                )
               ) : (
                 <div className="empty-agenda">
                   <b>No hay trabajos que coincidan</b>
@@ -2519,6 +2526,7 @@ function ClinicalAgenda({ patients }: { patients: Patient[] }) {
 type WorkAnimal = { cuig: string; identifier: string; category: string };
 type Work = {
   id?: string;
+  establishmentId?: string;
   date: string;
   type: string;
   detail: string;
@@ -2527,6 +2535,12 @@ type Work = {
   records?: WorkAnimal[];
   source?: "manual" | "excel";
   sigatmStatus?: "Pendiente" | "Finalizado";
+};
+type Establishment = {
+  id: string;
+  name: string;
+  renspa: string;
+  address: string;
 };
 type Producer = {
   id: number;
@@ -2537,7 +2551,28 @@ type Producer = {
   phone: string;
   email: string;
   animals: number;
+  establishments?: Establishment[];
   works: Work[];
+};
+
+const producerEstablishments = (producer: Producer): Establishment[] =>
+  producer.establishments?.length
+    ? producer.establishments
+    : [
+        {
+          id: `${producer.id}-principal`,
+          name: producer.establishment,
+          renspa: producer.renspa,
+          address: producer.address,
+        },
+      ];
+
+const workEstablishment = (producer: Producer, work: Work) => {
+  const establishments = producerEstablishments(producer);
+  return (
+    establishments.find((item) => item.id === work.establishmentId) ||
+    establishments[0]
+  );
 };
 const INITIAL_PRODUCERS: Producer[] = [
   {
@@ -2630,9 +2665,28 @@ function ProducersPanel({
   uid: string;
 }) {
   const [selected, setSelected] = useState<Producer | null>(null);
+  const [selectedEstablishmentId, setSelectedEstablishmentId] = useState("");
+  const [choosingEstablishments, setChoosingEstablishments] =
+    useState<Producer | null>(null);
   const [showProducer, setShowProducer] = useState(false);
+  const [showEstablishment, setShowEstablishment] = useState(false);
   const [showWork, setShowWork] = useState(false);
   const [workType, setWorkType] = useState("Sangrado");
+  const activeEstablishment = selected
+    ? producerEstablishments(selected).find(
+        (item) => item.id === selectedEstablishmentId,
+      ) || producerEstablishments(selected)[0]
+    : null;
+  function openProducer(producer: Producer, establishmentId?: string) {
+    const establishments = producerEstablishments(producer);
+    if (!establishmentId && establishments.length > 1) {
+      setChoosingEstablishments(producer);
+      return;
+    }
+    setSelected(producer);
+    setSelectedEstablishmentId(establishmentId || establishments[0].id);
+    setChoosingEstablishments(null);
+  }
   async function addProducer(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -2645,14 +2699,51 @@ function ProducersPanel({
       phone: String(f.get("phone")),
       email: String(f.get("email")),
       animals: 0,
+      establishments: [],
       works: [],
     };
+    p.establishments = [
+      {
+        id: crypto.randomUUID(),
+        name: p.establishment,
+        renspa: p.renspa,
+        address: p.address,
+      },
+    ];
     try {
       await saveProducerData(uid, p);
       setProducers((v) => [p, ...v]);
       setShowProducer(false);
     } catch {
       window.alert("No pudimos guardar el productor en Firebase.");
+    }
+  }
+  async function addEstablishment(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!selected) return;
+    const f = new FormData(e.currentTarget);
+    const establishment: Establishment = {
+      id: crypto.randomUUID(),
+      name: String(f.get("establishment")),
+      renspa: String(f.get("renspa")),
+      address: String(f.get("address")),
+    };
+    const updated = {
+      ...selected,
+      establishments: [...producerEstablishments(selected), establishment],
+    };
+    try {
+      await saveProducerData(uid, updated);
+      setProducers((items) =>
+        items.map((producer) =>
+          producer.id === updated.id ? updated : producer,
+        ),
+      );
+      setSelected(updated);
+      setSelectedEstablishmentId(establishment.id);
+      setShowEstablishment(false);
+    } catch {
+      window.alert("No pudimos guardar el establecimiento en Firebase.");
     }
   }
   async function addWork(e: React.FormEvent<HTMLFormElement>) {
@@ -2666,6 +2757,7 @@ function ProducersPanel({
     const notes = String(f.get("notes") || "").trim();
     const work: Work = {
       id: crypto.randomUUID(),
+      establishmentId: activeEstablishment?.id,
       date: iso.split("-").reverse().join("/"),
       type: workType,
       detail: notes ? `${detail} · ${notes}` : detail,
@@ -2690,7 +2782,7 @@ function ProducersPanel({
           <h1>{selected ? selected.name : "Productores"}</h1>
           <p>
             {selected
-              ? `${selected.establishment} · RENSPA ${selected.renspa}`
+              ? `${activeEstablishment?.name} · RENSPA ${activeEstablishment?.renspa}`
               : "El centro administrativo de tus trabajos con grandes animales."}
           </p>
         </div>
@@ -2698,6 +2790,20 @@ function ProducersPanel({
           <div className="header-actions">
             <button className="ghost" onClick={() => setSelected(null)}>
               ← Volver
+            </button>
+            {producerEstablishments(selected).length > 1 && (
+              <button
+                className="ghost"
+                onClick={() => setChoosingEstablishments(selected)}
+              >
+                Cambiar establecimiento
+              </button>
+            )}
+            <button
+              className="ghost"
+              onClick={() => setShowEstablishment(true)}
+            >
+              ＋ Establecimiento
             </button>
             <button className="primary" onClick={() => setShowWork(true)}>
               ＋ Nuevo trabajo
@@ -2753,7 +2859,7 @@ function ProducersPanel({
               <button
                 className="producer-row"
                 key={p.id}
-                onClick={() => setSelected(p)}
+                onClick={() => openProducer(p)}
               >
                 <span className="producer-avatar">
                   {p.name.slice(0, 2).toUpperCase()}
@@ -2761,12 +2867,26 @@ function ProducersPanel({
                 <span>
                   <b>{p.name}</b>
                   <small>
-                    {p.establishment} · {p.address}
+                    {producerEstablishments(p).length === 1
+                      ? `${producerEstablishments(p)[0].name} · ${producerEstablishments(p)[0].address}`
+                      : `${producerEstablishments(p).length} establecimientos · ${producerEstablishments(
+                          p,
+                        )
+                          .map((item) => item.name)
+                          .join(" · ")}`}
                   </small>
                 </span>
                 <span>
-                  <small>RENSPA</small>
-                  <b>{p.renspa}</b>
+                  <small>
+                    {producerEstablishments(p).length === 1
+                      ? "RENSPA"
+                      : "Establecimientos"}
+                  </small>
+                  <b>
+                    {producerEstablishments(p).length === 1
+                      ? producerEstablishments(p)[0].renspa
+                      : producerEstablishments(p).length}
+                  </b>
                 </span>
                 <span>
                   <small>Animales</small>
@@ -2784,11 +2904,87 @@ function ProducersPanel({
       ) : (
         <ProducerDetail
           producer={selected}
+          establishment={activeEstablishment!}
           setSelected={setSelected}
           setProducers={setProducers}
           onNewWork={() => setShowWork(true)}
           uid={uid}
         />
+      )}
+      {choosingEstablishments && (
+        <div className="modal-backdrop">
+          <section className="modal-card establishment-picker">
+            <div>
+              <h2>Elegir establecimiento</h2>
+              <button
+                type="button"
+                onClick={() => setChoosingEstablishments(null)}
+              >
+                ×
+              </button>
+            </div>
+            <p>
+              {choosingEstablishments.name} tiene varios establecimientos. Elegí
+              cuál querés consultar.
+            </p>
+            <div className="establishment-options">
+              {producerEstablishments(choosingEstablishments).map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => openProducer(choosingEstablishments, item.id)}
+                >
+                  <span>
+                    <b>{item.name}</b>
+                    <small>{item.address || "Sin dirección informada"}</small>
+                  </span>
+                  <span>
+                    <small>RENSPA</small>
+                    <b>{item.renspa || "Sin informar"}</b>
+                  </span>
+                  <i>→</i>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+      {showEstablishment && selected && (
+        <div className="modal-backdrop">
+          <form className="modal-card" onSubmit={addEstablishment}>
+            <div>
+              <h2>Nuevo establecimiento</h2>
+              <button type="button" onClick={() => setShowEstablishment(false)}>
+                ×
+              </button>
+            </div>
+            <p>Se agregará a {selected.name}.</p>
+            <label>
+              Nombre del establecimiento
+              <input name="establishment" required />
+            </label>
+            <div className="form-grid">
+              <label>
+                RENSPA
+                <input name="renspa" required placeholder="00.000.0.00000/00" />
+              </label>
+              <label>
+                Dirección
+                <input name="address" />
+              </label>
+            </div>
+            <footer>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setShowEstablishment(false)}
+              >
+                Cancelar
+              </button>
+              <button className="primary">Guardar establecimiento</button>
+            </footer>
+          </form>
+        </div>
       )}
       {showProducer && (
         <div className="modal-backdrop">
@@ -2852,7 +3048,7 @@ function ProducersPanel({
               </button>
             </div>
             <p>
-              {selected.name} · {selected.establishment}
+              {selected.name} · {activeEstablishment?.name}
             </p>
             <div className="work-types">
               {Object.keys(WORK_CATALOG).map((t) => (
@@ -2990,12 +3186,14 @@ const HEALTH_EVENTS: Record<number, HealthEvent[]> = {
 
 function ProducerDetail({
   producer,
+  establishment,
   setSelected,
   setProducers,
   onNewWork,
   uid,
 }: {
   producer: Producer;
+  establishment: Establishment;
   setSelected: React.Dispatch<React.SetStateAction<Producer | null>>;
   setProducers: React.Dispatch<React.SetStateAction<Producer[]>>;
   onNewWork: () => void;
@@ -3014,7 +3212,12 @@ function ProducerDetail({
     category: "",
     result: "",
   });
-  const loadedEvents: HealthEvent[] = producer.works.flatMap((w) =>
+  const scopedWorks = producer.works
+    .map((work, index) => ({ work, index }))
+    .filter(
+      ({ work }) => workEstablishment(producer, work).id === establishment.id,
+    );
+  const loadedEvents: HealthEvent[] = scopedWorks.flatMap(({ work: w }) =>
     (w.records || []).map((r) => ({
       animal: [r.cuig, r.identifier].filter(Boolean).join(" "),
       category: r.category,
@@ -3039,14 +3242,26 @@ function ProducerDetail({
   async function saveData(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const establishments = producerEstablishments(producer).map((item) =>
+      item.id === establishment.id
+        ? {
+            ...item,
+            name: String(f.get("establishment")),
+            renspa: String(f.get("renspa")),
+            address: String(f.get("address")),
+          }
+        : item,
+    );
+    const primary = establishments[0];
     const updated = {
       ...producer,
       name: String(f.get("name")),
-      establishment: String(f.get("establishment")),
-      renspa: String(f.get("renspa")),
-      address: String(f.get("address")),
+      establishment: primary.name,
+      renspa: primary.renspa,
+      address: primary.address,
       phone: String(f.get("phone")),
       email: String(f.get("email")),
+      establishments,
     };
     try {
       await saveProducerData(uid, updated);
@@ -3137,7 +3352,7 @@ function ProducerDetail({
       <div className="producer-kpis">
         <article className="panel">
           <span>Animales registrados</span>
-          <strong>{producer.animals}</strong>
+          <strong>{new Set(events.map((e) => e.animal)).size}</strong>
           <small>
             {new Set(events.map((e) => e.animal)).size} con historial individual
           </small>
@@ -3145,14 +3360,20 @@ function ProducerDetail({
         <article className="panel">
           <span>Trabajos realizados</span>
           <strong>
-            {producer.works.filter((w) => w.status !== "Pendiente").length}
+            {
+              scopedWorks.filter(({ work }) => work.status !== "Pendiente")
+                .length
+            }
           </strong>
           <small>en este establecimiento</small>
         </article>
         <article className="panel">
           <span>Trabajos pendientes</span>
           <strong>
-            {producer.works.filter((w) => w.status === "Pendiente").length}
+            {
+              scopedWorks.filter(({ work }) => work.status === "Pendiente")
+                .length
+            }
           </strong>
           <small>en Agenda rural</small>
         </article>
@@ -3168,7 +3389,7 @@ function ProducerDetail({
             <span className="accordion-icon">⌂</span>
             <span>
               <b>Datos del productor</b>
-              <small>Contacto, establecimiento y RENSPA</small>
+              <small>Contacto y datos de {establishment.name}</small>
             </span>
           </div>
           <i>{open.data ? "⌃" : "⌄"}</i>
@@ -3186,16 +3407,19 @@ function ProducerDetail({
                     Establecimiento
                     <input
                       name="establishment"
-                      defaultValue={producer.establishment}
+                      defaultValue={establishment.name}
                     />
                   </label>
                   <label>
                     RENSPA
-                    <input name="renspa" defaultValue={producer.renspa} />
+                    <input name="renspa" defaultValue={establishment.renspa} />
                   </label>
                   <label>
                     Dirección
-                    <input name="address" defaultValue={producer.address} />
+                    <input
+                      name="address"
+                      defaultValue={establishment.address}
+                    />
                   </label>
                   <label>
                     Teléfono
@@ -3230,15 +3454,15 @@ function ProducerDetail({
                   </div>
                   <div>
                     <dt>Establecimiento</dt>
-                    <dd>{producer.establishment}</dd>
+                    <dd>{establishment.name}</dd>
                   </div>
                   <div>
                     <dt>RENSPA</dt>
-                    <dd>{producer.renspa}</dd>
+                    <dd>{establishment.renspa}</dd>
                   </div>
                   <div>
                     <dt>Dirección</dt>
-                    <dd>{producer.address}</dd>
+                    <dd>{establishment.address}</dd>
                   </div>
                   <div>
                     <dt>Teléfono</dt>
@@ -3384,9 +3608,7 @@ function ProducerDetail({
               <small>Actividades generales realizadas y pendientes</small>
             </span>
           </div>
-          <div className="accordion-count">
-            {producer.works.length} trabajos
-          </div>
+          <div className="accordion-count">{scopedWorks.length} trabajos</div>
           <i>{open.works ? "⌃" : "⌄"}</i>
         </button>
         {open.works && (
@@ -3398,7 +3620,7 @@ function ProducerDetail({
               <span>Estado</span>
               <span>Carga de animales</span>
             </div>
-            {producer.works.map((w, i) => {
+            {scopedWorks.map(({ work: w, index: i }) => {
               const sigatmWork =
                 w.type === "Sangrado" || w.type === "Muestreo equino";
               return (
@@ -3839,6 +4061,7 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
     producer.works.map((work) => ({
       producer,
       work,
+      establishment: workEstablishment(producer, work),
       date: new Date(work.date.split("/").reverse().join("-") + "T12:00:00"),
     })),
   );
@@ -3851,7 +4074,7 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
     .filter((item) => item.date < now)
     .sort((a, b) => b.date.getTime() - a.date.getTime());
   const base = filter === "pendientes" ? pending : completed;
-  const visible = base.filter(({ producer, work, date }) => {
+  const visible = base.filter(({ producer, work, establishment, date }) => {
     const iso = date.toISOString().slice(0, 10);
     const status = filter === "pendientes" ? "Pendiente" : "Realizado";
     const quantity = work.animals.replace(/\D/g, "");
@@ -3859,7 +4082,7 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
       (!columnFilters.date || iso === columnFilters.date) &&
       (!columnFilters.producer || producer.name === columnFilters.producer) &&
       (!columnFilters.establishment ||
-        producer.establishment === columnFilters.establishment) &&
+        establishment.name === columnFilters.establishment) &&
       (!columnFilters.work || work.type === columnFilters.work) &&
       (!columnFilters.quantity || quantity.includes(columnFilters.quantity)) &&
       (!columnFilters.status || status === columnFilters.status)
@@ -3867,7 +4090,7 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
   });
   const producerOptions = [...new Set(base.map((item) => item.producer.name))];
   const establishmentOptions = [
-    ...new Set(base.map((item) => item.producer.establishment)),
+    ...new Set(base.map((item) => item.establishment.name)),
   ];
   const workOptions = [...new Set(base.map((item) => item.work.type))];
   return (
@@ -3994,7 +4217,7 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
           </label>
         </div>
         {visible.length ? (
-          visible.map(({ producer, work }, i) => (
+          visible.map(({ producer, work, establishment }, i) => (
             <article
               className="agenda-row"
               key={`${producer.id}-${i}-${work.date}`}
@@ -4007,11 +4230,11 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
               </time>
               <div>
                 <b>{producer.name}</b>
-                <span>{producer.renspa}</span>
+                <span>{establishment.renspa}</span>
               </div>
               <div>
-                <b>{producer.establishment}</b>
-                <span>{producer.address}</span>
+                <b>{establishment.name}</b>
+                <span>{establishment.address}</span>
               </div>
               <div>
                 <b>{work.type}</b>

@@ -17,6 +17,7 @@ export type StoredAnimal = {
 };
 export type StoredWork = {
   id?: string;
+  establishmentId?: string;
   date: string;
   type: string;
   detail: string;
@@ -25,6 +26,12 @@ export type StoredWork = {
   records?: StoredAnimal[];
   source?: "manual" | "excel";
   sigatmStatus?: "Pendiente" | "Finalizado";
+};
+export type StoredEstablishment = {
+  id: string;
+  name: string;
+  renspa: string;
+  address: string;
 };
 export type StoredProducer = {
   id: number;
@@ -35,6 +42,7 @@ export type StoredProducer = {
   phone: string;
   email: string;
   animals: number;
+  establishments?: StoredEstablishment[];
   works: StoredWork[];
 };
 export type StoredPatientEvent = {
@@ -119,10 +127,28 @@ export async function loadVeterinaryData(uid: string) {
   const producers = producerSnap.docs.map((item) => {
     const data = item.data() as Omit<StoredProducer, "id" | "works">;
     const id = Number(item.id);
+    const establishments = data.establishments?.length
+      ? data.establishments
+      : [
+          {
+            id: `${id}-principal`,
+            name: data.establishment || "Establecimiento principal",
+            renspa: data.renspa || "",
+            address: data.address || "",
+          },
+        ];
+    const primary = establishments[0];
     return {
       ...data,
       id,
-      works: worksByProducer.get(id) || [],
+      establishment: primary.name,
+      renspa: primary.renspa,
+      address: primary.address,
+      establishments,
+      works: (worksByProducer.get(id) || []).map((work) => ({
+        ...work,
+        establishmentId: work.establishmentId || primary.id,
+      })),
     } as StoredProducer;
   });
   const patients = patientSnap.docs.map((item) => {
