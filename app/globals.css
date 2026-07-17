@@ -1357,6 +1357,36 @@
   background: #fbe9e7;
   color: #b64b45;
 }
+.health-result-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 0 20px 14px;
+}
+.health-result-summary article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #dbe7e4;
+  border-radius: 7px;
+  padding: 9px 11px;
+  font-size: 9px;
+}
+.health-result-summary article b { font-size: 15px; }
+.health-result-summary .negative { background: #f0f8f5; color: #176f5c; }
+.health-result-summary .suspicious { background: #fff8e7; color: #8a6517; }
+.health-result-summary .positive { background: #fff0ef; color: #a8413b; }
+.health-result {
+  justify-self: start;
+  border-radius: 11px;
+  padding: 5px 8px;
+  font-size: 9px;
+  font-weight: 700;
+}
+.health-result.negativo { background: #e6f4ef; color: #18715e; }
+.health-result.sospechoso { background: #fff3d6; color: #89600e; }
+.health-result.positivo { background: #fbe5e3; color: #a83d37; }
+.health-result.sin.resultado { background: #eef2f3; color: #687a81; }
 .empty-health {
   padding: 35px;
   text-align: center;
@@ -1459,9 +1489,89 @@
 .manual-entry-btn:hover {
   background: #d9ece6;
 }
+.results-entry-btn {
+  border: 1px solid #b3822c;
+  background: #fff7e5;
+  color: #805b18;
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
 .manual-entry-modal {
   width: min(920px, 96vw);
 }
+.results-entry-modal { width: min(980px, 96vw); }
+.results-toolbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.results-toolbar label {
+  min-width: 280px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #cad9dc;
+  border-radius: 7px;
+  padding: 0 10px;
+  background: white;
+}
+.results-toolbar input {
+  width: 100%;
+  border: 0 !important;
+  padding: 9px 0 !important;
+  margin: 0 !important;
+}
+.results-counts { display: flex !important; gap: 5px; }
+.results-counts span { border-radius: 999px; padding: 6px 9px; font-size: 9px; font-weight: 750; }
+.results-counts .negative { background: #e8f5f0; color: #176f5c; }
+.results-counts .suspicious { background: #fff3d6; color: #89600e; }
+.results-counts .positive { background: #fbe5e3; color: #a83d37; }
+.results-grid {
+  max-height: 52vh;
+  overflow-y: auto;
+  border: 1px solid #d7e2e4;
+  border-radius: 9px;
+}
+.results-grid-head,
+.results-grid-row {
+  display: grid !important;
+  grid-template-columns: 42px 0.7fr 1.3fr 1fr 150px;
+  align-items: center !important;
+  min-width: 760px;
+}
+.results-grid-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f2f6f6;
+  color: #74868d;
+  font-size: 8px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+.results-grid-head span,
+.results-grid-row > span,
+.results-grid-row > b { padding: 10px; }
+.results-grid-row { border-top: 1px solid #e4ebed; font-size: 10px; }
+.results-grid-row > span:first-child { color: #89979c; text-align: center; }
+.result-select {
+  height: 36px;
+  border: 1px solid #cbdad6;
+  border-radius: 6px;
+  margin: 5px 8px;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 750;
+}
+.result-select.negativo { background: #eff8f5; color: #176f5c; }
+.result-select.sospechoso { background: #fff8e7; color: #89600e; }
+.result-select.positivo { background: #fff0ef; color: #a83d37; }
 .manual-entry-modal > div:first-child > div {
   display: block;
 }

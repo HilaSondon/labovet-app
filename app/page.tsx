@@ -4232,7 +4232,12 @@ function ClinicalAgenda({ patients }: { patients: Patient[] }) {
   );
 }
 
-type WorkAnimal = { cuig: string; identifier: string; category: string };
+type WorkAnimal = {
+  cuig: string;
+  identifier: string;
+  category: string;
+  result?: "Negativo" | "Sospechoso" | "Positivo";
+};
 type Work = {
   id?: string;
   establishmentId?: string;
@@ -4999,6 +5004,7 @@ function ProducerDetail({
   const [open, setOpen] = useState({ data: false, health: false, works: true });
   const [editing, setEditing] = useState(false);
   const [manualWork, setManualWork] = useState<number | null>(null);
+  const [resultWork, setResultWork] = useState<number | null>(null);
   const [uploadFeedback, setUploadFeedback] = useState<{
     count: number;
     file: string;
@@ -5021,7 +5027,7 @@ function ProducerDetail({
       date: w.date,
       work: w.type,
       practice: w.detail,
-      result: "Registrado",
+      result: r.result || "Sin resultado",
     })),
   );
   const events = [...loadedEvents, ...(HEALTH_EVENTS[producer.id] || [])];
@@ -5034,6 +5040,11 @@ function ProducerDetail({
       (!healthFilters.result ||
         e.result.toLowerCase().includes(healthFilters.result.toLowerCase())),
   );
+  const resultCounts = {
+    negative: events.filter((event) => norm(event.result) === "NEGATIVO").length,
+    suspicious: events.filter((event) => norm(event.result) === "SOSPECHOSO").length,
+    positive: events.filter((event) => norm(event.result) === "POSITIVO").length,
+  };
   const toggle = (key: keyof typeof open) =>
     setOpen((v) => ({ ...v, [key]: !v[key] }));
   async function saveData(e: React.FormEvent<HTMLFormElement>) {
@@ -5352,14 +5363,24 @@ function ProducerDetail({
               </label>
               <label>
                 <span>Resultado</span>
-                <input
-                  placeholder="Buscar resultado"
+                <select
                   value={healthFilters.result}
                   onChange={(e) =>
                     setHealthFilters((v) => ({ ...v, result: e.target.value }))
                   }
-                />
+                >
+                  <option value="">Todos</option>
+                  <option>Negativo</option>
+                  <option>Sospechoso</option>
+                  <option>Positivo</option>
+                  <option>Sin resultado</option>
+                </select>
               </label>
+            </div>
+            <div className="health-result-summary">
+              <article className="negative"><span>Negativos</span><b>{resultCounts.negative}</b></article>
+              <article className="suspicious"><span>Sospechosos</span><b>{resultCounts.suspicious}</b></article>
+              <article className="positive"><span>Positivos</span><b>{resultCounts.positive}</b></article>
             </div>
             <div className="health-table">
               <div className="health-head">
@@ -5379,9 +5400,7 @@ function ProducerDetail({
                     <small>{e.practice}</small>
                   </div>
                   <span
-                    className={
-                      e.result.includes("Vacía") ? "result-alert" : "result-ok"
-                    }
+                    className={`health-result ${norm(e.result).toLowerCase()}`}
                   >
                     {e.result}
                   </span>
@@ -5420,6 +5439,12 @@ function ProducerDetail({
             {scopedWorks.map(({ work: w, index: i }) => {
               const sigatmWork =
                 w.type === "Sangrado" || w.type === "Muestreo equino";
+              const acceptsResults = [
+                "Sangrado",
+                "Muestreo equino",
+                "Muestreo reproductivo",
+                "Tuberculinización",
+              ].includes(w.type);
               return (
                 <article className="work-row" key={i}>
                   <time className="work-date">{w.date}</time>
@@ -5474,6 +5499,14 @@ function ProducerDetail({
                     >
                       {w.records?.length ? "⌕ Ver carga" : "＋ Carga manual"}
                     </button>
+                    {acceptsResults && Boolean(w.records?.length) && (
+                      <button
+                        className="results-entry-btn"
+                        onClick={() => setResultWork(i)}
+                      >
+                        Cargar resultados
+                      </button>
+                    )}
                   </div>
                 </article>
               );
@@ -5496,6 +5529,25 @@ function ProducerDetail({
               setManualWork(null);
             } catch {
               window.alert("No pudimos guardar los animales en Firebase.");
+            }
+          }}
+        />
+      )}
+      {resultWork !== null && (
+        <AnimalResultsEntry
+          producer={producer}
+          workIndex={resultWork}
+          onClose={() => setResultWork(null)}
+          onSave={async (updated) => {
+            try {
+              await saveWorkData(uid, updated.id, updated.works[resultWork]);
+              setProducers((current) =>
+                current.map((item) => item.id === updated.id ? updated : item),
+              );
+              setSelected(updated);
+              setResultWork(null);
+            } catch {
+              window.alert("No pudimos guardar los resultados en Firebase.");
             }
           }}
         />
@@ -5527,6 +5579,83 @@ function ProducerDetail({
         </div>
       )}
     </>
+  );
+}
+
+function AnimalResultsEntry({
+  producer,
+  workIndex,
+  onClose,
+  onSave,
+}: {
+  producer: Producer;
+  workIndex: number;
+  onClose: () => void;
+  onSave: (producer: Producer) => void;
+}) {
+  const work = producer.works[workIndex];
+  const [search, setSearch] = useState("");
+  const [rows, setRows] = useState<WorkAnimal[]>(() =>
+    (work.records || []).map((record) => ({
+      ...record,
+      result: record.result || "Negativo",
+    })),
+  );
+  const visible = rows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) =>
+      [row.cuig, row.identifier, `${row.cuig} ${row.identifier}`]
+        .some((value) => norm(value).includes(norm(search))),
+    );
+  const counts = {
+    negative: rows.filter((row) => row.result === "Negativo").length,
+    suspicious: rows.filter((row) => row.result === "Sospechoso").length,
+    positive: rows.filter((row) => row.result === "Positivo").length,
+  };
+  function updateResult(index: number, result: WorkAnimal["result"]) {
+    setRows((current) =>
+      current.map((row, position) =>
+        position === index ? { ...row, result } : row,
+      ),
+    );
+  }
+  function save() {
+    const works = producer.works.map((current, index) =>
+      index === workIndex ? { ...current, records: rows } : current,
+    );
+    onSave({ ...producer, works });
+  }
+  return (
+    <div className="modal-backdrop">
+      <div className="modal-card manual-entry-modal results-entry-modal">
+        <div>
+          <div><span className="eyebrow">{work.type}</span><h2>Cargar resultados</h2></div>
+          <button type="button" onClick={onClose}>×</button>
+        </div>
+        <p>Todos los animales aparecen como negativos de manera predeterminada. Cambiá únicamente las excepciones.</p>
+        <div className="results-toolbar">
+          <label>⌕ <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por identificación..." autoFocus /></label>
+          <div className="results-counts">
+            <span className="negative">{counts.negative} negativos</span>
+            <span className="suspicious">{counts.suspicious} sospechosos</span>
+            <span className="positive">{counts.positive} positivos</span>
+          </div>
+        </div>
+        <div className="results-grid">
+          <div className="results-grid-head"><span>#</span><span>CUIg</span><span>Caravana / identificación</span><span>Categoría</span><span>Resultado</span></div>
+          {visible.map(({ row, index }) => (
+            <div className="results-grid-row" key={`${row.cuig}-${row.identifier}-${index}`}>
+              <span>{index + 1}</span><span>{row.cuig || "—"}</span><b>{row.identifier}</b><span>{row.category}</span>
+              <select className={`result-select ${row.result?.toLowerCase()}`} value={row.result} onChange={(event) => updateResult(index, event.target.value as WorkAnimal["result"])}>
+                <option>Negativo</option><option>Sospechoso</option><option>Positivo</option>
+              </select>
+            </div>
+          ))}
+          {!visible.length && <div className="empty-health">No encontramos animales con esa identificación.</div>}
+        </div>
+        <footer><button type="button" className="ghost" onClick={onClose}>Cancelar</button><button type="button" className="primary" onClick={save}>Guardar resultados</button></footer>
+      </div>
+    </div>
   );
 }
 

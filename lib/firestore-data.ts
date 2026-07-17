@@ -14,6 +14,7 @@ export type StoredAnimal = {
   cuig: string;
   identifier: string;
   category: string;
+  result?: "Negativo" | "Sospechoso" | "Positivo";
 };
 export type StoredWork = {
   id?: string;
