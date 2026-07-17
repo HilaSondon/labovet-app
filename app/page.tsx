@@ -201,13 +201,6 @@ const isValidDate = (value: string, optional = true) => {
     date.getDate() === day
   );
 };
-const formatDateTyping = (value: string) => {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)]
-    .filter(Boolean)
-    .join("/");
-};
-
 function DateField({
   name,
   value,
@@ -221,36 +214,124 @@ function DateField({
   onBlur?: () => void;
   required?: boolean;
 }) {
-  const [internal, setInternal] = useState(displayDate(value || ""));
-  const current = value === undefined ? internal : displayDate(value);
-  const invalid = Boolean(current) && !isValidDate(current, !required);
+  const initial = displayDate(value || "").split("/");
+  const [parts, setParts] = useState({
+    day: initial.length === 3 ? String(Number(initial[0])) : "",
+    month: initial.length === 3 ? String(Number(initial[1])) : "",
+    year: initial.length === 3 ? initial[2] : "",
+  });
+  useEffect(() => {
+    const next = displayDate(value || "").split("/");
+    setParts({
+      day: next.length === 3 ? String(Number(next[0])) : "",
+      month: next.length === 3 ? String(Number(next[1])) : "",
+      year: next.length === 3 ? next[2] : "",
+    });
+  }, [value]);
+  const yearRef = useRef<HTMLSelectElement>(null);
+  const months = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+  ];
+  const years = Array.from(
+    { length: new Date().getFullYear() + 10 - 1950 + 1 },
+    (_, index) => String(new Date().getFullYear() + 10 - index),
+  );
+  const complete = Boolean(parts.day && parts.month && parts.year);
+  const current = complete
+    ? `${parts.day.padStart(2, "0")}/${parts.month.padStart(2, "0")}/${parts.year}`
+    : "";
+  const invalid = complete && !isValidDate(current, !required);
+  useEffect(() => {
+    yearRef.current?.setCustomValidity(
+      invalid ? "Elegí una combinación de fecha válida" : "",
+    );
+  }, [invalid]);
+  function updatePart(key: keyof typeof parts, next: string) {
+    const updated = { ...parts, [key]: next };
+    setParts(updated);
+    if (updated.day && updated.month && updated.year) {
+      onChange?.(
+        `${updated.day.padStart(2, "0")}/${updated.month.padStart(2, "0")}/${updated.year}`,
+      );
+    } else if (!updated.day && !updated.month && !updated.year) {
+      onChange?.("");
+    }
+  }
+  function clear() {
+    setParts({ day: "", month: "", year: "" });
+    onChange?.("");
+    onBlur?.();
+  }
   return (
-    <span className="date-field">
-      <input
-        type="text"
-        inputMode="numeric"
-        name={name}
-        value={current}
-        placeholder="DD/MM/AAAA"
-        maxLength={10}
-        required={required}
-        className={invalid ? "date-invalid" : ""}
-        aria-invalid={invalid}
-        onChange={(event) => {
-          const next = formatDateTyping(event.target.value);
-          event.currentTarget.setCustomValidity(
-            !next || isValidDate(next, !required)
-              ? ""
-              : "Ingresá una fecha válida con formato DD/MM/AAAA",
-          );
-          setInternal(next);
-          onChange?.(next);
-        }}
-        onBlur={() => {
-          if (!invalid) onBlur?.();
-        }}
-      />
-      {invalid && <small>Ingresá una fecha válida: DD/MM/AAAA</small>}
+    <span className={`date-field ${invalid ? "date-invalid" : ""}`}>
+      <span className="date-parts">
+        <select
+          aria-label="Día"
+          value={parts.day}
+          required={required}
+          onChange={(event) => updatePart("day", event.target.value)}
+          onBlur={() => complete && !invalid && onBlur?.()}
+        >
+          <option value="">Día</option>
+          {Array.from({ length: 31 }, (_, index) => String(index + 1)).map(
+            (day) => (
+              <option key={day} value={day}>
+                {day}
+              </option>
+            ),
+          )}
+        </select>
+        <select
+          aria-label="Mes"
+          value={parts.month}
+          required={required}
+          onChange={(event) => updatePart("month", event.target.value)}
+          onBlur={() => complete && !invalid && onBlur?.()}
+        >
+          <option value="">Mes</option>
+          {months.map((month, index) => (
+            <option key={month} value={String(index + 1)}>
+              {month}
+            </option>
+          ))}
+        </select>
+        <select
+          ref={yearRef}
+          aria-label="Año"
+          value={parts.year}
+          required={required}
+          onChange={(event) => updatePart("year", event.target.value)}
+          onBlur={() => complete && !invalid && onBlur?.()}
+        >
+          <option value="">Año</option>
+          {years.map((year) => (
+            <option key={year}>{year}</option>
+          ))}
+        </select>
+        {!required && complete && (
+          <button
+            type="button"
+            className="date-clear"
+            onClick={clear}
+            title="Borrar fecha"
+          >
+            ×
+          </button>
+        )}
+      </span>
+      <input type="hidden" name={name} value={current} />
+      {invalid && <small>Esa fecha no existe. Revisá día, mes y año.</small>}
     </span>
   );
 }
@@ -1167,24 +1248,22 @@ export default function Home() {
                                     <option key={v}>{v}</option>
                                   ))}
                                 </select>
+                              ) : field === "vaccination" ? (
+                                <DateField
+                                  value={r.vaccination}
+                                  onChange={(value) =>
+                                    updateRow(i, "vaccination", value)
+                                  }
+                                />
                               ) : (
                                 <input
                                   className={
                                     errors[`${i}:${field}`] ? "invalid" : ""
                                   }
                                   value={r[field]}
-                                  placeholder={
-                                    field === "vaccination" ? "DD/MM/AAAA" : ""
-                                  }
                                   title={errors[`${i}:${field}`]}
                                   onChange={(e) =>
-                                    updateRow(
-                                      i,
-                                      field,
-                                      field === "vaccination"
-                                        ? formatDateTyping(e.target.value)
-                                        : e.target.value,
-                                    )
+                                    updateRow(i, field, e.target.value)
                                   }
                                 />
                               )}
