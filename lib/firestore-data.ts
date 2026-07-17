@@ -139,6 +139,7 @@ export async function loadVeterinaryData(uid: string) {
         cuig: data.cuig || "",
         identifier: data.identifier || "",
         category: data.category || "",
+        result: data.result,
       });
       animalsByWork.set(data.workId, list);
     });
