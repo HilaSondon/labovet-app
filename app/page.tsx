@@ -5499,12 +5499,14 @@ function ProducerDetail({
                     >
                       {w.records?.length ? "⌕ Ver carga" : "＋ Carga manual"}
                     </button>
-                    {acceptsResults && Boolean(w.records?.length) && (
+                    {acceptsResults && Boolean(w.records?.length && w.source) && (
                       <button
                         className="results-entry-btn"
                         onClick={() => setResultWork(i)}
                       >
-                        Cargar resultados
+                        {w.records?.some((record) => record.result)
+                          ? "Ver resultados"
+                          : "Cargar resultados"}
                       </button>
                     )}
                   </div>
@@ -5594,6 +5596,7 @@ function AnimalResultsEntry({
   onSave: (producer: Producer) => void;
 }) {
   const work = producer.works[workIndex];
+  const hasSavedResults = Boolean(work.records?.some((record) => record.result));
   const [search, setSearch] = useState("");
   const [resultFilter, setResultFilter] = useState<WorkAnimal["result"] | "">("");
   const [rows, setRows] = useState<WorkAnimal[]>(() =>
@@ -5631,10 +5634,10 @@ function AnimalResultsEntry({
     <div className="modal-backdrop">
       <div className="modal-card manual-entry-modal results-entry-modal">
         <div>
-          <div><span className="eyebrow">{work.type}</span><h2>Cargar resultados</h2></div>
+          <div><span className="eyebrow">{work.type}</span><h2>{hasSavedResults ? "Ver resultados" : "Cargar resultados"}</h2></div>
           <button type="button" onClick={onClose}>×</button>
         </div>
-        <p>Todos los animales aparecen como negativos de manera predeterminada. Cambiá únicamente las excepciones.</p>
+        <p>{hasSavedResults ? "Revisá o corregí los resultados guardados para cada animal." : "Todos los animales aparecen como negativos de manera predeterminada. Cambiá únicamente las excepciones."}</p>
         <div className="results-toolbar">
           <label><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por identificación..." autoFocus /></label>
           <div className="results-counts">

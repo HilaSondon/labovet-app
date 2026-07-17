@@ -1504,7 +1504,7 @@
   width: min(920px, 96vw);
 }
 .modal-card.results-entry-modal {
-  width: min(1080px, 96vw);
+  width: min(760px, 94vw);
   max-width: none;
 }
 .results-toolbar {
@@ -1529,6 +1529,14 @@
   border: 0 !important;
   padding: 9px 0 !important;
   margin: 0 !important;
+}
+.results-toolbar input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.results-toolbar label:focus-within {
+  border-color: #3c9b82;
+  box-shadow: 0 0 0 2px rgba(60, 155, 130, 0.1);
 }
 .results-counts { display: flex !important; gap: 5px; }
 .results-counts button {
@@ -1555,7 +1563,7 @@
 .results-grid-head,
 .results-grid-row {
   display: grid !important;
-  grid-template-columns: 32px minmax(65px, 0.55fr) minmax(130px, 1.25fr) minmax(85px, 0.8fr) 125px;
+  grid-template-columns: 30px 75px minmax(170px, 1fr) 110px 125px;
   align-items: center !important;
   width: 100%;
   min-width: 0;
