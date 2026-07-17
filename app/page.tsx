@@ -2112,6 +2112,7 @@ type StockItem = {
   category: string;
   price: number;
   quantity: number;
+  lot?: string;
   expiration?: string;
 };
 
@@ -2120,22 +2121,26 @@ const STOCK_CATEGORIES = [
   "Medicamento",
   "Antiparasitario",
   "Insumo",
+  "Alimentos",
+  "Descartables",
+  "Pet Shop",
   "Otro",
 ];
 
 function stockExpiration(item: StockItem) {
   if (!item.expiration) return { label: "Sin vencimiento", kind: "neutral" };
+  if (!item.lot) return { label: "Falta lote", kind: "invalid" };
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const shown = displayDate(item.expiration);
-  if (!isValidDate(shown)) return { label: "Fecha inválida", kind: "expired" };
+  if (!isValidDate(shown)) return { label: "Fecha inválida", kind: "invalid" };
   const expiration = new Date(`${dateToIso(shown)}T12:00:00`);
   const days = Math.ceil(
     (expiration.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
   if (days < 0) return { label: "Vencido", kind: "expired" };
   if (days === 0) return { label: "Vence hoy", kind: "expired" };
-  if (days <= 60) return { label: `Vence en ${days} días`, kind: "warning" };
+  if (days <= 30) return { label: `Vence en ${days} días`, kind: "warning" };
   return { label: "Vigente", kind: "ok" };
 }
 
@@ -2158,9 +2163,11 @@ function StockPanel({
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState("");
   const [percentage, setPercentage] = useState("");
+  const [roundMultiple, setRoundMultiple] = useState("100");
   const [confirmIncrease, setConfirmIncrease] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [newItemError, setNewItemError] = useState("");
   const [increaseScope, setIncreaseScope] = useState<"all" | "filtered">("all");
   const categories = [
     ...new Set([
@@ -2169,8 +2176,11 @@ function StockPanel({
       ...items.map((item) => item.category),
     ]),
   ];
-  const expiring = items.filter((item) =>
-    ["warning", "expired"].includes(stockExpiration(item).kind),
+  const expiring = items.filter(
+    (item) => stockExpiration(item).kind === "warning",
+  );
+  const expired = items.filter(
+    (item) => stockExpiration(item).kind === "expired",
   );
   const lowStock = items.filter((item) => item.quantity <= 5);
   const visible = items.filter((item) => {
@@ -2180,6 +2190,7 @@ function StockPanel({
       (status === "low" && item.quantity <= 5) ||
       (status === "expiring" && expiration === "warning") ||
       (status === "expired" && expiration === "expired") ||
+      (status === "invalid" && expiration === "invalid") ||
       (status === "available" && item.quantity > 0);
     return (
       (!search || item.name.toLowerCase().includes(search.toLowerCase())) &&
@@ -2220,12 +2231,20 @@ function StockPanel({
       category: String(form.get("category")),
       price: Number(form.get("price")) || 0,
       quantity: Number(form.get("quantity")) || 0,
+      lot: String(form.get("lot") || "").trim() || undefined,
       expiration: String(form.get("expiration")) || undefined,
     };
+    if (item.expiration && !item.lot) {
+      setNewItemError(
+        "Para cargar un vencimiento también tenés que indicar el lote.",
+      );
+      return;
+    }
     try {
       await saveStockItem(uid, item);
       setItems((current) => [item, ...current]);
       setShowNew(false);
+      setNewItemError("");
       setNotice("Producto agregado correctamente.");
     } catch {
       setNotice("No pudimos guardar el producto.");
@@ -2235,11 +2254,15 @@ function StockPanel({
     const value = Number(percentage);
     if (!value || value <= 0) return;
     const filteredIds = new Set(visible.map((item) => item.id));
+    const multiple = Number(roundMultiple) || 0;
     const updated = items.map((item) =>
       increaseScope === "all" || filteredIds.has(item.id)
         ? {
             ...item,
-            price: Math.round(item.price * (1 + value / 100) * 100) / 100,
+            price: multiple
+              ? Math.ceil((item.price * (1 + value / 100)) / multiple) *
+                multiple
+              : Math.round(item.price * (1 + value / 100) * 100) / 100,
           }
         : item,
     );
@@ -2257,6 +2280,114 @@ function StockPanel({
     } catch {
       setNotice("No pudimos actualizar todos los precios.");
     }
+  }
+  const scopedItems = () => (increaseScope === "all" ? items : visible);
+  async function applyRounding() {
+    const multiple = Number(roundMultiple);
+    if (!multiple) return;
+    const targetIds = new Set(scopedItems().map((item) => item.id));
+    const updated = items.map((item) =>
+      targetIds.has(item.id)
+        ? { ...item, price: Math.ceil(item.price / multiple) * multiple }
+        : item,
+    );
+    try {
+      await Promise.all(
+        updated
+          .filter((item) => targetIds.has(item.id))
+          .map((item) => saveStockItem(uid, item)),
+      );
+      setItems(updated);
+      setNotice(
+        `Precios redondeados hacia arriba a múltiplos de $${multiple}.`,
+      );
+    } catch {
+      setNotice("No pudimos redondear los precios.");
+    }
+  }
+  async function duplicateItem(item: StockItem) {
+    const copy: StockItem = {
+      ...item,
+      id: crypto.randomUUID(),
+      name: `${item.name} - copia`,
+      quantity: 0,
+      lot: undefined,
+      expiration: undefined,
+    };
+    try {
+      await saveStockItem(uid, copy);
+      setItems((current) => [copy, ...current]);
+      setNotice(
+        "Producto duplicado. Ya podés cambiar la presentación o el lote.",
+      );
+    } catch {
+      setNotice("No pudimos duplicar el producto.");
+    }
+  }
+  function exportExcel() {
+    const rows = visible.map((item) => ({
+      Producto: item.name,
+      Categoría: item.category,
+      Lote: item.lot || "",
+      Precio: item.price,
+      Stock: item.quantity,
+      Vencimiento: displayDate(item.expiration || ""),
+      Estado: item.quantity === 0 ? "Sin stock" : stockExpiration(item).label,
+    }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(rows),
+      "Stock",
+    );
+    XLSX.writeFile(
+      workbook,
+      `LabOVet_stock_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+  }
+  async function exportPdf() {
+    const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    const document = new jsPDF({ orientation: "landscape" });
+    document.setTextColor(18, 62, 77);
+    document.setFontSize(18);
+    document.text("LabOVet - Lista de precios y stock", 14, 16);
+    document.setFontSize(9);
+    document.setTextColor(95, 115, 123);
+    document.text(
+      `Generado el ${new Date().toLocaleDateString("es-AR")}`,
+      14,
+      23,
+    );
+    autoTable(document, {
+      startY: 29,
+      head: [
+        [
+          "Producto",
+          "Categoria",
+          "Lote",
+          "Precio",
+          "Stock",
+          "Vencimiento",
+          "Estado",
+        ],
+      ],
+      body: visible.map((item) => [
+        item.name,
+        item.category,
+        item.lot || "-",
+        `$ ${item.price.toLocaleString("es-AR")}`,
+        String(item.quantity),
+        displayDate(item.expiration || "-") || "-",
+        item.quantity === 0 ? "Sin stock" : stockExpiration(item).label,
+      ]),
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [20, 112, 92], textColor: 255 },
+      alternateRowStyles: { fillColor: [244, 249, 247] },
+    });
+    document.save(`LabOVet_stock_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
   async function addCategory(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -2300,27 +2431,20 @@ function StockPanel({
         </button>
       </header>
       <div className="module-stats stock-stats">
-        <article className="panel stat-card">
-          <span>Productos</span>
-          <strong>{items.length}</strong>
-          <small>cargados en la lista</small>
-        </article>
-        <article className="panel stat-card">
-          <span>Unidades en stock</span>
-          <strong>
-            {items.reduce((total, item) => total + item.quantity, 0)}
-          </strong>
-          <small>disponibles</small>
-        </article>
-        <article className="panel stat-card">
-          <span>Stock bajo</span>
+        <article className="panel stat-card stock-alert warning">
+          <span>Alerta de stock bajo</span>
           <strong>{lowStock.length}</strong>
-          <small>con 5 unidades o menos</small>
+          <small>productos con 5 unidades o menos</small>
         </article>
-        <article className="panel stat-card">
-          <span>Vencimientos</span>
+        <article className="panel stat-card stock-alert warning">
+          <span>Vencimientos próximos</span>
           <strong>{expiring.length}</strong>
-          <small>vencidos o próximos 60 días</small>
+          <small>lotes vencen en los próximos 30 días</small>
+        </article>
+        <article className="panel stat-card stock-alert danger">
+          <span>Productos vencidos</span>
+          <strong>{expired.length}</strong>
+          <small>requieren revisión inmediata</small>
         </article>
       </div>
       {notice && (
@@ -2364,6 +2488,18 @@ function StockPanel({
                 Solo los filtrados ({visible.length})
               </option>
             </select>
+            <select
+              className="increase-scope rounding-select"
+              value={roundMultiple}
+              onChange={(event) => setRoundMultiple(event.target.value)}
+              title="Redondeo de precios"
+            >
+              <option value="0">Sin redondeo</option>
+              <option value="10">Redondear a $10</option>
+              <option value="50">Redondear a $50</option>
+              <option value="100">Redondear a $100</option>
+              <option value="500">Redondear a $500</option>
+            </select>
             <button
               className="outline-btn"
               disabled={!Number(percentage)}
@@ -2374,6 +2510,30 @@ function StockPanel({
                 : "Aplicar al filtro"}
             </button>
           </div>
+        </div>
+        <div className="stock-actions-bar">
+          <button
+            className="outline-btn"
+            onClick={applyRounding}
+            disabled={!Number(roundMultiple)}
+          >
+            Redondear precios
+          </button>
+          <span />
+          <button
+            className="outline-btn"
+            onClick={exportExcel}
+            disabled={!visible.length}
+          >
+            ↓ Exportar Excel
+          </button>
+          <button
+            className="outline-btn"
+            onClick={exportPdf}
+            disabled={!visible.length}
+          >
+            ↓ Exportar PDF
+          </button>
         </div>
         <div className="stock-filters">
           <label>
@@ -2404,6 +2564,7 @@ function StockPanel({
               <option value="low">Stock bajo</option>
               <option value="expiring">Próximos a vencer</option>
               <option value="expired">Vencidos</option>
+              <option value="invalid">Falta lote / fecha inválida</option>
             </select>
           </label>
         </div>
@@ -2421,6 +2582,7 @@ function StockPanel({
                 <th>Categoría</th>
                 <th>Precio</th>
                 <th>Stock</th>
+                <th>Lote</th>
                 <th>Vencimiento</th>
                 <th>Estado</th>
                 <th />
@@ -2493,6 +2655,18 @@ function StockPanel({
                       </div>
                     </td>
                     <td>
+                      <input
+                        value={item.lot || ""}
+                        placeholder="Opcional"
+                        onChange={(event) =>
+                          changeLocal(item.id, {
+                            lot: event.target.value || undefined,
+                          })
+                        }
+                        onBlur={() => persist(item.id)}
+                      />
+                    </td>
+                    <td>
                       <DateField
                         value={item.expiration || ""}
                         onChange={(value) => {
@@ -2509,13 +2683,21 @@ function StockPanel({
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="stock-delete"
-                        title="Eliminar producto"
-                        onClick={() => setDeleteId(item.id)}
-                      >
-                        ×
-                      </button>
+                      <div className="stock-row-actions">
+                        <button
+                          title="Duplicar producto"
+                          onClick={() => duplicateItem(item)}
+                        >
+                          ⧉
+                        </button>
+                        <button
+                          className="stock-delete"
+                          title="Eliminar producto"
+                          onClick={() => setDeleteId(item.id)}
+                        >
+                          ×
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -2578,10 +2760,15 @@ function StockPanel({
                 <input name="quantity" type="number" min="0" required />
               </label>
               <label>
+                Lote (opcional)
+                <input name="lot" />
+              </label>
+              <label>
                 Vencimiento (opcional)
                 <DateField name="expiration" />
               </label>
             </div>
+            {newItemError && <p className="form-error">{newItemError}</p>}
             <footer>
               <button
                 type="button"

@@ -1831,6 +1831,21 @@
   color: #166b58;
   font-size: 11px;
 }
+.stock-stats {
+  grid-template-columns: repeat(3, 1fr);
+}
+.stock-alert {
+  border-left: 4px solid #d8a63a;
+}
+.stock-alert.danger {
+  border-left-color: #cf5b54;
+}
+.stock-alert.warning strong {
+  color: #9b6b0b;
+}
+.stock-alert.danger strong {
+  color: #ad4640;
+}
 .stock-notice button {
   border: 0;
   background: none;
@@ -1908,6 +1923,19 @@
 .price-increase button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+.stock-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 22px 14px;
+}
+.stock-actions-bar > span {
+  flex: 1;
+}
+.stock-actions-bar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .stock-filters {
   display: grid;
@@ -2221,6 +2249,10 @@
   background: #fde8e6;
   color: #ac443e;
 }
+.stock-status.invalid {
+  background: #f6eaf8;
+  color: #824b8b;
+}
 .stock-delete {
   width: 27px;
   height: 27px;
@@ -2234,6 +2266,35 @@
 .stock-delete:hover {
   border-color: #ebcac7;
   background: #fff2f1;
+}
+.stock-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.stock-row-actions > button {
+  width: 27px;
+  height: 27px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: none;
+  color: #53757d;
+  cursor: pointer;
+  font-size: 14px;
+}
+.stock-row-actions > button:hover {
+  border-color: #c9deda;
+  background: #f0f8f5;
+}
+.form-error {
+  margin: 10px 0 0 !important;
+  border: 1px solid #efcbc7;
+  border-radius: 7px;
+  background: #fff1ef;
+  color: #a34741 !important;
+  padding: 9px 11px;
+  font-size: 10px !important;
+  font-weight: 700;
 }
 .modal-card select {
   display: block;
@@ -2339,6 +2400,16 @@
   }
   .stock-filters {
     grid-template-columns: 1fr;
+  }
+  .stock-stats {
+    grid-template-columns: 1fr;
+  }
+  .stock-actions-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .stock-actions-bar > span {
+    display: none;
   }
   .price-increase {
     align-items: flex-end;

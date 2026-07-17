@@ -69,6 +69,7 @@ export type StoredStockItem = {
   category: string;
   price: number;
   quantity: number;
+  lot?: string;
   expiration?: string;
 };
 export type StoredStockCategory = { id: string; name: string };
