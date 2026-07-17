@@ -5595,6 +5595,7 @@ function AnimalResultsEntry({
 }) {
   const work = producer.works[workIndex];
   const [search, setSearch] = useState("");
+  const [resultFilter, setResultFilter] = useState<WorkAnimal["result"] | "">("");
   const [rows, setRows] = useState<WorkAnimal[]>(() =>
     (work.records || []).map((record) => ({
       ...record,
@@ -5606,7 +5607,8 @@ function AnimalResultsEntry({
     .filter(({ row }) =>
       [row.cuig, row.identifier, `${row.cuig} ${row.identifier}`]
         .some((value) => norm(value).includes(norm(search))),
-    );
+    )
+    .filter(({ row }) => !resultFilter || row.result === resultFilter);
   const counts = {
     negative: rows.filter((row) => row.result === "Negativo").length,
     suspicious: rows.filter((row) => row.result === "Sospechoso").length,
@@ -5634,11 +5636,11 @@ function AnimalResultsEntry({
         </div>
         <p>Todos los animales aparecen como negativos de manera predeterminada. Cambiá únicamente las excepciones.</p>
         <div className="results-toolbar">
-          <label>⌕ <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por identificación..." autoFocus /></label>
+          <label><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por identificación..." autoFocus /></label>
           <div className="results-counts">
-            <span className="negative">{counts.negative} negativos</span>
-            <span className="suspicious">{counts.suspicious} sospechosos</span>
-            <span className="positive">{counts.positive} positivos</span>
+            <button type="button" className={`negative ${resultFilter === "Negativo" ? "selected" : ""}`} onClick={() => setResultFilter((current) => current === "Negativo" ? "" : "Negativo")}>{counts.negative} negativos</button>
+            <button type="button" className={`suspicious ${resultFilter === "Sospechoso" ? "selected" : ""}`} onClick={() => setResultFilter((current) => current === "Sospechoso" ? "" : "Sospechoso")}>{counts.suspicious} sospechosos</button>
+            <button type="button" className={`positive ${resultFilter === "Positivo" ? "selected" : ""}`} onClick={() => setResultFilter((current) => current === "Positivo" ? "" : "Positivo")}>{counts.positive} positivos</button>
           </div>
         </div>
         <div className="results-grid">
