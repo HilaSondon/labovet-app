@@ -2905,7 +2905,11 @@ function ModuleView({
   if (view === "agenda-rural") return <RuralAgenda producers={producers} />;
   if (view === "pacientes")
     return (
-      <PatientsPanel patients={patients} setPatients={setPatients} uid={uid} />
+      <ClinicalPatientsPanel
+        patients={patients}
+        setPatients={setPatients}
+        uid={uid}
+      />
     );
   if (view === "recordatorios") return <ClinicalAgenda patients={patients} />;
   const data = VIEW_CONTENT[view];
@@ -3082,15 +3086,39 @@ type PatientEvent = {
   detail: string;
   result: string;
   nextDate?: string;
+  motive?: string;
+  anamnesis?: string;
+  clinicalExam?: string;
+  presumptiveDiagnosis?: string;
+  definitiveDiagnosis?: string;
+  treatment?: string;
+  observations?: string;
+  weight?: string;
+  temperature?: string;
+  heartRate?: string;
+  respiratoryRate?: string;
+  bodyCondition?: string;
+  hydration?: string;
+  product?: string;
+  dose?: string;
+  studyType?: string;
+  fileName?: string;
 };
 type Patient = {
   id: number;
   name: string;
   species: string;
   breed: string;
-  birth: string;
+  birth?: string;
+  sex?: string;
+  neutered?: string;
+  approximateAge?: string;
+  weight?: string;
   owner: string;
   phone: string;
+  ownerAddress?: string;
+  allergies?: string;
+  previousConditions?: string;
   events: PatientEvent[];
 };
 const INITIAL_PATIENTS: Patient[] = [
@@ -3427,7 +3455,7 @@ function PatientsPanel({
             <div className="form-grid">
               <label>
                 Fecha
-                <DateField name="date" required />
+                <input name="date" type="date" required />
               </label>
               <label>
                 Tipo
@@ -3492,6 +3520,328 @@ function PatientsPanel({
           </section>
         </div>
       )}
+    </>
+  );
+}
+
+const CONSULTATION_MOTIVES = [
+  "Control general",
+  "Problema dermatológico",
+  "Gastrointestinal",
+  "Respiratorio",
+  "Traumatismo / dolor",
+  "Otología",
+  "Oftalmología",
+  "Seguimiento de tratamiento",
+  "Otro",
+];
+
+function ClinicalPatientsPanel({
+  patients,
+  setPatients,
+  uid,
+}: {
+  patients: Patient[];
+  setPatients: React.Dispatch<React.SetStateAction<Patient[]>>;
+  uid: string;
+}) {
+  const [selected, setSelected] = useState<Patient | null>(null);
+  const [newPatient, setNewPatient] = useState(false);
+  const [newRecord, setNewRecord] = useState(false);
+  const [recordType, setRecordType] = useState("Consulta");
+  const [eventFilter, setEventFilter] = useState("");
+  const [expanded, setExpanded] = useState<string | number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [feedback, setFeedback] = useState("");
+
+  async function addPatient(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const patient: Patient = {
+      id: Date.now(),
+      name: String(form.get("name")),
+      species: String(form.get("species")),
+      breed: String(form.get("breed")),
+      sex: String(form.get("sex")),
+      neutered: String(form.get("neutered")),
+      approximateAge: String(form.get("approximateAge")),
+      weight: String(form.get("weight")),
+      owner: String(form.get("owner")),
+      phone: String(form.get("phone")),
+      ownerAddress: String(form.get("ownerAddress")),
+      allergies: String(form.get("allergies")),
+      previousConditions: String(form.get("previousConditions")),
+      events: [],
+    };
+    try {
+      await savePatientData(uid, patient);
+      setPatients((current) => [patient, ...current]);
+      setNewPatient(false);
+      setFeedback("Paciente creado. Ya podés registrar su primera consulta.");
+    } catch {
+      setFeedback("No pudimos guardar el paciente en Firebase.");
+    }
+  }
+
+  async function addClinicalRecord(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!selected) return;
+    const form = new FormData(e.currentTarget);
+    const file = form.get("studyFile");
+    const motive = String(form.get("motive") || "");
+    const product = String(form.get("product") || "");
+    const studyType = String(form.get("studyType") || "");
+    const detail =
+      recordType === "Consulta"
+        ? motive
+        : recordType === "Estudio"
+          ? studyType
+          : product;
+    const event: PatientEvent = {
+      date: displayDate(String(form.get("date"))),
+      type: recordType,
+      detail: detail || recordType,
+      result:
+        String(form.get("result") || "") ||
+        (recordType === "Consulta" ? "En seguimiento" : "Registrado"),
+      nextDate: String(form.get("nextDate") || "") || undefined,
+      motive: motive || undefined,
+      anamnesis: String(form.get("anamnesis") || "") || undefined,
+      clinicalExam: String(form.get("clinicalExam") || "") || undefined,
+      presumptiveDiagnosis:
+        String(form.get("presumptiveDiagnosis") || "") || undefined,
+      definitiveDiagnosis:
+        String(form.get("definitiveDiagnosis") || "") || undefined,
+      treatment: String(form.get("treatment") || "") || undefined,
+      observations: String(form.get("observations") || "") || undefined,
+      weight: String(form.get("weight") || "") || undefined,
+      temperature: String(form.get("temperature") || "") || undefined,
+      heartRate: String(form.get("heartRate") || "") || undefined,
+      respiratoryRate:
+        String(form.get("respiratoryRate") || "") || undefined,
+      bodyCondition: String(form.get("bodyCondition") || "") || undefined,
+      hydration: String(form.get("hydration") || "") || undefined,
+      product: product || undefined,
+      dose: String(form.get("dose") || "") || undefined,
+      studyType: studyType || undefined,
+      fileName:
+        file instanceof File && file.size > 0 ? file.name : undefined,
+    };
+    try {
+      await savePatientEvent(uid, selected.id, event);
+      const updated = {
+        ...selected,
+        weight: event.weight || selected.weight,
+        events: [event, ...selected.events],
+      };
+      if (event.weight) await savePatientData(uid, updated);
+      setPatients((current) =>
+        current.map((patient) =>
+          patient.id === updated.id ? updated : patient,
+        ),
+      );
+      setSelected(updated);
+      setNewRecord(false);
+      setRecordType("Consulta");
+      setFeedback(`${recordType} registrada correctamente.`);
+    } catch {
+      setFeedback("No pudimos guardar el registro clínico.");
+    }
+  }
+
+  async function removePatient() {
+    if (!selected) return;
+    try {
+      await deletePatientData(uid, selected.id);
+      setPatients((current) =>
+        current.filter((patient) => patient.id !== selected.id),
+      );
+      setSelected(null);
+      setDeleteConfirm(false);
+    } catch {
+      setFeedback("No pudimos eliminar el paciente.");
+    }
+  }
+
+  const visibleEvents = selected
+    ? [...selected.events]
+        .filter((event) => !eventFilter || event.type === eventFilter)
+        .sort((a, b) => dateToIso(b.date).localeCompare(dateToIso(a.date)))
+    : [];
+  const latestWeight = selected?.events.find((event) => event.weight)?.weight || selected?.weight;
+  const detailFields = (event: PatientEvent) =>
+    ([
+      ["Motivo", event.motive],
+      ["Anamnesis", event.anamnesis],
+      ["Examen clínico", event.clinicalExam],
+      ["Diagnóstico presuntivo", event.presumptiveDiagnosis],
+      ["Diagnóstico definitivo", event.definitiveDiagnosis],
+      ["Tratamiento", event.treatment],
+      ["Producto", event.product],
+      ["Dosis", event.dose],
+      ["Peso", event.weight ? `${event.weight} kg` : ""],
+      ["Temperatura", event.temperature ? `${event.temperature} °C` : ""],
+      ["Frecuencia cardíaca", event.heartRate],
+      ["Frecuencia respiratoria", event.respiratoryRate],
+      ["Condición corporal", event.bodyCondition],
+      ["Hidratación", event.hydration],
+      ["Resultado", event.result],
+      ["Observaciones", event.observations],
+      ["Archivo", event.fileName],
+      ["Próximo recordatorio", event.nextDate ? displayDate(event.nextDate) : ""],
+    ] as [string, string | undefined][]).filter(
+      (field): field is [string, string] => Boolean(field[1]),
+    );
+
+  return (
+    <>
+      {!selected ? (
+        <>
+          <header className="topbar">
+            <div>
+              <span className="eyebrow">PEQUEÑOS ANIMALES</span>
+              <h1>Pacientes</h1>
+              <p>Historias clínicas, tratamientos y seguimiento continuo.</p>
+            </div>
+            <button className="primary" onClick={() => setNewPatient(true)}>
+              ＋ Nuevo paciente
+            </button>
+          </header>
+          <div className="module-stats">
+            <article className="panel stat-card">
+              <span>Pacientes activos</span><strong>{patients.length}</strong><small>historias clínicas</small>
+            </article>
+            <article className="panel stat-card">
+              <span>Consultas registradas</span><strong>{patients.flatMap((p) => p.events).filter((e) => e.type === "Consulta").length}</strong><small>atenciones</small>
+            </article>
+            <article className="panel stat-card">
+              <span>Recordatorios</span><strong>{patients.flatMap((p) => p.events).filter((e) => e.nextDate).length}</strong><small>seguimientos programados</small>
+            </article>
+          </div>
+          {feedback && <div className="stock-notice"><span>{feedback}</span><button onClick={() => setFeedback("")}>×</button></div>}
+          <section className="panel patient-list clinical-patient-list">
+            <div className="module-toolbar"><div><h2>Base de pacientes</h2><p>Seleccioná un paciente para abrir su historia clínica.</p></div></div>
+            {patients.map((patient) => (
+              <button key={patient.id} className="patient-row" onClick={() => setSelected(patient)}>
+                <span className="patient-avatar">{patient.name.slice(0, 2).toUpperCase()}</span>
+                <span><b>{patient.name}</b><small>{patient.species} · {patient.breed || "Sin raza informada"}</small></span>
+                <span><b>{patient.owner}</b><small>{patient.phone || "Sin WhatsApp"}</small></span>
+                <span><b>{patient.events.length}</b><small>eventos clínicos</small></span>
+                <i>›</i>
+              </button>
+            ))}
+            {!patients.length && <div className="empty-agenda"><b>Todavía no hay pacientes</b><span>Creá el primero para comenzar su historia clínica.</span></div>}
+          </section>
+        </>
+      ) : (
+        <>
+          <header className="topbar clinical-header">
+            <div>
+              <button className="back-link" onClick={() => setSelected(null)}>← Pacientes</button>
+              <span className="eyebrow">{selected.species}</span>
+              <h1>{selected.name}</h1>
+              <p>{selected.breed || "Sin raza"} · {selected.sex || "Sexo sin informar"} · {selected.approximateAge || "Edad sin informar"}</p>
+            </div>
+            <div className="header-actions">
+              <button className="danger-outline" onClick={() => setDeleteConfirm(true)}>Eliminar</button>
+              <button className="primary" onClick={() => setNewRecord(true)}>＋ Nueva atención</button>
+            </div>
+          </header>
+          {selected.allergies && (
+            <div className="clinical-alert"><b>ALERGIAS</b><span>{selected.allergies}</span></div>
+          )}
+          {feedback && <div className="stock-notice"><span>{feedback}</span><button onClick={() => setFeedback("")}>×</button></div>}
+          <div className="clinical-summary">
+            <section className="panel patient-identity">
+              <div><span className="patient-avatar large">{selected.name.slice(0, 2).toUpperCase()}</span><span><b>{selected.name}</b><small>{selected.species} · {selected.breed}</small></span></div>
+              <dl>
+                <div><dt>Sexo</dt><dd>{selected.sex || "—"}</dd></div>
+                <div><dt>Castrado</dt><dd>{selected.neutered || "—"}</dd></div>
+                <div><dt>Edad aprox.</dt><dd>{selected.approximateAge || "—"}</dd></div>
+                <div><dt>Peso actual</dt><dd>{latestWeight ? `${latestWeight} kg` : "—"}</dd></div>
+              </dl>
+            </section>
+            <section className="panel owner-card">
+              <span>PROPIETARIO</span><h3>{selected.owner}</h3><p>{selected.phone || "Sin WhatsApp"}</p><p>{selected.ownerAddress || "Sin dirección"}</p>
+            </section>
+            <section className="panel background-card">
+              <span>ANTECEDENTES</span><p><b>Enfermedades previas:</b> {selected.previousConditions || "No informadas"}</p><p><b>Alergias:</b> {selected.allergies || "No informadas"}</p>
+            </section>
+          </div>
+          <section className="panel clinical-timeline">
+            <div className="timeline-toolbar">
+              <div><h2>Línea de tiempo clínica</h2><p>Cada atención, tratamiento y control en orden cronológico.</p></div>
+              <div className="timeline-filters">
+                {["", "Consulta", "Vacunación", "Desparasitación", "Estudio"].map((type) => (
+                  <button key={type || "Todos"} className={eventFilter === type ? "selected" : ""} onClick={() => setEventFilter(type)}>{type || "Todos"}</button>
+                ))}
+              </div>
+            </div>
+            <div className="timeline-list">
+              {visibleEvents.map((event, index) => {
+                const key = event.id || index;
+                const isOpen = expanded === key;
+                return (
+                  <article className={`timeline-event ${isOpen ? "open" : ""}`} key={key}>
+                    <button onClick={() => setExpanded(isOpen ? null : key)}>
+                      <span className={`timeline-dot ${event.type.toLowerCase()}`}>{event.type === "Consulta" ? "＋" : event.type === "Vacunación" ? "V" : event.type === "Desparasitación" ? "D" : "E"}</span>
+                      <time>{displayDate(event.date)}</time>
+                      <span><b>{event.type}</b><small>{event.detail}</small></span>
+                      <span className="timeline-result">{event.result}</span><i>{isOpen ? "⌃" : "⌄"}</i>
+                    </button>
+                    {isOpen && <div className="timeline-detail">{detailFields(event).map(([label, value]) => <div key={label}><small>{label}</small><p>{value}</p></div>)}</div>}
+                  </article>
+                );
+              })}
+              {!visibleEvents.length && <div className="empty-agenda"><b>Sin eventos clínicos</b><span>Registrá la primera consulta para iniciar el seguimiento.</span></div>}
+            </div>
+          </section>
+        </>
+      )}
+
+      {newPatient && (
+        <div className="modal-backdrop"><form className="modal-card clinical-modal" onSubmit={addPatient}>
+          <div><h2>Nuevo paciente</h2><button type="button" onClick={() => setNewPatient(false)}>×</button></div>
+          <p>Creá una ficha clínica completa para el seguimiento del paciente.</p>
+          <fieldset><legend>1. Datos del paciente</legend><div className="form-grid">
+            <label>Nombre<input name="name" required autoFocus /></label>
+            <label>Especie<select name="species" required><option>Canino</option><option>Felino</option></select></label>
+            <label>Raza<input name="breed" /></label>
+            <label>Sexo<select name="sex" required><option value="">Seleccionar</option><option>Macho</option><option>Hembra</option></select></label>
+            <label>Castrado<select name="neutered"><option>No informado</option><option>Sí</option><option>No</option></select></label>
+            <label>Edad aproximada<input name="approximateAge" placeholder="Ej. 4 años" /></label>
+            <label>Peso actual (kg)<input name="weight" type="number" min="0" step="0.01" /></label>
+          </div></fieldset>
+          <fieldset><legend>2. Datos del propietario</legend><div className="form-grid">
+            <label>Nombre y apellido<input name="owner" required /></label>
+            <label>WhatsApp<input name="phone" /></label>
+            <label className="full-field">Dirección<input name="ownerAddress" /></label>
+          </div></fieldset>
+          <fieldset><legend>3. Antecedentes importantes</legend><div className="form-grid">
+            <label>Alergias<textarea name="allergies" placeholder="Medicamentos, alimentos u otras" /></label>
+            <label>Enfermedades previas<textarea name="previousConditions" placeholder="Diabetes, insuficiencia renal, epilepsia..." /></label>
+          </div></fieldset>
+          <footer><button type="button" className="ghost" onClick={() => setNewPatient(false)}>Cancelar</button><button className="primary">Crear historia clínica</button></footer>
+        </form></div>
+      )}
+
+      {newRecord && selected && (
+        <div className="modal-backdrop"><form className="modal-card clinical-modal record-modal" onSubmit={addClinicalRecord}>
+          <div><h2>Nueva atención · {selected.name}</h2><button type="button" onClick={() => setNewRecord(false)}>×</button></div>
+          <div className="record-type-tabs">{["Consulta", "Vacunación", "Desparasitación", "Estudio"].map((type) => <button type="button" key={type} className={recordType === type ? "selected" : ""} onClick={() => setRecordType(type)}>{type}</button>)}</div>
+          <div className="form-grid"><label>Fecha<DateField name="date" required /></label><label>Próximo recordatorio<DateField name="nextDate" /></label></div>
+          {recordType === "Consulta" && <>
+            <fieldset><legend>Motivo y evaluación</legend><label>Motivo de consulta<select name="motive" required>{CONSULTATION_MOTIVES.map((motive) => <option key={motive}>{motive}</option>)}</select></label><label>Anamnesis<textarea name="anamnesis" /></label><label>Examen clínico<textarea name="clinicalExam" /></label><div className="form-grid"><label>Diagnóstico presuntivo<textarea name="presumptiveDiagnosis" /></label><label>Diagnóstico definitivo<textarea name="definitiveDiagnosis" /></label></div><label>Tratamiento indicado<textarea name="treatment" /></label></fieldset>
+            <fieldset><legend>Signos vitales</legend><div className="clinical-vitals"><label>Peso (kg)<input name="weight" type="number" min="0" step="0.01" /></label><label>Temperatura °C<input name="temperature" type="number" step="0.1" /></label><label>Frec. cardíaca<input name="heartRate" /></label><label>Frec. respiratoria<input name="respiratoryRate" /></label><label>Condición corporal<select name="bodyCondition"><option value="">Sin registrar</option>{Array.from({ length: 9 }, (_, i) => <option key={i + 1}>{i + 1}/9</option>)}</select></label><label>Hidratación<select name="hydration"><option value="">Sin registrar</option><option>Normal</option><option>Leve deshidratación</option><option>Moderada</option><option>Severa</option></select></label></div></fieldset>
+          </>}
+          {recordType === "Vacunación" && <fieldset><legend>Vacuna aplicada</legend><div className="form-grid"><label>Vacuna<input name="product" required /></label><label>Dosis<input name="dose" /></label></div></fieldset>}
+          {recordType === "Desparasitación" && <fieldset><legend>Desparasitación</legend><div className="form-grid"><label>Producto<input name="product" required /></label><label>Dosis<input name="dose" required /></label></div></fieldset>}
+          {recordType === "Estudio" && <fieldset><legend>Estudio</legend><div className="form-grid"><label>Tipo<select name="studyType"><option>Laboratorio</option><option>Radiografía</option><option>Ecografía</option><option>Tomografía</option><option>Fotografía clínica</option><option>PDF / informe</option></select></label><label>Archivo<input name="studyFile" type="file" accept="image/*,.pdf" /></label></div><label>Resultado / informe<textarea name="result" /></label><small className="file-storage-note">Se registra la referencia del archivo. El almacenamiento del documento se habilitará al activar Firebase Storage.</small></fieldset>}
+          {recordType !== "Estudio" && <label>Observaciones generales<textarea name="observations" /></label>}
+          <footer><button type="button" className="ghost" onClick={() => setNewRecord(false)}>Cancelar</button><button className="primary">Guardar en historia clínica</button></footer>
+        </form></div>
+      )}
+      {deleteConfirm && selected && <div className="modal-backdrop"><section className="modal-card feedback-modal"><div><h2>Eliminar paciente</h2><button onClick={() => setDeleteConfirm(false)}>×</button></div><span className="feedback-icon danger">!</span><h3>¿Eliminar a {selected.name}?</h3><p>También se eliminarán definitivamente todas sus consultas y registros clínicos.</p><footer><button className="ghost" onClick={() => setDeleteConfirm(false)}>Cancelar</button><button className="danger-button" onClick={removePatient}>Eliminar definitivamente</button></footer></section></div>}
     </>
   );
 }
@@ -4109,7 +4459,7 @@ function ProducersPanel({
             <div className="form-grid">
               <label>
                 Fecha
-                <DateField name="date" required />
+                <input name="date" type="date" required />
               </label>
               <label>
                 Cantidad estimada
