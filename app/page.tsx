@@ -1438,6 +1438,7 @@ export default function Home() {
 
 function AuthScreen() {
   const [register, setRegister] = useState(false);
+  const [showAccess, setShowAccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -1481,68 +1482,68 @@ function AuthScreen() {
       setLoading(false);
     }
   }
+  function openAccess(createAccount = false) {
+    setRegister(createAccount);
+    setError("");
+    setShowAccess(true);
+  }
   return (
-    <main className="auth-page">
-      <section className="auth-brand">
-        <div className="brand-mark">L</div>
-        <span className="eyebrow">GESTIÓN VETERINARIA</span>
-        <h1>Todo tu trabajo veterinario, organizado.</h1>
-        <p>
-          Productores, pacientes, historiales sanitarios y archivos SIGATM en un
-          único lugar.
-        </p>
-        <div className="auth-points">
-          <span>✓ Información privada por veterinario</span>
-          <span>✓ Grandes y pequeños animales</span>
-          <span>✓ Preparación rápida para SIGATM</span>
+    <main className="public-site">
+      <header className="public-nav">
+        <a className="public-logo" href="#inicio"><span>L</span><b>LabOVet</b></a>
+        <nav><a href="#soluciones">Soluciones</a><a href="#servicio">Servicio administrativo</a><a href="#planes">Planes</a></nav>
+        <div><button className="public-login" onClick={() => openAccess(false)}>Ingresar</button><button className="public-primary" onClick={() => openAccess(true)}>Comenzar</button></div>
+      </header>
+
+      <section className="public-hero" id="inicio">
+        <div className="hero-copy">
+          <span className="public-kicker">GESTIÓN VETERINARIA, SIMPLE Y PROFESIONAL</span>
+          <h1>Tu trabajo veterinario,<br /><em>ordenado de verdad.</em></h1>
+          <p>Historias clínicas, productores, animales, recordatorios, stock y archivos SIGATM en una plataforma creada para la práctica veterinaria argentina.</p>
+          <div className="hero-actions"><button className="public-primary large" onClick={() => openAccess(true)}>Empezar con LabOVet</button><a href="#soluciones">Conocer el sistema ↓</a></div>
+          <div className="hero-trust"><span>✓ Información privada</span><span>✓ Acceso desde cualquier dispositivo</span><span>✓ Datos respaldados en la nube</span></div>
+        </div>
+        <div className="hero-product">
+          <div className="product-window">
+            <div className="product-bar"><i /><i /><i /><span>Panel de gestión</span></div>
+            <div className="product-body">
+              <aside><b>L</b><span>Inicio</span><span>Grandes animales</span><span>Pequeños animales</span><span>SIGATM</span></aside>
+              <div className="product-content"><small>RESUMEN DE HOY</small><h3>Buen día, Veterinario</h3><div className="preview-alert"><b>2 recordatorios para hoy</b><span>Controles que requieren atención</span></div><div className="preview-grid"><article><small>PRODUCTORES</small><b>24</b><span>3 trabajos pendientes</span></article><article><small>PACIENTES</small><b>186</b><span>8 próximos controles</span></article><article><small>SIGATM</small><b>4</b><span>archivos pendientes</span></article></div></div>
+            </div>
+          </div>
+          <div className="floating-proof"><span>✓</span><div><b>Todo actualizado</b><small>Información sincronizada</small></div></div>
         </div>
       </section>
-      <section className="auth-card panel">
-        <div>
-          <span className="eyebrow">LABOVET</span>
-          <h2>{register ? "Crear una cuenta" : "Ingresar"}</h2>
-          <p>
-            {register
-              ? "Completá tus datos para comenzar."
-              : "Accedé a tu panel veterinario."}
-          </p>
-        </div>
-        <form onSubmit={submit}>
-          {register && (
-            <label>
-              Nombre y apellido
-              <input name="name" required autoComplete="name" />
-            </label>
-          )}
-          <label>
-            Correo electrónico
-            <input name="email" type="email" required autoComplete="email" />
-          </label>
-          <label>
-            Contraseña
-            <input
-              name="password"
-              type="password"
-              minLength={6}
-              required
-              autoComplete={register ? "new-password" : "current-password"}
-            />
-          </label>
-          {error && <div className="auth-error">{error}</div>}
-          <button className="primary" disabled={loading}>
-            {loading ? "Procesando…" : register ? "Crear cuenta" : "Ingresar"}
-          </button>
-        </form>
-        <button
-          className="auth-switch"
-          onClick={() => {
-            setRegister((v) => !v);
-            setError("");
-          }}
-        >
-          {register ? "Ya tengo una cuenta" : "Crear una cuenta nueva"}
-        </button>
+
+      <section className="public-intro" id="soluciones"><span className="public-kicker">UNA PLATAFORMA, DOS FORMAS DE TRABAJAR</span><h2>Diseñada para el veterinario que está en el campo y para el que atiende en consultorio.</h2><p>LabOVet centraliza la información y transforma cada trabajo en un historial útil para tomar mejores decisiones.</p></section>
+
+      <section className="solution-block large-animals">
+        <div className="solution-copy"><span className="solution-number">01 · GRANDES ANIMALES</span><h2>Del productor al archivo SIGATM, sin perder información.</h2><p>Organizá cada establecimiento, registrá trabajos y construí un historial sanitario individual a partir de las planillas que ya utilizás.</p><ul><li><b>Productores y establecimientos</b><span>RENSPA, contactos, múltiples campos e historial por establecimiento.</span></li><li><b>Agenda rural automática</b><span>Cada nuevo trabajo alimenta tu agenda de pendientes y realizados.</span></li><li><b>Resultados por animal</b><span>Negativos, sospechosos y positivos con búsqueda por identificación.</span></li><li><b>Conversor SIGATM integrado</b><span>Carga manual o Excel y generación del archivo estandarizado.</span></li><li><b>Informes profesionales</b><span>Exportación en PDF del historial completo del productor.</span></li></ul></div>
+        <div className="solution-visual rural"><div className="visual-card"><span>HISTORIAL SANITARIO</span><h3>Estancia La Esperanza</h3><div className="result-row"><b>Resultados del último muestreo</b><i>Ver detalle →</i></div><div className="result-bars"><span><i className="green" style={{ width: "82%" }} />Negativos <b>78</b></span><span><i className="yellow" style={{ width: "18%" }} />Sospechosos <b>2</b></span><span><i className="red" style={{ width: "8%" }} />Positivos <b>1</b></span></div><div className="visual-footer">Archivo SIGATM listo para generar <b>✓</b></div></div></div>
       </section>
+
+      <section className="solution-block small-animals">
+        <div className="solution-visual clinic"><div className="visual-card"><span>HISTORIA CLÍNICA</span><h3>Cleopatra</h3><p>Felino · 4 años · 4,8 kg</p><div className="clinic-alert">ALERGIAS <b>Penicilina</b></div><div className="mini-timeline"><article><i>＋</i><div><b>Consulta</b><span>Control gastrointestinal</span></div><time>17 JUL</time></article><article><i>V</i><div><b>Vacunación</b><span>Triple felina</span></div><time>02 JUN</time></article><article><i>D</i><div><b>Desparasitación</b><span>Control programado</span></div><time>15 MAY</time></article></div></div></div>
+        <div className="solution-copy"><span className="solution-number">02 · PEQUEÑOS ANIMALES</span><h2>La historia clínica como centro de cada atención.</h2><p>Todo lo necesario para atender y hacer seguimiento sin buscar información en distintos lugares.</p><ul><li><b>Ficha clínica completa</b><span>Paciente, propietario, antecedentes, alergias y peso.</span></li><li><b>Línea de tiempo sanitaria</b><span>Consultas, diagnósticos, tratamientos, vacunas y estudios.</span></li><li><b>Signos vitales y evolución</b><span>Registro clínico claro en cada nueva atención.</span></li><li><b>Recordatorios automáticos</b><span>Vacunas, controles y desparasitaciones con aviso por WhatsApp.</span></li><li><b>Historia clínica en PDF</b><span>Exportá y compartí la información con el propietario.</span></li></ul></div>
+      </section>
+
+      <section className="admin-service" id="servicio"><div className="admin-heading"><span className="public-kicker">SERVICIO ADMINISTRATIVO · GRANDES ANIMALES</span><h2>Vos seguís trabajando como siempre.<br />Nosotros organizamos todo lo demás.</h2><p>Una solución para veterinarios que quieren los beneficios de LabOVet sin dedicar tiempo a cargar información.</p></div><div className="admin-steps"><article><span>1</span><b>Nos enviás tus protocolos</b><p>Recibimos tus planillas y datos por el canal acordado.</p></article><i>→</i><article><span>2</span><b>Cargamos y organizamos</b><p>Creamos tu usuario y mantenemos productores, trabajos y animales actualizados.</p></article><i>→</i><article><span>3</span><b>Recibís todo listo</b><p>Te entregamos los archivos estandarizados para cargar directamente en SIGATM.</p></article></div></section>
+
+      <section className="pricing-section" id="planes"><div className="public-intro"><span className="public-kicker">PLANES SIMPLES Y TRANSPARENTES</span><h2>Elegí la modalidad que mejor acompaña tu trabajo.</h2></div><div className="public-pricing">
+        <article><span className="plan-tag">PEQUEÑOS ANIMALES</span><h3>Consultorio</h3><div className="public-price"><b>$25.000</b><span>/ mes</span></div><p>Para veterinarios que atienden animales de compañía.</p><ul><li>Pacientes ilimitados</li><li>Historias clínicas completas</li><li>Consultas y evolución</li><li>Recordatorios por WhatsApp</li><li>Exportación de historias en PDF</li><li>Lista de precios y stock</li></ul><button onClick={() => openAccess(true)}>Elegir Pequeños animales</button></article>
+        <article className="featured"><span className="popular">MÁS COMPLETO</span><span className="plan-tag">GRANDES ANIMALES</span><h3>Gestión rural</h3><div className="public-price"><b>$50.000</b><span>/ mes</span></div><p>Para organizar productores, trabajos y protocolos.</p><ul><li>Productores y establecimientos</li><li>Agenda rural automática</li><li>Historial sanitario por animal</li><li>Carga y análisis de resultados</li><li>Conversor Excel a SIGATM</li><li>Exportación de informes en PDF</li><li>Incluye pequeños animales</li></ul><button onClick={() => openAccess(true)}>Elegir Grandes animales</button></article>
+        <article className="admin-plan"><span className="plan-tag">SERVICIO ADMINISTRATIVO</span><h3>Nosotros lo hacemos</h3><div className="public-price"><b>$150.000</b><span>/ mes</span></div><p>Servicio exclusivo para veterinarios de grandes animales.</p><ul><li>Creación y configuración del usuario</li><li>Carga de protocolos y animales</li><li>Organización de productores</li><li>Preparación de archivos SIGATM</li><li>Información siempre disponible</li><li>Acompañamiento personalizado</li></ul><button onClick={() => openAccess(true)}>Solicitar el servicio</button></article>
+      </div></section>
+
+      <section className="public-cta"><span className="brand-mark">L</span><h2>Menos tiempo ordenando.<br />Más tiempo ejerciendo.</h2><p>Empezá a construir hoy el historial de tu trabajo veterinario.</p><button onClick={() => openAccess(true)}>Crear mi cuenta en LabOVet</button></section>
+      <footer className="public-footer"><a className="public-logo" href="#inicio"><span>L</span><b>LabOVet</b></a><p>Gestión veterinaria para profesionales argentinos.</p><small>© {new Date().getFullYear()} LabOVet</small></footer>
+
+      {showAccess && <div className="access-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAccess(false); }}><section className="auth-card access-modal">
+        <button className="access-close" onClick={() => setShowAccess(false)}>×</button>
+        <div><span className="eyebrow">LABOVET</span><h2>{register ? "Crear una cuenta" : "Ingresar"}</h2><p>{register ? "Completá tus datos para comenzar." : "Accedé a tu panel veterinario."}</p></div>
+        <form onSubmit={submit}>{register && <label>Nombre y apellido<input name="name" required autoComplete="name" /></label>}<label>Correo electrónico<input name="email" type="email" required autoComplete="email" /></label><label>Contraseña<input name="password" type="password" minLength={6} required autoComplete={register ? "new-password" : "current-password"} /></label>{error && <div className="auth-error">{error}</div>}<button className="primary" disabled={loading}>{loading ? "Procesando…" : register ? "Crear cuenta" : "Ingresar"}</button></form>
+        <button className="auth-switch" onClick={() => { setRegister((value) => !value); setError(""); }}>{register ? "Ya tengo una cuenta" : "Crear una cuenta nueva"}</button>
+      </section></div>}
     </main>
   );
 }
