@@ -788,6 +788,75 @@
   line-height: 1.45;
   white-space: pre-wrap;
 }
+.timeline-detail .timeline-edit-cell {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0;
+  background: transparent;
+}
+.timeline-edit-cell button {
+  border: 1px solid #9fc9be;
+  border-radius: 6px;
+  background: white;
+  padding: 7px 10px;
+  color: #0c725d;
+  font-size: 9px;
+  font-weight: 800;
+}
+.editable-patient-name {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.editable-patient-name h1 {
+  margin-right: 0;
+}
+.editable-patient-name button {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #b8cfca;
+  border-radius: 7px;
+  background: white;
+  color: #0c735e;
+  font-size: 15px;
+}
+.clinical-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.clinical-actions > button {
+  min-width: 118px;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  border-radius: 7px;
+  padding: 10px 13px;
+  font-size: 10px;
+  font-weight: 800;
+}
+.clinical-actions .clinical-action {
+  border: 1px solid #9ebdb6;
+  background: white;
+  color: #265b51;
+}
+.clinical-actions .clinical-action.danger {
+  border-color: #dfa7a3;
+  color: #a13d36;
+}
+.clinical-actions .clinical-action.whatsapp {
+  border-color: #25a967;
+  background: #f1fbf5;
+  color: #137445;
+}
+.clinical-actions .primary {
+  min-width: 155px;
+  box-shadow: 0 5px 13px rgba(15, 139, 111, 0.17);
+}
 .clinical-modal {
   width: min(820px, calc(100vw - 32px));
   max-height: 88vh;
