@@ -3696,7 +3696,6 @@ function ClinicalPatientsPanel({
     e.preventDefault();
     if (!selected) return;
     const form = new FormData(e.currentTarget);
-    const file = form.get("studyFile");
     const motive = String(form.get("motive") || "");
     const product = String(form.get("product") || "");
     const studyType = String(form.get("studyType") || "");
@@ -3735,10 +3734,6 @@ function ClinicalPatientsPanel({
       product: product || undefined,
       dose: String(form.get("dose") || "") || undefined,
       studyType: studyType || undefined,
-      fileName:
-        file instanceof File && file.size > 0
-          ? file.name
-          : editingEvent?.fileName,
     };
     try {
       await savePatientEvent(uid, selected.id, event);
@@ -3975,7 +3970,6 @@ function ClinicalPatientsPanel({
       ["Hidratación", event.hydration],
       ["Resultado", event.result],
       ["Observaciones", event.observations],
-      ["Archivo", event.fileName],
       ["Próximo recordatorio", event.nextDate ? displayDate(event.nextDate) : ""],
     ] as [string, string | undefined][]).filter(
       (field): field is [string, string] => Boolean(field[1]),
@@ -4132,7 +4126,7 @@ function ClinicalPatientsPanel({
           </>}
           {recordType === "Vacunación" && <fieldset><legend>Vacuna aplicada</legend><div className="form-grid"><label>Vacuna<input name="product" defaultValue={editingEvent?.product} required /></label><label>Dosis<input name="dose" defaultValue={editingEvent?.dose} /></label></div></fieldset>}
           {recordType === "Desparasitación" && <fieldset><legend>Desparasitación</legend><div className="form-grid"><label>Producto<input name="product" defaultValue={editingEvent?.product} required /></label><label>Dosis<input name="dose" defaultValue={editingEvent?.dose} required /></label></div></fieldset>}
-          {recordType === "Estudio" && <fieldset><legend>Estudio</legend><div className="form-grid"><label>Tipo<select name="studyType" defaultValue={editingEvent?.studyType}><option>Laboratorio</option><option>Radiografía</option><option>Ecografía</option><option>Tomografía</option><option>Fotografía clínica</option><option>PDF / informe</option></select></label><label>Archivo<input name="studyFile" type="file" accept="image/*,.pdf" /></label></div>{editingEvent?.fileName && <small>Archivo actual: {editingEvent.fileName}</small>}<label>Resultado / informe<textarea name="result" defaultValue={editingEvent?.result} /></label><small className="file-storage-note">Se registra la referencia del archivo. El almacenamiento del documento se habilitará al activar Firebase Storage.</small></fieldset>}
+          {recordType === "Estudio" && <fieldset><legend>Estudio</legend><label>Tipo<select name="studyType" defaultValue={editingEvent?.studyType}><option>Laboratorio</option><option>Radiografía</option><option>Ecografía</option><option>Tomografía</option><option>Fotografía clínica</option></select></label><label>Resultado / informe<textarea name="result" defaultValue={editingEvent?.result} placeholder="Ingresá una síntesis del resultado o las conclusiones del estudio" /></label></fieldset>}
           {recordType !== "Estudio" && <label>Observaciones generales<textarea name="observations" defaultValue={editingEvent?.observations} /></label>}
           <footer><button type="button" className="ghost" onClick={() => { setNewRecord(false); setEditingEvent(null); }}>Cancelar</button><button className="primary">{editingEvent ? "Guardar cambios" : "Guardar en historia clínica"}</button></footer>
         </form></div>
@@ -4490,6 +4484,90 @@ function ProducersPanel({
       window.alert("No pudimos guardar el trabajo en Firebase.");
     }
   }
+  async function exportProducerPdf() {
+    if (!selected) return;
+    const { jsPDF } = await import("jspdf");
+    const pdf = new jsPDF();
+    const margin = 17;
+    const width = pdf.internal.pageSize.getWidth() - margin * 2;
+    let y = 18;
+    const pageBreak = (needed = 15) => {
+      if (y + needed > pdf.internal.pageSize.getHeight() - 16) {
+        pdf.addPage();
+        y = 18;
+      }
+    };
+    const heading = (title: string) => {
+      pageBreak(16);
+      pdf.setTextColor(15, 116, 94);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+      pdf.text(title, margin, y);
+      y += 7;
+    };
+    const line = (label: string, value?: string) => {
+      if (!value) return;
+      pdf.setTextColor(38, 63, 72);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      const rows = pdf.splitTextToSize(`${label}: ${value}`, width);
+      pageBreak(rows.length * 4.5 + 2);
+      pdf.text(rows, margin, y);
+      y += rows.length * 4.5 + 2;
+    };
+    pdf.setFillColor(18, 58, 74);
+    pdf.rect(0, 0, pdf.internal.pageSize.getWidth(), 35, "F");
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18);
+    pdf.text("LabOVet - Historial de trabajos", margin, 17);
+    pdf.setFontSize(10);
+    pdf.text(`${selected.name} - Emitido ${displayDate(localIsoDate())}`, margin, 26);
+    y = 45;
+    heading("Datos del productor");
+    line("Razón social", selected.name);
+    line("Teléfono", selected.phone);
+    line("Correo electrónico", selected.email);
+    heading("Establecimientos");
+    producerEstablishments(selected).forEach((establishment) => {
+      line("Establecimiento", establishment.name);
+      line("RENSPA", establishment.renspa || "No informado");
+      line("Dirección", establishment.address || "No informada");
+      y += 2;
+    });
+    heading("Historial de trabajos");
+    [...selected.works]
+      .sort((a, b) => dateToIso(a.date).localeCompare(dateToIso(b.date)))
+      .forEach((work) => {
+        pageBreak(27);
+        const establishment = workEstablishment(selected, work);
+        pdf.setDrawColor(210, 224, 224);
+        pdf.line(margin, y, margin + width, y);
+        y += 6;
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(17, 56, 70);
+        pdf.setFontSize(10);
+        pdf.text(`${displayDate(work.date)} - ${work.type}`, margin, y);
+        y += 6;
+        line("Establecimiento", `${establishment.name} - RENSPA ${establishment.renspa || "No informado"}`);
+        line("Práctica", work.detail);
+        line("Cantidad", work.animals);
+        line("Estado", work.status);
+        if (work.type === "Sangrado" || work.type === "Muestreo equino") {
+          line("SIGATM", work.sigatmStatus || "Pendiente");
+        }
+        y += 3;
+      });
+    if (!selected.works.length) line("Trabajos", "Todavía no hay trabajos registrados");
+    const pages = pdf.getNumberOfPages();
+    for (let page = 1; page <= pages; page += 1) {
+      pdf.setPage(page);
+      pdf.setTextColor(120, 135, 140);
+      pdf.setFontSize(8);
+      pdf.text(`Página ${page} de ${pages}`, pdf.internal.pageSize.getWidth() - margin, pdf.internal.pageSize.getHeight() - 8, { align: "right" });
+    }
+    pdf.save(`Historial_${selected.name.replace(/\s+/g, "_")}.pdf`);
+  }
   return (
     <>
       <header className="topbar module-topbar">
@@ -4503,23 +4581,26 @@ function ProducersPanel({
           </p>
         </div>
         {selected ? (
-          <div className="header-actions">
-            <button className="ghost" onClick={() => setSelected(null)}>
+          <div className="header-actions clinical-actions producer-actions">
+            <button className="clinical-action" onClick={() => setSelected(null)}>
               ← Volver
             </button>
             {producerEstablishments(selected).length > 1 && (
               <button
-                className="ghost"
+                className="clinical-action"
                 onClick={() => setChoosingEstablishments(selected)}
               >
                 Cambiar establecimiento
               </button>
             )}
             <button
-              className="ghost"
+              className="clinical-action"
               onClick={() => setShowEstablishment(true)}
             >
               ＋ Establecimiento
+            </button>
+            <button className="clinical-action" onClick={exportProducerPdf}>
+              Exportar PDF
             </button>
             <button className="primary" onClick={() => setShowWork(true)}>
               ＋ Nuevo trabajo
