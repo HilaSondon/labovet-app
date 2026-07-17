@@ -3548,7 +3548,11 @@ function ClinicalPatientsPanel({
   const [selected, setSelected] = useState<Patient | null>(null);
   const [newPatient, setNewPatient] = useState(false);
   const [newRecord, setNewRecord] = useState(false);
+  const [editPatient, setEditPatient] = useState(false);
   const [recordType, setRecordType] = useState("Consulta");
+  const today = displayDate(new Date().toISOString().slice(0, 10));
+  const [recordDate, setRecordDate] = useState(today);
+  const [reminderDate, setReminderDate] = useState("");
   const [eventFilter, setEventFilter] = useState("");
   const [expanded, setExpanded] = useState<string | number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -3576,8 +3580,13 @@ function ClinicalPatientsPanel({
     try {
       await savePatientData(uid, patient);
       setPatients((current) => [patient, ...current]);
+      setSelected(patient);
       setNewPatient(false);
-      setFeedback("Paciente creado. Ya podés registrar su primera consulta.");
+      setRecordDate(today);
+      setReminderDate("");
+      setRecordType("Consulta");
+      setNewRecord(true);
+      setFeedback("Paciente creado. Completá ahora su primera consulta.");
     } catch {
       setFeedback("No pudimos guardar el paciente en Firebase.");
     }
@@ -3643,10 +3652,159 @@ function ClinicalPatientsPanel({
       setSelected(updated);
       setNewRecord(false);
       setRecordType("Consulta");
+      setRecordDate(today);
+      setReminderDate("");
       setFeedback(`${recordType} registrada correctamente.`);
     } catch {
       setFeedback("No pudimos guardar el registro clínico.");
     }
+  }
+
+  function openNewRecord() {
+    setRecordDate(today);
+    setReminderDate("");
+    setRecordType("Consulta");
+    setNewRecord(true);
+  }
+
+  function setQuickReminder(days: number) {
+    const date = new Date();
+    date.setHours(12, 0, 0, 0);
+    date.setDate(date.getDate() + days);
+    setReminderDate(displayDate(date.toISOString().slice(0, 10)));
+  }
+
+  async function updatePatient(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!selected) return;
+    const form = new FormData(e.currentTarget);
+    const updated: Patient = {
+      ...selected,
+      name: String(form.get("name")),
+      species: String(form.get("species")),
+      breed: String(form.get("breed")),
+      sex: String(form.get("sex")),
+      neutered: String(form.get("neutered")),
+      approximateAge: String(form.get("approximateAge")),
+      weight: String(form.get("weight")),
+      owner: String(form.get("owner")),
+      phone: String(form.get("phone")),
+      ownerAddress: String(form.get("ownerAddress")),
+      allergies: String(form.get("allergies")),
+      previousConditions: String(form.get("previousConditions")),
+    };
+    try {
+      await savePatientData(uid, updated);
+      setPatients((current) =>
+        current.map((patient) => patient.id === updated.id ? updated : patient),
+      );
+      setSelected(updated);
+      setEditPatient(false);
+      setFeedback("Ficha médica actualizada correctamente.");
+    } catch {
+      setFeedback("No pudimos actualizar la ficha médica.");
+    }
+  }
+
+  async function createClinicalPdf(patient: Patient) {
+    const { jsPDF } = await import("jspdf");
+    const pdf = new jsPDF();
+    const margin = 17;
+    const width = pdf.internal.pageSize.getWidth() - margin * 2;
+    let y = 18;
+    const pageBreak = (needed = 15) => {
+      if (y + needed > pdf.internal.pageSize.getHeight() - 16) {
+        pdf.addPage();
+        y = 18;
+      }
+    };
+    const heading = (title: string) => {
+      pageBreak(16);
+      pdf.setTextColor(15, 116, 94);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+      pdf.text(title, margin, y);
+      y += 7;
+    };
+    const line = (label: string, value?: string) => {
+      if (!value) return;
+      pdf.setTextColor(38, 63, 72);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      const rows = pdf.splitTextToSize(`${label}: ${value}`, width);
+      pageBreak(rows.length * 4.5 + 2);
+      pdf.text(rows, margin, y);
+      y += rows.length * 4.5 + 2;
+    };
+    pdf.setFillColor(18, 58, 74);
+    pdf.rect(0, 0, pdf.internal.pageSize.getWidth(), 35, "F");
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18);
+    pdf.text("LabOVet - Historia clínica", margin, 17);
+    pdf.setFontSize(10);
+    pdf.text(`${patient.name} - Emitida ${today}`, margin, 26);
+    y = 45;
+    heading("Paciente y propietario");
+    line("Paciente", patient.name);
+    line("Especie / raza", `${patient.species} / ${patient.breed || "No informada"}`);
+    line("Sexo", patient.sex);
+    line("Castrado", patient.neutered);
+    line("Edad aproximada", patient.approximateAge);
+    line("Peso actual", patient.weight ? `${patient.weight} kg` : undefined);
+    line("Propietario", patient.owner);
+    line("WhatsApp", patient.phone);
+    line("Dirección", patient.ownerAddress);
+    heading("Alertas y antecedentes");
+    line("Alergias", patient.allergies || "No informadas");
+    line("Enfermedades previas", patient.previousConditions || "No informadas");
+    heading("Línea de tiempo clínica");
+    [...patient.events]
+      .sort((a, b) => dateToIso(b.date).localeCompare(dateToIso(a.date)))
+      .forEach((event) => {
+        pageBreak(24);
+        pdf.setDrawColor(210, 224, 224);
+        pdf.line(margin, y, margin + width, y);
+        y += 6;
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(17, 56, 70);
+        pdf.setFontSize(10);
+        pdf.text(`${displayDate(event.date)} - ${event.type} - ${event.detail}`, margin, y);
+        y += 6;
+        detailFields(event).forEach(([label, value]) => line(label, value));
+        y += 3;
+      });
+    const pages = pdf.getNumberOfPages();
+    for (let page = 1; page <= pages; page += 1) {
+      pdf.setPage(page);
+      pdf.setTextColor(120, 135, 140);
+      pdf.setFontSize(8);
+      pdf.text(`Página ${page} de ${pages}`, pdf.internal.pageSize.getWidth() - margin, pdf.internal.pageSize.getHeight() - 8, { align: "right" });
+    }
+    const filename = `Historia_clinica_${patient.name.replace(/\s+/g, "_")}.pdf`;
+    return { pdf, filename, blob: pdf.output("blob") };
+  }
+
+  async function exportClinicalPdf() {
+    if (!selected) return;
+    const { pdf, filename } = await createClinicalPdf(selected);
+    pdf.save(filename);
+  }
+
+  async function shareClinicalHistory() {
+    if (!selected) return;
+    const { pdf, filename, blob } = await createClinicalPdf(selected);
+    const file = new File([blob], filename, { type: "application/pdf" });
+    const message = `Hola ${selected.owner}, te envío la historia clínica de ${selected.name}.`;
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ title: filename, text: message, files: [file] });
+      return;
+    }
+    pdf.save(filename);
+    let phone = selected.phone.replace(/\D/g, "").replace(/^0/, "");
+    if (!phone.startsWith("54")) phone = `549${phone}`;
+    else if (!phone.startsWith("549")) phone = `549${phone.slice(2)}`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`${message} El PDF se descargó para que puedas adjuntarlo en este chat.`)}`, "_blank", "noopener,noreferrer");
   }
 
   async function removePatient() {
@@ -3744,7 +3902,10 @@ function ClinicalPatientsPanel({
             </div>
             <div className="header-actions">
               <button className="danger-outline" onClick={() => setDeleteConfirm(true)}>Eliminar</button>
-              <button className="primary" onClick={() => setNewRecord(true)}>＋ Nueva atención</button>
+              <button className="ghost" onClick={() => setEditPatient(true)}>Editar ficha</button>
+              <button className="ghost" onClick={exportClinicalPdf}>Exportar PDF</button>
+              <button className="whatsapp-button" onClick={shareClinicalHistory}>Enviar WhatsApp</button>
+              <button className="primary" onClick={openNewRecord}>＋ Nueva atención</button>
             </div>
           </header>
           {selected.allergies && (
@@ -3829,7 +3990,13 @@ function ClinicalPatientsPanel({
         <div className="modal-backdrop"><form className="modal-card clinical-modal record-modal" onSubmit={addClinicalRecord}>
           <div><h2>Nueva atención · {selected.name}</h2><button type="button" onClick={() => setNewRecord(false)}>×</button></div>
           <div className="record-type-tabs">{["Consulta", "Vacunación", "Desparasitación", "Estudio"].map((type) => <button type="button" key={type} className={recordType === type ? "selected" : ""} onClick={() => setRecordType(type)}>{type}</button>)}</div>
-          <div className="form-grid"><label>Fecha<DateField name="date" required /></label><label>Próximo recordatorio<DateField name="nextDate" /></label></div>
+          <div className="form-grid">
+            <label>Fecha<DateField name="date" value={recordDate} onChange={setRecordDate} required /></label>
+            <label>
+              <span className="reminder-label"><span>Próximo recordatorio</span><span>{[7, 15, 30, 60, 90].map((days) => <button type="button" key={days} onClick={() => setQuickReminder(days)}>+{days}</button>)}</span></span>
+              <DateField name="nextDate" value={reminderDate} onChange={setReminderDate} />
+            </label>
+          </div>
           {recordType === "Consulta" && <>
             <fieldset><legend>Motivo y evaluación</legend><label>Motivo de consulta<select name="motive" required>{CONSULTATION_MOTIVES.map((motive) => <option key={motive}>{motive}</option>)}</select></label><label>Anamnesis<textarea name="anamnesis" /></label><label>Examen clínico<textarea name="clinicalExam" /></label><div className="form-grid"><label>Diagnóstico presuntivo<textarea name="presumptiveDiagnosis" /></label><label>Diagnóstico definitivo<textarea name="definitiveDiagnosis" /></label></div><label>Tratamiento indicado<textarea name="treatment" /></label></fieldset>
             <fieldset><legend>Signos vitales</legend><div className="clinical-vitals"><label>Peso (kg)<input name="weight" type="number" min="0" step="0.01" /></label><label>Temperatura °C<input name="temperature" type="number" step="0.1" /></label><label>Frec. cardíaca<input name="heartRate" /></label><label>Frec. respiratoria<input name="respiratoryRate" /></label><label>Condición corporal<select name="bodyCondition"><option value="">Sin registrar</option>{Array.from({ length: 9 }, (_, i) => <option key={i + 1}>{i + 1}/9</option>)}</select></label><label>Hidratación<select name="hydration"><option value="">Sin registrar</option><option>Normal</option><option>Leve deshidratación</option><option>Moderada</option><option>Severa</option></select></label></div></fieldset>
@@ -3839,6 +4006,30 @@ function ClinicalPatientsPanel({
           {recordType === "Estudio" && <fieldset><legend>Estudio</legend><div className="form-grid"><label>Tipo<select name="studyType"><option>Laboratorio</option><option>Radiografía</option><option>Ecografía</option><option>Tomografía</option><option>Fotografía clínica</option><option>PDF / informe</option></select></label><label>Archivo<input name="studyFile" type="file" accept="image/*,.pdf" /></label></div><label>Resultado / informe<textarea name="result" /></label><small className="file-storage-note">Se registra la referencia del archivo. El almacenamiento del documento se habilitará al activar Firebase Storage.</small></fieldset>}
           {recordType !== "Estudio" && <label>Observaciones generales<textarea name="observations" /></label>}
           <footer><button type="button" className="ghost" onClick={() => setNewRecord(false)}>Cancelar</button><button className="primary">Guardar en historia clínica</button></footer>
+        </form></div>
+      )}
+      {editPatient && selected && (
+        <div className="modal-backdrop"><form className="modal-card clinical-modal" onSubmit={updatePatient}>
+          <div><h2>Editar ficha médica · {selected.name}</h2><button type="button" onClick={() => setEditPatient(false)}>×</button></div>
+          <fieldset><legend>Datos del paciente</legend><div className="form-grid">
+            <label>Nombre<input name="name" defaultValue={selected.name} required /></label>
+            <label>Especie<select name="species" defaultValue={selected.species} required><option>Canino</option><option>Felino</option></select></label>
+            <label>Raza<input name="breed" defaultValue={selected.breed} /></label>
+            <label>Sexo<select name="sex" defaultValue={selected.sex || ""} required><option value="">Seleccionar</option><option>Macho</option><option>Hembra</option></select></label>
+            <label>Castrado<select name="neutered" defaultValue={selected.neutered || "No informado"}><option>No informado</option><option>Sí</option><option>No</option></select></label>
+            <label>Edad aproximada<input name="approximateAge" defaultValue={selected.approximateAge} /></label>
+            <label>Peso actual (kg)<input name="weight" type="number" min="0" step="0.01" defaultValue={selected.weight} /></label>
+          </div></fieldset>
+          <fieldset><legend>Propietario</legend><div className="form-grid">
+            <label>Nombre y apellido<input name="owner" defaultValue={selected.owner} required /></label>
+            <label>WhatsApp<input name="phone" defaultValue={selected.phone} /></label>
+            <label className="full-field">Dirección<input name="ownerAddress" defaultValue={selected.ownerAddress} /></label>
+          </div></fieldset>
+          <fieldset><legend>Antecedentes importantes</legend><div className="form-grid">
+            <label>Alergias<textarea name="allergies" defaultValue={selected.allergies} /></label>
+            <label>Enfermedades previas<textarea name="previousConditions" defaultValue={selected.previousConditions} /></label>
+          </div></fieldset>
+          <footer><button type="button" className="ghost" onClick={() => setEditPatient(false)}>Cancelar</button><button className="primary">Guardar cambios</button></footer>
         </form></div>
       )}
       {deleteConfirm && selected && <div className="modal-backdrop"><section className="modal-card feedback-modal"><div><h2>Eliminar paciente</h2><button onClick={() => setDeleteConfirm(false)}>×</button></div><span className="feedback-icon danger">!</span><h3>¿Eliminar a {selected.name}?</h3><p>También se eliminarán definitivamente todas sus consultas y registros clínicos.</p><footer><button className="ghost" onClick={() => setDeleteConfirm(false)}>Cancelar</button><button className="danger-button" onClick={removePatient}>Eliminar definitivamente</button></footer></section></div>}
