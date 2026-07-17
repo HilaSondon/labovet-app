@@ -553,7 +553,7 @@
 .clinical-agenda .agenda-head,
 .clinical-agenda > article {
   display: grid !important;
-  grid-template-columns: 110px 1fr 1.2fr 1.3fr auto !important;
+  grid-template-columns: 100px 1fr 1.1fr 1.2fr 70px 120px !important;
   gap: 14px;
   align-items: center;
   padding: 12px 20px;
@@ -581,6 +581,112 @@
 .clinical-agenda time {
   font-size: 10px;
   font-weight: 750;
+}
+.reminder-whatsapp {
+  border: 1px solid #25a967;
+  border-radius: 6px;
+  background: #effaf4;
+  padding: 8px 9px;
+  color: #137445;
+  font-size: 9px;
+  font-weight: 800;
+}
+.dashboard-alerts {
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.dashboard-alerts.has-alerts {
+  border-color: #e9bbb5;
+  background: #fffafa;
+}
+.dashboard-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 22px;
+}
+.dashboard-section-head span,
+.dashboard-module > span {
+  color: #0c8068;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+.dashboard-section-head h2,
+.dashboard-section-head p,
+.dashboard-module h2,
+.dashboard-module p {
+  margin: 0;
+}
+.dashboard-section-head h2 { margin-top: 5px; }
+.dashboard-section-head p,
+.dashboard-module p {
+  margin-top: 5px;
+  color: #71858d;
+  font-size: 10px;
+}
+.dashboard-section-head > button {
+  border: 1px solid #abc9c2;
+  border-radius: 7px;
+  background: white;
+  padding: 9px 12px;
+  color: #0c725d;
+  font-size: 9px;
+  font-weight: 800;
+}
+.dashboard-alerts > article {
+  display: grid;
+  grid-template-columns: 42px 1fr 1.4fr 130px;
+  gap: 13px;
+  align-items: center;
+  padding: 12px 22px;
+  border-top: 1px solid #edf0f0;
+}
+.dashboard-alerts article b,
+.dashboard-alerts article small { display: block; }
+.dashboard-alerts article b { color: #173d4b; font-size: 11px; }
+.dashboard-alerts article small { margin-top: 3px; color: #788b92; font-size: 9px; }
+.dashboard-alerts article > button {
+  border: 1px solid #25a967;
+  border-radius: 6px;
+  background: #effaf4;
+  padding: 8px;
+  color: #137445;
+  font-size: 9px;
+  font-weight: 800;
+}
+.dashboard-sections {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+.dashboard-module {
+  min-height: 175px;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  border: 1px solid #dce5e6;
+  padding: 22px;
+  text-align: left;
+  color: #123947;
+}
+.dashboard-module:hover {
+  border-color: #8ebfb3;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(20, 65, 75, 0.08);
+}
+.dashboard-module h2 {
+  margin-top: 18px;
+  font-family: Georgia, serif;
+  font-size: 24px;
+}
+.dashboard-module i {
+  margin-top: auto;
+  color: #0b7862;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
 }
 .back-link {
   display: block;
@@ -948,6 +1054,20 @@
   .clinical-agenda article > div:nth-child(3),
   .clinical-agenda article > div:nth-child(4) {
     display: none;
+  }
+  .clinical-agenda .agenda-head span:nth-child(6),
+  .clinical-agenda article > button {
+    display: none;
+  }
+  .dashboard-sections {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-alerts > article {
+    grid-template-columns: 38px 1fr;
+  }
+  .dashboard-alerts article > div:nth-child(3),
+  .dashboard-alerts article > button {
+    grid-column: 2;
   }
   .clinical-summary {
     grid-template-columns: 1fr;

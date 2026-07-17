@@ -190,6 +190,24 @@ const dateToIso = (value: string) =>
   /^\d{2}\/\d{2}\/\d{4}$/.test(value)
     ? value.split("/").reverse().join("-")
     : value;
+const localIsoDate = (date = new Date()) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const argentinaWhatsAppNumber = (value: string) => {
+  let phone = value.replace(/\D/g, "").replace(/^0/, "");
+  if (!phone.startsWith("54")) phone = `549${phone}`;
+  else if (!phone.startsWith("549")) phone = `549${phone.slice(2)}`;
+  return phone;
+};
+const reminderMessage = (patient: Patient, event: PatientEvent) =>
+  `Hola ${patient.owner}, te recordamos que ${patient.name} requiere ${event.detail || event.type}.`;
+const openReminderWhatsApp = (patient: Patient, event: PatientEvent) => {
+  const phone = argentinaWhatsAppNumber(patient.phone);
+  window.open(
+    `https://wa.me/${phone}?text=${encodeURIComponent(reminderMessage(patient, event))}`,
+    "_blank",
+    "noopener,noreferrer",
+  );
+};
 const isValidDate = (value: string, optional = true) => {
   if (!value) return optional;
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return false;
@@ -457,7 +475,7 @@ const LARGE_MENU: [ViewKey, string][] = [
 ];
 const SMALL_MENU: [ViewKey, string][] = [
   ["pacientes", "Pacientes"],
-  ["recordatorios", "Agenda / Recordatorios"],
+  ["recordatorios", "Recordatorios"],
 ];
 const WORK_CATALOG: Record<string, { label: string; scope: string }[]> = {
   Vacunación: [
@@ -575,7 +593,7 @@ const WORK_CATALOG: Record<string, { label: string; scope: string }[]> = {
 export default function Home() {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [activeView, setActiveView] = useState<ViewKey>("sigatm");
+  const [activeView, setActiveView] = useState<ViewKey>("estadisticas");
   const [largeOpen, setLargeOpen] = useState(false);
   const [smallOpen, setSmallOpen] = useState(false);
   const [producers, setProducers] = useState<Producer[]>([]);
@@ -860,6 +878,12 @@ export default function Home() {
         <nav className="main-nav">
           <p>PRINCIPAL</p>
           <button
+            className={activeView === "estadisticas" ? "active" : ""}
+            onClick={() => setActiveView("estadisticas")}
+          >
+            <span>⌂</span> Inicio
+          </button>
+          <button
             className={
               LARGE_MENU.some(([key]) => key === activeView) ? "active" : ""
             }
@@ -962,6 +986,7 @@ export default function Home() {
             stockCategories={stockCategories}
             setStockCategories={setStockCategories}
             uid={authUser.uid}
+            onNavigate={setActiveView}
           />
         ) : (
           <>
@@ -2860,6 +2885,65 @@ function StockPanel({
   );
 }
 
+function HomeDashboard({
+  producers,
+  patients,
+  onNavigate,
+}: {
+  producers: Producer[];
+  patients: Patient[];
+  onNavigate: (view: ViewKey) => void;
+}) {
+  const today = localIsoDate();
+  const todayReminders = patients.flatMap((patient) =>
+    patient.events
+      .filter((event) => event.nextDate && dateToIso(displayDate(event.nextDate)) === today)
+      .map((event) => ({ patient, event })),
+  );
+  const pendingRural = producers.flatMap((producer) => producer.works).filter(
+    (work) => dateToIso(displayDate(work.date)) >= today,
+  ).length;
+  const allReminders = patients.flatMap((patient) => patient.events).filter((event) => event.nextDate).length;
+  const sigatmWorks = producers.flatMap((producer) => producer.works).filter(
+    (work) =>
+      (work.type === "Sangrado" || work.type === "Muestreo equino") &&
+      work.records?.length,
+  );
+  const pendingSigatm = sigatmWorks.filter((work) => (work.sigatmStatus || "Pendiente") === "Pendiente").length;
+  return (
+    <>
+      <header className="topbar dashboard-header">
+        <div><span className="eyebrow">RESUMEN DE HOY</span><h1>Inicio</h1><p>Todo lo importante de tu actividad veterinaria en un solo lugar.</p></div>
+      </header>
+      <section className={`panel dashboard-alerts ${todayReminders.length ? "has-alerts" : ""}`}>
+        <div className="dashboard-section-head">
+          <div><span>AVISOS</span><h2>Recordatorios para hoy</h2><p>{todayReminders.length ? `${todayReminders.length} actividades requieren atención.` : "No tenés recordatorios pendientes para hoy."}</p></div>
+          <button onClick={() => onNavigate("recordatorios")}>Ver recordatorios →</button>
+        </div>
+        {todayReminders.slice(0, 4).map(({ patient, event }) => (
+          <article key={`${patient.id}-${event.id || event.detail}`}>
+            <span className="patient-avatar">{patient.name.slice(0, 2).toUpperCase()}</span>
+            <div><b>{patient.name}</b><small>{patient.owner}</small></div>
+            <div><b>{event.detail}</b><small>{event.type}</small></div>
+            <button onClick={() => openReminderWhatsApp(patient, event)}>Enviar WhatsApp</button>
+          </article>
+        ))}
+      </section>
+      <div className="dashboard-sections">
+        <button className="panel dashboard-module large" onClick={() => onNavigate("productores")}>
+          <span>GRANDES ANIMALES</span><h2>{producers.length} productores</h2><p>{pendingRural} trabajos próximos o pendientes</p><i>Ir al panel →</i>
+        </button>
+        <button className="panel dashboard-module small" onClick={() => onNavigate("pacientes")}>
+          <span>PEQUEÑOS ANIMALES</span><h2>{patients.length} pacientes</h2><p>{allReminders} recordatorios programados</p><i>Ir al panel →</i>
+        </button>
+        <button className="panel dashboard-module sigatm" onClick={() => onNavigate("sigatm")}>
+          <span>SIGATM</span><h2>{pendingSigatm} pendientes</h2><p>{sigatmWorks.length} trabajos disponibles</p><i>Abrir conversor →</i>
+        </button>
+      </div>
+    </>
+  );
+}
+
 function ModuleView({
   view,
   producers,
@@ -2871,6 +2955,7 @@ function ModuleView({
   stockCategories,
   setStockCategories,
   uid,
+  onNavigate,
 }: {
   view: Exclude<ViewKey, "sigatm">;
   producers: Producer[];
@@ -2882,7 +2967,16 @@ function ModuleView({
   stockCategories: string[];
   setStockCategories: React.Dispatch<React.SetStateAction<string[]>>;
   uid: string;
+  onNavigate: (view: ViewKey) => void;
 }) {
+  if (view === "estadisticas")
+    return (
+      <HomeDashboard
+        producers={producers}
+        patients={patients}
+        onNavigate={onNavigate}
+      />
+    );
   if (view === "planes") return <SubscriptionPlans />;
   if (view === "stock")
     return (
@@ -2936,7 +3030,7 @@ function ModuleView({
         <div className="module-toolbar">
           <div>
             <h2>
-              {view === "estadisticas" ? "Actividad reciente" : data.title}
+              {data.title}
             </h2>
             <p>Información de muestra para diseñar y validar esta sección.</p>
           </div>
@@ -3551,13 +3645,18 @@ function ClinicalPatientsPanel({
   const [editPatient, setEditPatient] = useState(false);
   const [editingEvent, setEditingEvent] = useState<PatientEvent | null>(null);
   const [recordType, setRecordType] = useState("Consulta");
-  const today = displayDate(new Date().toISOString().slice(0, 10));
+  const today = displayDate(localIsoDate());
   const [recordDate, setRecordDate] = useState(today);
   const [reminderDate, setReminderDate] = useState("");
   const [eventFilter, setEventFilter] = useState("");
   const [expanded, setExpanded] = useState<Set<string | number>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [patientSearch, setPatientSearch] = useState("");
+  const filteredPatients = patients.filter((patient) => {
+    const query = norm(patientSearch);
+    return !query || norm(patient.name).includes(query) || norm(patient.owner).includes(query);
+  });
 
   async function addPatient(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -3702,7 +3801,7 @@ function ClinicalPatientsPanel({
     const date = new Date();
     date.setHours(12, 0, 0, 0);
     date.setDate(date.getDate() + days);
-    setReminderDate(displayDate(date.toISOString().slice(0, 10)));
+    setReminderDate(displayDate(localIsoDate(date)));
   }
 
   async function updatePatient(e: React.FormEvent<HTMLFormElement>) {
@@ -3909,8 +4008,8 @@ function ClinicalPatientsPanel({
           </div>
           {feedback && <div className="stock-notice"><span>{feedback}</span><button onClick={() => setFeedback("")}>×</button></div>}
           <section className="panel patient-list clinical-patient-list">
-            <div className="module-toolbar"><div><h2>Base de pacientes</h2><p>Seleccioná un paciente para abrir su historia clínica.</p></div></div>
-            {patients.map((patient) => (
+            <div className="module-toolbar"><div><h2>Base de pacientes</h2><p>Seleccioná un paciente para abrir su historia clínica.</p></div><label>⌕ <input value={patientSearch} onChange={(event) => setPatientSearch(event.target.value)} placeholder="Buscar paciente o propietario..." /></label></div>
+            {filteredPatients.map((patient) => (
               <button key={patient.id} className="patient-row" onClick={() => setSelected(patient)}>
                 <span className="patient-avatar">{patient.name.slice(0, 2).toUpperCase()}</span>
                 <span><b>{patient.name}</b><small>{patient.species} · {patient.breed || "Sin raza informada"}</small></span>
@@ -3919,7 +4018,7 @@ function ClinicalPatientsPanel({
                 <i>›</i>
               </button>
             ))}
-            {!patients.length && <div className="empty-agenda"><b>Todavía no hay pacientes</b><span>Creá el primero para comenzar su historia clínica.</span></div>}
+            {!filteredPatients.length && <div className="empty-agenda"><b>{patients.length ? "No encontramos coincidencias" : "Todavía no hay pacientes"}</b><span>{patients.length ? "Probá buscando por otro nombre o propietario." : "Creá el primero para comenzar su historia clínica."}</span></div>}
           </section>
         </>
       ) : (
@@ -4082,7 +4181,7 @@ function ClinicalAgenda({ patients }: { patients: Patient[] }) {
       <header className="topbar">
         <div>
           <span className="eyebrow">PEQUEÑOS ANIMALES</span>
-          <h1>Agenda / Recordatorios</h1>
+          <h1>Recordatorios</h1>
           <p>
             Se completa automáticamente al indicar una próxima fecha en el
             historial del paciente.
@@ -4111,6 +4210,7 @@ function ClinicalAgenda({ patients }: { patients: Patient[] }) {
           <span>Propietario</span>
           <span>Actividad</span>
           <span>Estado</span>
+          <span>Contacto</span>
         </div>
         {reminders.map((r, i) => (
           <article key={i}>
@@ -4129,7 +4229,8 @@ function ClinicalAgenda({ patients }: { patients: Patient[] }) {
               <b>{r.event.type}</b>
               <span>{r.event.detail}</span>
             </div>
-            <span className="table-status">Pendiente</span>
+            <span className="table-status">{dateToIso(displayDate(r.event.nextDate || "")) < localIsoDate() ? "Vencido" : dateToIso(displayDate(r.event.nextDate || "")) === localIsoDate() ? "Para hoy" : "Próximo"}</span>
+            <button className="reminder-whatsapp" onClick={() => openReminderWhatsApp(r.patient, r.event)}>Enviar WhatsApp</button>
           </article>
         ))}
       </section>
