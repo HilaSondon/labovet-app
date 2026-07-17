@@ -2281,30 +2281,6 @@ function StockPanel({
       setNotice("No pudimos actualizar todos los precios.");
     }
   }
-  const scopedItems = () => (increaseScope === "all" ? items : visible);
-  async function applyRounding() {
-    const multiple = Number(roundMultiple);
-    if (!multiple) return;
-    const targetIds = new Set(scopedItems().map((item) => item.id));
-    const updated = items.map((item) =>
-      targetIds.has(item.id)
-        ? { ...item, price: Math.ceil(item.price / multiple) * multiple }
-        : item,
-    );
-    try {
-      await Promise.all(
-        updated
-          .filter((item) => targetIds.has(item.id))
-          .map((item) => saveStockItem(uid, item)),
-      );
-      setItems(updated);
-      setNotice(
-        `Precios redondeados hacia arriba a múltiplos de $${multiple}.`,
-      );
-    } catch {
-      setNotice("No pudimos redondear los precios.");
-    }
-  }
   async function duplicateItem(item: StockItem) {
     const copy: StockItem = {
       ...item,
@@ -2512,13 +2488,6 @@ function StockPanel({
           </div>
         </div>
         <div className="stock-actions-bar">
-          <button
-            className="outline-btn"
-            onClick={applyRounding}
-            disabled={!Number(roundMultiple)}
-          >
-            Redondear precios
-          </button>
           <span />
           <button
             className="outline-btn"
