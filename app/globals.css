@@ -1835,16 +1835,30 @@
   grid-template-columns: repeat(3, 1fr);
 }
 .stock-alert {
-  border-left: 4px solid #d8a63a;
+  appearance: none;
+  width: 100%;
+  border: 1px solid #dce5e7;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
-.stock-alert.danger {
-  border-left-color: #cf5b54;
+.stock-alert:hover {
+  border-color: #b8d0ca;
 }
-.stock-alert.warning strong {
-  color: #9b6b0b;
+.stock-alert.has-alert {
+  border-color: #efc8c4;
+  background: #fff3f1;
 }
-.stock-alert.danger strong {
-  color: #ad4640;
+.stock-alert.has-alert strong {
+  color: #ae4943;
+}
+.stock-alert.selected {
+  outline: 2px solid #dfaaa5;
+  outline-offset: 1px;
 }
 .stock-notice button {
   border: 0;

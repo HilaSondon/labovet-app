@@ -2182,15 +2182,17 @@ function StockPanel({
   const expired = items.filter(
     (item) => stockExpiration(item).kind === "expired",
   );
-  const lowStock = items.filter((item) => item.quantity <= 5);
+  const lowStock = items.filter(
+    (item) => item.quantity === 1 || item.quantity === 2,
+  );
+  const stockPanelRef = useRef<HTMLElement>(null);
   const visible = items.filter((item) => {
     const expiration = stockExpiration(item).kind;
     const matchesStatus =
       !status ||
-      (status === "low" && item.quantity <= 5) ||
+      (status === "low" && (item.quantity === 1 || item.quantity === 2)) ||
       (status === "expiring" && expiration === "warning") ||
       (status === "expired" && expiration === "expired") ||
-      (status === "invalid" && expiration === "invalid") ||
       (status === "available" && item.quantity > 0);
     return (
       (!search || item.name.toLowerCase().includes(search.toLowerCase())) &&
@@ -2202,6 +2204,17 @@ function StockPanel({
   function changeLocal(id: string, patch: Partial<StockItem>) {
     setItems((current) =>
       current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    );
+  }
+  function filterFromAlert(nextStatus: "low" | "expiring" | "expired") {
+    setSearch("");
+    setCategory("");
+    setStatus(nextStatus);
+    requestAnimationFrame(() =>
+      stockPanelRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      }),
     );
   }
   async function persist(id: string) {
@@ -2407,21 +2420,33 @@ function StockPanel({
         </button>
       </header>
       <div className="module-stats stock-stats">
-        <article className="panel stat-card stock-alert warning">
+        <button
+          type="button"
+          className={`panel stat-card stock-alert ${lowStock.length ? "has-alert" : ""} ${status === "low" ? "selected" : ""}`}
+          onClick={() => filterFromAlert("low")}
+        >
           <span>Alerta de stock bajo</span>
           <strong>{lowStock.length}</strong>
-          <small>productos con 5 unidades o menos</small>
-        </article>
-        <article className="panel stat-card stock-alert warning">
+          <small>productos con 1 o 2 unidades</small>
+        </button>
+        <button
+          type="button"
+          className={`panel stat-card stock-alert ${expiring.length ? "has-alert" : ""} ${status === "expiring" ? "selected" : ""}`}
+          onClick={() => filterFromAlert("expiring")}
+        >
           <span>Vencimientos próximos</span>
           <strong>{expiring.length}</strong>
           <small>lotes vencen en los próximos 30 días</small>
-        </article>
-        <article className="panel stat-card stock-alert danger">
+        </button>
+        <button
+          type="button"
+          className={`panel stat-card stock-alert ${expired.length ? "has-alert" : ""} ${status === "expired" ? "selected" : ""}`}
+          onClick={() => filterFromAlert("expired")}
+        >
           <span>Productos vencidos</span>
           <strong>{expired.length}</strong>
           <small>requieren revisión inmediata</small>
-        </article>
+        </button>
       </div>
       {notice && (
         <div className="stock-notice">
@@ -2429,7 +2454,7 @@ function StockPanel({
           <button onClick={() => setNotice("")}>×</button>
         </div>
       )}
-      <section className="panel stock-panel">
+      <section ref={stockPanelRef} className="panel stock-panel">
         <div className="stock-toolbar">
           <div>
             <h2>Productos y medicamentos</h2>
@@ -2533,7 +2558,6 @@ function StockPanel({
               <option value="low">Stock bajo</option>
               <option value="expiring">Próximos a vencer</option>
               <option value="expired">Vencidos</option>
-              <option value="invalid">Falta lote / fecha inválida</option>
             </select>
           </label>
         </div>
