@@ -1504,7 +1504,7 @@
   width: min(920px, 96vw);
 }
 .modal-card.results-entry-modal {
-  width: min(760px, 94vw);
+  width: min(600px, 94vw);
   max-width: none;
 }
 .results-toolbar {
@@ -1563,7 +1563,7 @@
 .results-grid-head,
 .results-grid-row {
   display: grid !important;
-  grid-template-columns: 30px 75px minmax(170px, 1fr) 110px 125px;
+  grid-template-columns: 30px 70px 180px 110px 130px;
   align-items: center !important;
   width: 100%;
   min-width: 0;
