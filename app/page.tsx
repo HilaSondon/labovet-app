@@ -20,11 +20,13 @@ import {
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import {
+  deleteStockItem,
   deletePatientData,
   loadVeterinaryData,
   savePatientData,
   savePatientEvent,
   saveProducerData,
+  saveStockItem,
   saveWorkData,
   saveWorkMetadata,
 } from "../lib/firestore-data";
@@ -196,6 +198,7 @@ type ViewKey =
   | "agenda-clinica"
   | "turnos"
   | "sigatm"
+  | "stock"
   | "planes";
 const LARGE_MENU: [ViewKey, string][] = [
   ["productores", "Productores"],
@@ -326,6 +329,7 @@ export default function Home() {
   const [smallOpen, setSmallOpen] = useState(false);
   const [producers, setProducers] = useState<Producer[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState("");
   const [dataReload, setDataReload] = useState(0);
@@ -365,6 +369,7 @@ export default function Home() {
         if (!active) return;
         setProducers(data.producers as Producer[]);
         setPatients(data.patients as Patient[]);
+        setStockItems(data.stockItems as StockItem[]);
         setDataError("");
       })
       .catch((error: unknown) => {
@@ -642,6 +647,12 @@ export default function Home() {
               ))}
             </div>
           )}
+          <button
+            className={activeView === "stock" ? "active" : ""}
+            onClick={() => setActiveView("stock")}
+          >
+            <span>▦</span> Lista de precios / Stock
+          </button>
           <p>HERRAMIENTAS</p>
           <button
             className={activeView === "sigatm" ? "active" : ""}
@@ -692,6 +703,8 @@ export default function Home() {
             setProducers={setProducers}
             patients={patients}
             setPatients={setPatients}
+            stockItems={stockItems}
+            setStockItems={setStockItems}
             uid={authUser.uid}
           />
         ) : (
@@ -1254,7 +1267,7 @@ function AuthScreen() {
 }
 
 const VIEW_CONTENT: Record<
-  Exclude<ViewKey, "sigatm" | "planes">,
+  Exclude<ViewKey, "sigatm" | "planes" | "stock">,
   {
     eyebrow: string;
     title: string;
@@ -1837,12 +1850,500 @@ const VIEW_CONTENT: Record<
   },
 };
 
+type StockItem = {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  quantity: number;
+  expiration?: string;
+};
+
+const STOCK_CATEGORIES = [
+  "Vacuna",
+  "Medicamento",
+  "Antiparasitario",
+  "Insumo",
+  "Otro",
+];
+
+function stockExpiration(item: StockItem) {
+  if (!item.expiration) return { label: "Sin vencimiento", kind: "neutral" };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiration = new Date(`${item.expiration}T12:00:00`);
+  const days = Math.ceil(
+    (expiration.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (days < 0) return { label: "Vencido", kind: "expired" };
+  if (days === 0) return { label: "Vence hoy", kind: "expired" };
+  if (days <= 60) return { label: `Vence en ${days} días`, kind: "warning" };
+  return { label: "Vigente", kind: "ok" };
+}
+
+function StockPanel({
+  items,
+  setItems,
+  uid,
+}: {
+  items: StockItem[];
+  setItems: React.Dispatch<React.SetStateAction<StockItem[]>>;
+  uid: string;
+}) {
+  const [showNew, setShowNew] = useState(false);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [status, setStatus] = useState("");
+  const [percentage, setPercentage] = useState("");
+  const [confirmIncrease, setConfirmIncrease] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+  const expiring = items.filter((item) =>
+    ["warning", "expired"].includes(stockExpiration(item).kind),
+  );
+  const lowStock = items.filter((item) => item.quantity <= 5);
+  const visible = items.filter((item) => {
+    const expiration = stockExpiration(item).kind;
+    const matchesStatus =
+      !status ||
+      (status === "low" && item.quantity <= 5) ||
+      (status === "expiring" && expiration === "warning") ||
+      (status === "expired" && expiration === "expired") ||
+      (status === "available" && item.quantity > 0);
+    return (
+      (!search || item.name.toLowerCase().includes(search.toLowerCase())) &&
+      (!category || item.category === category) &&
+      matchesStatus
+    );
+  });
+
+  function changeLocal(id: string, patch: Partial<StockItem>) {
+    setItems((current) =>
+      current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    );
+  }
+  async function persist(id: string) {
+    const item = items.find((current) => current.id === id);
+    if (!item) return;
+    try {
+      await saveStockItem(uid, item);
+    } catch {
+      setNotice("No pudimos guardar el cambio. Intentá nuevamente.");
+    }
+  }
+  async function changeQuantity(item: StockItem, amount: number) {
+    const updated = { ...item, quantity: Math.max(0, item.quantity + amount) };
+    changeLocal(item.id, { quantity: updated.quantity });
+    try {
+      await saveStockItem(uid, updated);
+    } catch {
+      setNotice("No pudimos actualizar el stock.");
+    }
+  }
+  async function addItem(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const item: StockItem = {
+      id: crypto.randomUUID(),
+      name: String(form.get("name")),
+      category: String(form.get("category")),
+      price: Number(form.get("price")) || 0,
+      quantity: Number(form.get("quantity")) || 0,
+      expiration: String(form.get("expiration")) || undefined,
+    };
+    try {
+      await saveStockItem(uid, item);
+      setItems((current) => [item, ...current]);
+      setShowNew(false);
+      setNotice("Producto agregado correctamente.");
+    } catch {
+      setNotice("No pudimos guardar el producto.");
+    }
+  }
+  async function applyIncrease() {
+    const value = Number(percentage);
+    if (!value || value <= 0) return;
+    const updated = items.map((item) => ({
+      ...item,
+      price: Math.round(item.price * (1 + value / 100) * 100) / 100,
+    }));
+    try {
+      await Promise.all(updated.map((item) => saveStockItem(uid, item)));
+      setItems(updated);
+      setPercentage("");
+      setConfirmIncrease(false);
+      setNotice(`Precios actualizados un ${value}%.`);
+    } catch {
+      setNotice("No pudimos actualizar todos los precios.");
+    }
+  }
+  async function removeItem() {
+    if (!deleteId) return;
+    try {
+      await deleteStockItem(uid, deleteId);
+      setItems((current) => current.filter((item) => item.id !== deleteId));
+      setDeleteId(null);
+      setNotice("Producto eliminado.");
+    } catch {
+      setNotice("No pudimos eliminar el producto.");
+    }
+  }
+
+  return (
+    <>
+      <header className="topbar module-topbar">
+        <div>
+          <span className="eyebrow">GESTIÓN COMERCIAL</span>
+          <h1>Lista de precios / Stock</h1>
+          <p>Precios, existencias y vencimientos en un solo lugar.</p>
+        </div>
+        <button className="primary" onClick={() => setShowNew(true)}>
+          ＋ Nuevo producto
+        </button>
+      </header>
+      <div className="module-stats stock-stats">
+        <article className="panel stat-card">
+          <span>Productos</span>
+          <strong>{items.length}</strong>
+          <small>cargados en la lista</small>
+        </article>
+        <article className="panel stat-card">
+          <span>Unidades en stock</span>
+          <strong>
+            {items.reduce((total, item) => total + item.quantity, 0)}
+          </strong>
+          <small>disponibles</small>
+        </article>
+        <article className="panel stat-card">
+          <span>Stock bajo</span>
+          <strong>{lowStock.length}</strong>
+          <small>con 5 unidades o menos</small>
+        </article>
+        <article className="panel stat-card">
+          <span>Vencimientos</span>
+          <strong>{expiring.length}</strong>
+          <small>vencidos o próximos 60 días</small>
+        </article>
+      </div>
+      {notice && (
+        <div className="stock-notice">
+          <span>{notice}</span>
+          <button onClick={() => setNotice("")}>×</button>
+        </div>
+      )}
+      <section className="panel stock-panel">
+        <div className="stock-toolbar">
+          <div>
+            <h2>Productos y medicamentos</h2>
+            <p>
+              Editá cualquier celda y el cambio se guardará automáticamente.
+            </p>
+          </div>
+          <div className="price-increase">
+            <label>
+              Aumento general
+              <span>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="10"
+                  value={percentage}
+                  onChange={(e) => setPercentage(e.target.value)}
+                />
+                <i>%</i>
+              </span>
+            </label>
+            <button
+              className="outline-btn"
+              disabled={!Number(percentage)}
+              onClick={() => setConfirmIncrease(true)}
+            >
+              Aplicar a todos
+            </button>
+          </div>
+        </div>
+        <div className="stock-filters">
+          <label>
+            <span>Buscar</span>
+            <input
+              placeholder="Producto o medicamento..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </label>
+          <label>
+            <span>Categoría</span>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="">Todas</option>
+              {STOCK_CATEGORIES.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Estado</span>
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="available">Con stock</option>
+              <option value="low">Stock bajo</option>
+              <option value="expiring">Próximos a vencer</option>
+              <option value="expired">Vencidos</option>
+            </select>
+          </label>
+        </div>
+        <div className="stock-table-wrap">
+          <table className="stock-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Precio</th>
+                <th>Stock</th>
+                <th>Vencimiento</th>
+                <th>Estado</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((item) => {
+                const expiration = stockExpiration(item);
+                return (
+                  <tr key={item.id}>
+                    <td>
+                      <input
+                        value={item.name}
+                        onChange={(e) =>
+                          changeLocal(item.id, { name: e.target.value })
+                        }
+                        onBlur={() => persist(item.id)}
+                      />
+                    </td>
+                    <td>
+                      <select
+                        value={item.category}
+                        onChange={(e) => {
+                          const updated = { ...item, category: e.target.value };
+                          changeLocal(item.id, { category: e.target.value });
+                          saveStockItem(uid, updated).catch(() =>
+                            setNotice("No pudimos actualizar la categoría."),
+                          );
+                        }}
+                      >
+                        {STOCK_CATEGORIES.map((value) => (
+                          <option key={value}>{value}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="stock-price">
+                      <span>$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.price}
+                        onChange={(e) =>
+                          changeLocal(item.id, {
+                            price: Number(e.target.value),
+                          })
+                        }
+                        onBlur={() => persist(item.id)}
+                      />
+                    </td>
+                    <td>
+                      <div className="stock-stepper">
+                        <button onClick={() => changeQuantity(item, -1)}>
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            changeLocal(item.id, {
+                              quantity: Math.max(0, Number(e.target.value)),
+                            })
+                          }
+                          onBlur={() => persist(item.id)}
+                        />
+                        <button onClick={() => changeQuantity(item, 1)}>
+                          ＋
+                        </button>
+                      </div>
+                    </td>
+                    <td>
+                      <input
+                        type="date"
+                        value={item.expiration || ""}
+                        onChange={(e) => {
+                          const updated = {
+                            ...item,
+                            expiration: e.target.value || undefined,
+                          };
+                          changeLocal(item.id, {
+                            expiration: e.target.value || undefined,
+                          });
+                          saveStockItem(uid, updated).catch(() =>
+                            setNotice("No pudimos actualizar el vencimiento."),
+                          );
+                        }}
+                      />
+                    </td>
+                    <td>
+                      <span className={`stock-status ${expiration.kind}`}>
+                        {item.quantity === 0 ? "Sin stock" : expiration.label}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="stock-delete"
+                        title="Eliminar producto"
+                        onClick={() => setDeleteId(item.id)}
+                      >
+                        ×
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {!visible.length && (
+            <div className="empty-agenda">
+              <b>
+                {items.length
+                  ? "No hay coincidencias"
+                  : "Todavía no hay productos"}
+              </b>
+              <span>
+                {items.length
+                  ? "Probá quitando alguno de los filtros."
+                  : "Agregá el primer producto para comenzar a controlar el stock."}
+              </span>
+            </div>
+          )}
+        </div>
+      </section>
+      {showNew && (
+        <div className="modal-backdrop">
+          <form className="modal-card" onSubmit={addItem}>
+            <div>
+              <h2>Nuevo producto</h2>
+              <button type="button" onClick={() => setShowNew(false)}>
+                ×
+              </button>
+            </div>
+            <p>
+              Ingresá los datos iniciales. Después podrás editarlos en la tabla.
+            </p>
+            <label>
+              Producto o medicamento
+              <input name="name" required autoFocus />
+            </label>
+            <div className="form-grid">
+              <label>
+                Categoría
+                <select name="category" required defaultValue="Medicamento">
+                  {STOCK_CATEGORIES.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Precio
+                <input
+                  name="price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+              </label>
+              <label>
+                Cantidad inicial
+                <input name="quantity" type="number" min="0" required />
+              </label>
+              <label>
+                Vencimiento (opcional)
+                <input name="expiration" type="date" />
+              </label>
+            </div>
+            <footer>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setShowNew(false)}
+              >
+                Cancelar
+              </button>
+              <button className="primary">Guardar producto</button>
+            </footer>
+          </form>
+        </div>
+      )}
+      {confirmIncrease && (
+        <div className="modal-backdrop">
+          <section className="modal-card feedback-modal">
+            <div>
+              <h2>Actualizar precios</h2>
+              <button onClick={() => setConfirmIncrease(false)}>×</button>
+            </div>
+            <span className="feedback-icon">%</span>
+            <h3>¿Aumentar todos los precios un {percentage}%?</h3>
+            <p>
+              Se actualizarán {items.length} productos. Luego podrás corregir
+              cualquier precio desde la tabla.
+            </p>
+            <footer>
+              <button
+                className="ghost"
+                onClick={() => setConfirmIncrease(false)}
+              >
+                Cancelar
+              </button>
+              <button className="primary" onClick={applyIncrease}>
+                Aplicar aumento
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
+      {deleteId && (
+        <div className="modal-backdrop">
+          <section className="modal-card feedback-modal">
+            <div>
+              <h2>Eliminar producto</h2>
+              <button onClick={() => setDeleteId(null)}>×</button>
+            </div>
+            <span className="feedback-icon danger">!</span>
+            <h3>¿Eliminar este producto de la lista?</h3>
+            <p>Esta acción no se puede deshacer.</p>
+            <footer>
+              <button className="ghost" onClick={() => setDeleteId(null)}>
+                Cancelar
+              </button>
+              <button className="danger-button" onClick={removeItem}>
+                Eliminar
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
+    </>
+  );
+}
+
 function ModuleView({
   view,
   producers,
   setProducers,
   patients,
   setPatients,
+  stockItems,
+  setStockItems,
   uid,
 }: {
   view: Exclude<ViewKey, "sigatm">;
@@ -1850,9 +2351,13 @@ function ModuleView({
   setProducers: React.Dispatch<React.SetStateAction<Producer[]>>;
   patients: Patient[];
   setPatients: React.Dispatch<React.SetStateAction<Patient[]>>;
+  stockItems: StockItem[];
+  setStockItems: React.Dispatch<React.SetStateAction<StockItem[]>>;
   uid: string;
 }) {
   if (view === "planes") return <SubscriptionPlans />;
+  if (view === "stock")
+    return <StockPanel items={stockItems} setItems={setStockItems} uid={uid} />;
   if (view === "productores")
     return (
       <ProducersPanel

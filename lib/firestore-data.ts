@@ -63,6 +63,14 @@ export type StoredPatient = {
   phone: string;
   events: StoredPatientEvent[];
 };
+export type StoredStockItem = {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  quantity: number;
+  expiration?: string;
+};
 
 const userCollection = (uid: string, name: string) =>
   collection(db, "users", uid, name);
@@ -75,12 +83,23 @@ const stableWorkId = (producerId: number, work: StoredWork) =>
   `${producerId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 export async function loadVeterinaryData(uid: string) {
-  const [producerSnap, workSnap, animalSnap, patientSnap, eventSnap] =
-    await Promise.all(
-      ["producers", "works", "animals", "patients", "patientEvents"].map(
-        (name) => getDocs(userCollection(uid, name)),
-      ),
-    );
+  const [
+    producerSnap,
+    workSnap,
+    animalSnap,
+    patientSnap,
+    eventSnap,
+    stockSnap,
+  ] = await Promise.all(
+    [
+      "producers",
+      "works",
+      "animals",
+      "patients",
+      "patientEvents",
+      "stockItems",
+    ].map((name) => getDocs(userCollection(uid, name))),
+  );
   const animalsByWork = new Map<string, StoredAnimal[]>();
   [...animalSnap.docs]
     .sort((a, b) => Number(a.data().position) - Number(b.data().position))
@@ -160,7 +179,10 @@ export async function loadVeterinaryData(uid: string) {
       events: eventsByPatient.get(id) || [],
     } as StoredPatient;
   });
-  return { producers, patients };
+  const stockItems = stockSnap.docs.map(
+    (item) => ({ ...item.data(), id: item.id }) as StoredStockItem,
+  );
+  return { producers, patients, stockItems };
 }
 
 export async function saveProducerData(uid: string, producer: StoredProducer) {
@@ -263,4 +285,12 @@ export async function deletePatientData(uid: string, patientId: number) {
     events.docs.map((item) => ({ kind: "delete" as const, ref: item.ref })),
   );
   await deleteDoc(doc(userCollection(uid, "patients"), String(patientId)));
+}
+
+export async function saveStockItem(uid: string, item: StoredStockItem) {
+  await setDoc(doc(userCollection(uid, "stockItems"), item.id), clean(item));
+}
+
+export async function deleteStockItem(uid: string, itemId: string) {
+  await deleteDoc(doc(userCollection(uid, "stockItems"), itemId));
 }
