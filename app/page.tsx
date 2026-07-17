@@ -26,6 +26,7 @@ import {
   savePatientData,
   savePatientEvent,
   saveProducerData,
+  saveStockCategory,
   saveStockItem,
   saveWorkData,
   saveWorkMetadata,
@@ -181,6 +182,79 @@ const norm = (v: unknown) =>
 const findCode = (map: Record<string, number>, value: string) =>
   Object.entries(map).find(([key]) => norm(key) === norm(value))?.[1];
 
+const displayDate = (value: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? value.split("-").reverse().join("/")
+    : value;
+const dateToIso = (value: string) =>
+  /^\d{2}\/\d{2}\/\d{4}$/.test(value)
+    ? value.split("/").reverse().join("-")
+    : value;
+const isValidDate = (value: string, optional = true) => {
+  if (!value) return optional;
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return false;
+  const [day, month, year] = value.split("/").map(Number);
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+};
+const formatDateTyping = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)]
+    .filter(Boolean)
+    .join("/");
+};
+
+function DateField({
+  name,
+  value,
+  onChange,
+  onBlur,
+  required = false,
+}: {
+  name?: string;
+  value?: string;
+  onChange?: (value: string) => void;
+  onBlur?: () => void;
+  required?: boolean;
+}) {
+  const [internal, setInternal] = useState(displayDate(value || ""));
+  const current = value === undefined ? internal : displayDate(value);
+  const invalid = Boolean(current) && !isValidDate(current, !required);
+  return (
+    <span className="date-field">
+      <input
+        type="text"
+        inputMode="numeric"
+        name={name}
+        value={current}
+        placeholder="DD/MM/AAAA"
+        maxLength={10}
+        required={required}
+        className={invalid ? "date-invalid" : ""}
+        aria-invalid={invalid}
+        onChange={(event) => {
+          const next = formatDateTyping(event.target.value);
+          event.currentTarget.setCustomValidity(
+            !next || isValidDate(next, !required)
+              ? ""
+              : "Ingresá una fecha válida con formato DD/MM/AAAA",
+          );
+          setInternal(next);
+          onChange?.(next);
+        }}
+        onBlur={() => {
+          if (!invalid) onBlur?.();
+        }}
+      />
+      {invalid && <small>Ingresá una fecha válida: DD/MM/AAAA</small>}
+    </span>
+  );
+}
+
 type ViewKey =
   | "estadisticas"
   | "productores"
@@ -330,6 +404,7 @@ export default function Home() {
   const [producers, setProducers] = useState<Producer[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const [stockCategories, setStockCategories] = useState<string[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState("");
   const [dataReload, setDataReload] = useState(0);
@@ -370,6 +445,9 @@ export default function Home() {
         setProducers(data.producers as Producer[]);
         setPatients(data.patients as Patient[]);
         setStockItems(data.stockItems as StockItem[]);
+        setStockCategories(
+          data.stockCategories.map((category) => category.name),
+        );
         setDataError("");
       })
       .catch((error: unknown) => {
@@ -560,8 +638,7 @@ export default function Home() {
       (!sigatmProducer || item.producer.name === sigatmProducer) &&
       (!sigatmEstablishment ||
         item.establishment.name === sigatmEstablishment) &&
-      (!sigatmDate ||
-        item.work.date.split("/").reverse().join("-") === sigatmDate),
+      (!sigatmDate || displayDate(item.work.date) === sigatmDate),
   );
   function openSigatmWork(work: Work, producer: Producer, workIndex: number) {
     const targetSpecies = work.type === "Muestreo equino" ? "EQUINO" : "BOVINO";
@@ -705,6 +782,8 @@ export default function Home() {
             setPatients={setPatients}
             stockItems={stockItems}
             setStockItems={setStockItems}
+            stockCategories={stockCategories}
+            setStockCategories={setStockCategories}
             uid={authUser.uid}
           />
         ) : (
@@ -915,11 +994,7 @@ export default function Home() {
                 <div className="sigatm-filter-fields">
                   <label>
                     <span>Fecha</span>
-                    <input
-                      type="date"
-                      value={sigatmDate}
-                      onChange={(e) => setSigatmDate(e.target.value)}
-                    />
+                    <DateField value={sigatmDate} onChange={setSigatmDate} />
                   </label>
                   <label>
                     <span>Productor</span>
@@ -1103,7 +1178,13 @@ export default function Home() {
                                   }
                                   title={errors[`${i}:${field}`]}
                                   onChange={(e) =>
-                                    updateRow(i, field, e.target.value)
+                                    updateRow(
+                                      i,
+                                      field,
+                                      field === "vaccination"
+                                        ? formatDateTyping(e.target.value)
+                                        : e.target.value,
+                                    )
                                   }
                                 />
                               )}
@@ -1871,7 +1952,9 @@ function stockExpiration(item: StockItem) {
   if (!item.expiration) return { label: "Sin vencimiento", kind: "neutral" };
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const expiration = new Date(`${item.expiration}T12:00:00`);
+  const shown = displayDate(item.expiration);
+  if (!isValidDate(shown)) return { label: "Fecha inválida", kind: "expired" };
+  const expiration = new Date(`${dateToIso(shown)}T12:00:00`);
   const days = Math.ceil(
     (expiration.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
@@ -1884,13 +1967,18 @@ function stockExpiration(item: StockItem) {
 function StockPanel({
   items,
   setItems,
+  stockCategories,
+  setStockCategories,
   uid,
 }: {
   items: StockItem[];
   setItems: React.Dispatch<React.SetStateAction<StockItem[]>>;
+  stockCategories: string[];
+  setStockCategories: React.Dispatch<React.SetStateAction<string[]>>;
   uid: string;
 }) {
   const [showNew, setShowNew] = useState(false);
+  const [showCategory, setShowCategory] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState("");
@@ -1898,6 +1986,14 @@ function StockPanel({
   const [confirmIncrease, setConfirmIncrease] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [increaseScope, setIncreaseScope] = useState<"all" | "filtered">("all");
+  const categories = [
+    ...new Set([
+      ...STOCK_CATEGORIES,
+      ...stockCategories,
+      ...items.map((item) => item.category),
+    ]),
+  ];
   const expiring = items.filter((item) =>
     ["warning", "expired"].includes(stockExpiration(item).kind),
   );
@@ -1963,18 +2059,45 @@ function StockPanel({
   async function applyIncrease() {
     const value = Number(percentage);
     if (!value || value <= 0) return;
-    const updated = items.map((item) => ({
-      ...item,
-      price: Math.round(item.price * (1 + value / 100) * 100) / 100,
-    }));
+    const filteredIds = new Set(visible.map((item) => item.id));
+    const updated = items.map((item) =>
+      increaseScope === "all" || filteredIds.has(item.id)
+        ? {
+            ...item,
+            price: Math.round(item.price * (1 + value / 100) * 100) / 100,
+          }
+        : item,
+    );
+    const changed = updated.filter(
+      (item) => increaseScope === "all" || filteredIds.has(item.id),
+    );
     try {
-      await Promise.all(updated.map((item) => saveStockItem(uid, item)));
+      await Promise.all(changed.map((item) => saveStockItem(uid, item)));
       setItems(updated);
       setPercentage("");
       setConfirmIncrease(false);
-      setNotice(`Precios actualizados un ${value}%.`);
+      setNotice(
+        `Precios actualizados un ${value}% en ${changed.length} productos.`,
+      );
     } catch {
       setNotice("No pudimos actualizar todos los precios.");
+    }
+  }
+  async function addCategory(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const name = String(form.get("categoryName") || "").trim();
+    if (!name || categories.some((item) => norm(item) === norm(name))) {
+      setNotice("Esa categoría ya existe o no es válida.");
+      return;
+    }
+    try {
+      await saveStockCategory(uid, { id: crypto.randomUUID(), name });
+      setStockCategories((current) => [...current, name]);
+      setShowCategory(false);
+      setNotice("Categoría agregada correctamente.");
+    } catch {
+      setNotice("No pudimos guardar la categoría.");
     }
   }
   async function removeItem() {
@@ -2054,12 +2177,26 @@ function StockPanel({
                 <i>%</i>
               </span>
             </label>
+            <select
+              className="increase-scope"
+              value={increaseScope}
+              onChange={(event) =>
+                setIncreaseScope(event.target.value as "all" | "filtered")
+              }
+            >
+              <option value="all">Todos los productos</option>
+              <option value="filtered">
+                Solo los filtrados ({visible.length})
+              </option>
+            </select>
             <button
               className="outline-btn"
               disabled={!Number(percentage)}
               onClick={() => setConfirmIncrease(true)}
             >
-              Aplicar a todos
+              {increaseScope === "all"
+                ? "Aplicar a todos"
+                : "Aplicar al filtro"}
             </button>
           </div>
         </div>
@@ -2079,7 +2216,7 @@ function StockPanel({
               onChange={(e) => setCategory(e.target.value)}
             >
               <option value="">Todas</option>
-              {STOCK_CATEGORIES.map((item) => (
+              {categories.map((item) => (
                 <option key={item}>{item}</option>
               ))}
             </select>
@@ -2095,6 +2232,12 @@ function StockPanel({
             </select>
           </label>
         </div>
+        <button
+          className="add-category-btn"
+          onClick={() => setShowCategory(true)}
+        >
+          ＋ Agregar categoría
+        </button>
         <div className="stock-table-wrap">
           <table className="stock-table">
             <thead>
@@ -2133,7 +2276,7 @@ function StockPanel({
                           );
                         }}
                       >
-                        {STOCK_CATEGORIES.map((value) => (
+                        {categories.map((value) => (
                           <option key={value}>{value}</option>
                         ))}
                       </select>
@@ -2175,21 +2318,14 @@ function StockPanel({
                       </div>
                     </td>
                     <td>
-                      <input
-                        type="date"
+                      <DateField
                         value={item.expiration || ""}
-                        onChange={(e) => {
-                          const updated = {
-                            ...item,
-                            expiration: e.target.value || undefined,
-                          };
+                        onChange={(value) => {
                           changeLocal(item.id, {
-                            expiration: e.target.value || undefined,
+                            expiration: value || undefined,
                           });
-                          saveStockItem(uid, updated).catch(() =>
-                            setNotice("No pudimos actualizar el vencimiento."),
-                          );
                         }}
+                        onBlur={() => persist(item.id)}
                       />
                     </td>
                     <td>
@@ -2247,7 +2383,7 @@ function StockPanel({
               <label>
                 Categoría
                 <select name="category" required defaultValue="Medicamento">
-                  {STOCK_CATEGORIES.map((item) => (
+                  {categories.map((item) => (
                     <option key={item}>{item}</option>
                   ))}
                 </select>
@@ -2268,7 +2404,7 @@ function StockPanel({
               </label>
               <label>
                 Vencimiento (opcional)
-                <input name="expiration" type="date" />
+                <DateField name="expiration" />
               </label>
             </div>
             <footer>
@@ -2284,6 +2420,33 @@ function StockPanel({
           </form>
         </div>
       )}
+      {showCategory && (
+        <div className="modal-backdrop">
+          <form className="modal-card" onSubmit={addCategory}>
+            <div>
+              <h2>Nueva categoría</h2>
+              <button type="button" onClick={() => setShowCategory(false)}>
+                ×
+              </button>
+            </div>
+            <p>La categoría quedará disponible para todos tus productos.</p>
+            <label>
+              Nombre de la categoría
+              <input name="categoryName" required autoFocus />
+            </label>
+            <footer>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setShowCategory(false)}
+              >
+                Cancelar
+              </button>
+              <button className="primary">Guardar categoría</button>
+            </footer>
+          </form>
+        </div>
+      )}
       {confirmIncrease && (
         <div className="modal-backdrop">
           <section className="modal-card feedback-modal">
@@ -2292,10 +2455,17 @@ function StockPanel({
               <button onClick={() => setConfirmIncrease(false)}>×</button>
             </div>
             <span className="feedback-icon">%</span>
-            <h3>¿Aumentar todos los precios un {percentage}%?</h3>
+            <h3>
+              ¿Aumentar{" "}
+              {increaseScope === "all"
+                ? "todos los precios"
+                : "los precios filtrados"}{" "}
+              un {percentage}%?
+            </h3>
             <p>
-              Se actualizarán {items.length} productos. Luego podrás corregir
-              cualquier precio desde la tabla.
+              Se actualizarán{" "}
+              {increaseScope === "all" ? items.length : visible.length}{" "}
+              productos. Luego podrás corregir cualquier precio desde la tabla.
             </p>
             <footer>
               <button
@@ -2344,6 +2514,8 @@ function ModuleView({
   setPatients,
   stockItems,
   setStockItems,
+  stockCategories,
+  setStockCategories,
   uid,
 }: {
   view: Exclude<ViewKey, "sigatm">;
@@ -2353,11 +2525,21 @@ function ModuleView({
   setPatients: React.Dispatch<React.SetStateAction<Patient[]>>;
   stockItems: StockItem[];
   setStockItems: React.Dispatch<React.SetStateAction<StockItem[]>>;
+  stockCategories: string[];
+  setStockCategories: React.Dispatch<React.SetStateAction<string[]>>;
   uid: string;
 }) {
   if (view === "planes") return <SubscriptionPlans />;
   if (view === "stock")
-    return <StockPanel items={stockItems} setItems={setStockItems} uid={uid} />;
+    return (
+      <StockPanel
+        items={stockItems}
+        setItems={setStockItems}
+        stockCategories={stockCategories}
+        setStockCategories={setStockCategories}
+        uid={uid}
+      />
+    );
   if (view === "productores")
     return (
       <ProducersPanel
@@ -2819,7 +3001,7 @@ function PatientsPanel({
                 <span>{e.result}</span>
                 <small>
                   {e.nextDate
-                    ? `Próximo: ${e.nextDate.split("-").reverse().join("/")}`
+                    ? `Próximo: ${displayDate(e.nextDate)}`
                     : "Sin recordatorio"}
                 </small>
               </article>
@@ -2855,7 +3037,7 @@ function PatientsPanel({
               </label>
               <label>
                 Fecha de nacimiento
-                <input name="birth" type="date" />
+                <DateField name="birth" />
               </label>
               <label>
                 Propietario
@@ -2891,7 +3073,7 @@ function PatientsPanel({
             <div className="form-grid">
               <label>
                 Fecha
-                <input name="date" type="date" required />
+                <DateField name="date" required />
               </label>
               <label>
                 Tipo
@@ -2914,7 +3096,7 @@ function PatientsPanel({
               </label>
               <label>
                 Próximo recordatorio
-                <input name="nextDate" type="date" />
+                <DateField name="nextDate" />
               </label>
             </div>
             <footer>
@@ -2966,7 +3148,9 @@ function ClinicalAgenda({ patients }: { patients: Patient[] }) {
       p.events.filter((e) => e.nextDate).map((e) => ({ patient: p, event: e })),
     )
     .sort((a, b) =>
-      String(a.event.nextDate).localeCompare(String(b.event.nextDate)),
+      dateToIso(displayDate(String(a.event.nextDate))).localeCompare(
+        dateToIso(displayDate(String(b.event.nextDate))),
+      ),
     );
   return (
     <>
@@ -3005,7 +3189,7 @@ function ClinicalAgenda({ patients }: { patients: Patient[] }) {
         </div>
         {reminders.map((r, i) => (
           <article key={i}>
-            <time>{r.event.nextDate?.split("-").reverse().join("/")}</time>
+            <time>{displayDate(r.event.nextDate || "")}</time>
             <div>
               <b>{r.patient.name}</b>
               <span>
@@ -3255,7 +3439,8 @@ function ProducersPanel({
     e.preventDefault();
     if (!selected) return;
     const f = new FormData(e.currentTarget);
-    const iso = String(f.get("date"));
+    const dateValue = String(f.get("date"));
+    const iso = dateToIso(dateValue);
     const status =
       new Date(`${iso}T23:59:59`) >= new Date() ? "Pendiente" : "Realizado";
     const detail = String(f.get("detail"));
@@ -3263,7 +3448,7 @@ function ProducersPanel({
     const work: Work = {
       id: crypto.randomUUID(),
       establishmentId: activeEstablishment?.id,
-      date: iso.split("-").reverse().join("/"),
+      date: displayDate(dateValue),
       type: workType,
       detail: notes ? `${detail} · ${notes}` : detail,
       animals: `${String(f.get("animals") || 0)} animales`,
@@ -3570,7 +3755,7 @@ function ProducersPanel({
             <div className="form-grid">
               <label>
                 Fecha
-                <input name="date" type="date" required />
+                <DateField name="date" required />
               </label>
               <label>
                 Cantidad estimada
@@ -4567,7 +4752,7 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
       producer,
       work,
       establishment: workEstablishment(producer, work),
-      date: new Date(work.date.split("/").reverse().join("-") + "T12:00:00"),
+      date: new Date(dateToIso(displayDate(work.date)) + "T12:00:00"),
     })),
   );
   const now = new Date();
@@ -4579,12 +4764,11 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
     .filter((item) => item.date < now)
     .sort((a, b) => b.date.getTime() - a.date.getTime());
   const base = filter === "pendientes" ? pending : completed;
-  const visible = base.filter(({ producer, work, establishment, date }) => {
-    const iso = date.toISOString().slice(0, 10);
+  const visible = base.filter(({ producer, work, establishment }) => {
     const status = filter === "pendientes" ? "Pendiente" : "Realizado";
     const quantity = work.animals.replace(/\D/g, "");
     return (
-      (!columnFilters.date || iso === columnFilters.date) &&
+      (!columnFilters.date || displayDate(work.date) === columnFilters.date) &&
       (!columnFilters.producer || producer.name === columnFilters.producer) &&
       (!columnFilters.establishment ||
         establishment.name === columnFilters.establishment) &&
@@ -4657,10 +4841,9 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
         <div className="agenda-head filter-head">
           <label>
             <span>Fecha</span>
-            <input
-              type="date"
+            <DateField
               value={columnFilters.date}
-              onChange={(e) => setColumn("date", e.target.value)}
+              onChange={(value) => setColumn("date", value)}
             />
           </label>
           <label>
@@ -4787,8 +4970,8 @@ function validateRows(rows: AnimalRow[], species: string): ErrorMap {
     if (!findCode(CATEGORIES[species], r.category))
       errors[`${i}:category`] = "Categoría inválida";
     if (!findCode(AGES[species], r.age)) errors[`${i}:age`] = "Edad inválida";
-    if (r.vaccination && !/^\d{2}\/\d{2}\/\d{4}$/.test(r.vaccination))
-      errors[`${i}:vaccination`] = "Usar DD/MM/AAAA";
+    if (r.vaccination && !isValidDate(r.vaccination))
+      errors[`${i}:vaccination`] = "Ingresar una fecha válida: DD/MM/AAAA";
   });
   return errors;
 }

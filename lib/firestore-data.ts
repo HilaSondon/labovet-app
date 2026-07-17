@@ -71,6 +71,7 @@ export type StoredStockItem = {
   quantity: number;
   expiration?: string;
 };
+export type StoredStockCategory = { id: string; name: string };
 
 const userCollection = (uid: string, name: string) =>
   collection(db, "users", uid, name);
@@ -90,6 +91,7 @@ export async function loadVeterinaryData(uid: string) {
     patientSnap,
     eventSnap,
     stockSnap,
+    stockCategorySnap,
   ] = await Promise.all(
     [
       "producers",
@@ -98,6 +100,7 @@ export async function loadVeterinaryData(uid: string) {
       "patients",
       "patientEvents",
       "stockItems",
+      "stockCategories",
     ].map((name) => getDocs(userCollection(uid, name))),
   );
   const animalsByWork = new Map<string, StoredAnimal[]>();
@@ -182,7 +185,10 @@ export async function loadVeterinaryData(uid: string) {
   const stockItems = stockSnap.docs.map(
     (item) => ({ ...item.data(), id: item.id }) as StoredStockItem,
   );
-  return { producers, patients, stockItems };
+  const stockCategories = stockCategorySnap.docs.map(
+    (item) => ({ ...item.data(), id: item.id }) as StoredStockCategory,
+  );
+  return { producers, patients, stockItems, stockCategories };
 }
 
 export async function saveProducerData(uid: string, producer: StoredProducer) {
@@ -293,4 +299,14 @@ export async function saveStockItem(uid: string, item: StoredStockItem) {
 
 export async function deleteStockItem(uid: string, itemId: string) {
   await deleteDoc(doc(userCollection(uid, "stockItems"), itemId));
+}
+
+export async function saveStockCategory(
+  uid: string,
+  category: StoredStockCategory,
+) {
+  await setDoc(
+    doc(userCollection(uid, "stockCategories"), category.id),
+    category,
+  );
 }
