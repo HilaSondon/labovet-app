@@ -2568,12 +2568,6 @@ function StockPanel({
             </select>
           </label>
         </div>
-        <button
-          className="add-category-btn"
-          onClick={() => setShowCategory(true)}
-        >
-          ＋ Agregar categoría
-        </button>
         <div className="stock-table-wrap">
           <table className="stock-table">
             <thead>
@@ -2738,7 +2732,12 @@ function StockPanel({
             </label>
             <div className="form-grid">
               <label>
-                Categoría
+                <span className="field-label-actions">
+                  <span>Categoría</span>
+                  <button type="button" onClick={() => setShowCategory(true)}>
+                    ＋ Agregar
+                  </button>
+                </span>
                 <select name="category" required defaultValue="Medicamento">
                   {categories.map((item) => (
                     <option key={item}>{item}</option>
