@@ -220,6 +220,10 @@ function DateField({
     month: initial.length === 3 ? String(Number(initial[1])) : "",
     year: initial.length === 3 ? initial[2] : "",
   });
+  const [open, setOpen] = useState(false);
+  const [stage, setStage] = useState<"day" | "month" | "year">("day");
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const next = displayDate(value || "").split("/");
     setParts({
@@ -228,7 +232,6 @@ function DateField({
       year: next.length === 3 ? next[2] : "",
     });
   }, [value]);
-  const yearRef = useRef<HTMLSelectElement>(null);
   const months = [
     "Enero",
     "Febrero",
@@ -252,20 +255,36 @@ function DateField({
     ? `${parts.day.padStart(2, "0")}/${parts.month.padStart(2, "0")}/${parts.year}`
     : "";
   const invalid = complete && !isValidDate(current, !required);
-  useEffect(() => {
-    yearRef.current?.setCustomValidity(
-      invalid ? "Elegí una combinación de fecha válida" : "",
-    );
-  }, [invalid]);
-  function updatePart(key: keyof typeof parts, next: string) {
-    const updated = { ...parts, [key]: next };
+  function showPicker() {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) {
+      const below = rect.bottom + 386 <= window.innerHeight;
+      setPosition({
+        top: below ? rect.bottom + 6 : Math.max(12, rect.top - 386),
+        left: Math.max(12, Math.min(rect.left, window.innerWidth - 330)),
+      });
+    }
+    setStage("day");
+    setOpen(true);
+  }
+  function chooseDay(day: string) {
+    setParts((currentParts) => ({ ...currentParts, day }));
+    setStage("month");
+  }
+  function chooseMonth(month: string) {
+    setParts((currentParts) => ({ ...currentParts, month }));
+    setStage("year");
+  }
+  function chooseYear(year: string) {
+    const updated = { ...parts, year };
+    const next = `${updated.day.padStart(2, "0")}/${updated.month.padStart(2, "0")}/${year}`;
     setParts(updated);
-    if (updated.day && updated.month && updated.year) {
-      onChange?.(
-        `${updated.day.padStart(2, "0")}/${updated.month.padStart(2, "0")}/${updated.year}`,
-      );
-    } else if (!updated.day && !updated.month && !updated.year) {
-      onChange?.("");
+    onChange?.(next);
+    if (isValidDate(next, !required)) {
+      setOpen(false);
+      onBlur?.();
+    } else {
+      setStage("day");
     }
   }
   function clear() {
@@ -275,50 +294,17 @@ function DateField({
   }
   return (
     <span className={`date-field ${invalid ? "date-invalid" : ""}`}>
-      <span className="date-parts">
-        <select
-          aria-label="Día"
-          value={parts.day}
-          required={required}
-          onChange={(event) => updatePart("day", event.target.value)}
-          onBlur={() => complete && !invalid && onBlur?.()}
+      <span className="date-trigger-wrap">
+        <button
+          ref={triggerRef}
+          type="button"
+          className="date-trigger"
+          onClick={showPicker}
+          aria-expanded={open}
         >
-          <option value="">Día</option>
-          {Array.from({ length: 31 }, (_, index) => String(index + 1)).map(
-            (day) => (
-              <option key={day} value={day}>
-                {day}
-              </option>
-            ),
-          )}
-        </select>
-        <select
-          aria-label="Mes"
-          value={parts.month}
-          required={required}
-          onChange={(event) => updatePart("month", event.target.value)}
-          onBlur={() => complete && !invalid && onBlur?.()}
-        >
-          <option value="">Mes</option>
-          {months.map((month, index) => (
-            <option key={month} value={String(index + 1)}>
-              {month}
-            </option>
-          ))}
-        </select>
-        <select
-          ref={yearRef}
-          aria-label="Año"
-          value={parts.year}
-          required={required}
-          onChange={(event) => updatePart("year", event.target.value)}
-          onBlur={() => complete && !invalid && onBlur?.()}
-        >
-          <option value="">Año</option>
-          {years.map((year) => (
-            <option key={year}>{year}</option>
-          ))}
-        </select>
+          <span>{current || "Elegir fecha"}</span>
+          <i>⌄</i>
+        </button>
         {!required && complete && (
           <button
             type="button"
@@ -330,7 +316,117 @@ function DateField({
           </button>
         )}
       </span>
-      <input type="hidden" name={name} value={current} />
+      <input
+        className="date-value-proxy"
+        name={name}
+        value={current}
+        required={required}
+        readOnly
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+      {open && (
+        <>
+          <button
+            type="button"
+            className="date-picker-dismiss"
+            aria-label="Cerrar selector de fecha"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            className="date-picker-popover"
+            style={{ top: position.top, left: position.left }}
+          >
+            <div className="date-picker-head">
+              <div>
+                <small>
+                  PASO {stage === "day" ? "1" : stage === "month" ? "2" : "3"}{" "}
+                  DE 3
+                </small>
+                <b>
+                  {stage === "day"
+                    ? "Elegí el día"
+                    : stage === "month"
+                      ? "Elegí el mes"
+                      : "Elegí el año"}
+                </b>
+              </div>
+              {stage !== "day" && (
+                <button
+                  type="button"
+                  onClick={() => setStage(stage === "year" ? "month" : "day")}
+                >
+                  ← Volver
+                </button>
+              )}
+            </div>
+            <div className="date-selection-summary">
+              <span className={parts.day ? "chosen" : ""}>
+                {parts.day || "Día"}
+              </span>
+              <i>/</i>
+              <span className={parts.month ? "chosen" : ""}>
+                {parts.month ? months[Number(parts.month) - 1] : "Mes"}
+              </span>
+              <i>/</i>
+              <span className={parts.year ? "chosen" : ""}>
+                {parts.year || "Año"}
+              </span>
+            </div>
+            {stage === "day" && (
+              <div className="date-option-grid days">
+                {Array.from({ length: 31 }, (_, index) =>
+                  String(index + 1),
+                ).map((day) => (
+                  <button
+                    type="button"
+                    key={day}
+                    className={parts.day === day ? "selected" : ""}
+                    onClick={() => chooseDay(day)}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+            )}
+            {stage === "month" && (
+              <div className="date-option-grid months">
+                {months.map((month, index) => (
+                  <button
+                    type="button"
+                    key={month}
+                    className={
+                      parts.month === String(index + 1) ? "selected" : ""
+                    }
+                    onClick={() => chooseMonth(String(index + 1))}
+                  >
+                    {month}
+                  </button>
+                ))}
+              </div>
+            )}
+            {stage === "year" && (
+              <div className="date-option-grid years">
+                {years.map((year) => (
+                  <button
+                    type="button"
+                    key={year}
+                    className={parts.year === year ? "selected" : ""}
+                    onClick={() => chooseYear(year)}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            )}
+            {invalid && (
+              <p className="date-picker-error">
+                Esa fecha no existe. Elegí otra combinación.
+              </p>
+            )}
+          </div>
+        </>
+      )}
       {invalid && <small>Esa fecha no existe. Revisá día, mes y año.</small>}
     </span>
   );
