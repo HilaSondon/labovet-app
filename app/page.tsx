@@ -1295,7 +1295,7 @@ export default function Home() {
                       <article key={`${producer.id}-${index}`}>
                         <div>
                           <b>
-                            {work.type} · {producer.name}
+                            {work.type} · {work.detail.split("·")[0].trim()} · {producer.name}
                           </b>
                           <span>
                             {establishment.name} · {work.date} · {work.animals}{" "}
@@ -5386,7 +5386,10 @@ function ProducerDetail({
     suspicious: events.filter((event) => norm(event.result) === "SOSPECHOSO").length,
     positive: events.filter((event) => norm(event.result) === "POSITIVO").length,
   };
-  const pendingResults = events.filter((event) => norm(event.result) === "SIN RESULTADO").length;
+  const pendingResults = events.filter(
+    (event) =>
+      event.work === "Sangrado" && norm(event.result) === "SIN RESULTADO",
+  ).length;
   const groupedAnimals = Object.values(
     filtered.reduce<Record<string, { animal: string; category: string; events: HealthEvent[] }>>(
       (groups, event) => {
