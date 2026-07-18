@@ -228,13 +228,14 @@ export async function saveProducerData(uid: string, producer: StoredProducer) {
 }
 
 async function runBatches(
-  items:
-    | { kind: "delete"; ref: ReturnType<typeof doc> }[]
+  items: Array<
+    | { kind: "delete"; ref: ReturnType<typeof doc> }
     | {
         kind: "set";
         ref: ReturnType<typeof doc>;
         data: Record<string, unknown>;
-      }[],
+      }
+  >,
 ) {
   for (let start = 0; start < items.length; start += 400) {
     const batch = writeBatch(db);
@@ -247,6 +248,82 @@ async function runBatches(
       );
     await batch.commit();
   }
+}
+
+export async function deleteProducerData(uid: string, producerId: number) {
+  const [works, animals] = await Promise.all([
+    getDocs(
+      query(
+        userCollection(uid, "works"),
+        where("producerId", "==", producerId),
+      ),
+    ),
+    getDocs(
+      query(
+        userCollection(uid, "animals"),
+        where("producerId", "==", producerId),
+      ),
+    ),
+  ]);
+  await runBatches([
+    ...animals.docs.map((item) => ({ kind: "delete" as const, ref: item.ref })),
+    ...works.docs.map((item) => ({ kind: "delete" as const, ref: item.ref })),
+    {
+      kind: "delete" as const,
+      ref: doc(userCollection(uid, "producers"), String(producerId)),
+    },
+  ]);
+}
+
+export async function deleteEstablishmentData(
+  uid: string,
+  producer: StoredProducer,
+  establishmentId: string,
+) {
+  const establishments = (producer.establishments || []).filter(
+    (item) => item.id !== establishmentId,
+  );
+  if (!establishments.length) {
+    throw new Error("A producer must keep at least one establishment");
+  }
+  const [works, animals] = await Promise.all([
+    getDocs(
+      query(
+        userCollection(uid, "works"),
+        where("producerId", "==", producer.id),
+      ),
+    ),
+    getDocs(
+      query(
+        userCollection(uid, "animals"),
+        where("producerId", "==", producer.id),
+      ),
+    ),
+  ]);
+  const removedWorks = works.docs.filter(
+    (item) => item.data().establishmentId === establishmentId,
+  );
+  const removedWorkIds = new Set(removedWorks.map((item) => item.id));
+  const primary = establishments[0];
+  const { works: _, ...producerData } = producer;
+  const updatedProducer = clean({
+    ...producerData,
+    establishment: primary.name,
+    renspa: primary.renspa,
+    address: primary.address,
+    establishments,
+  });
+  await runBatches([
+    {
+      kind: "set" as const,
+      ref: doc(userCollection(uid, "producers"), String(producer.id)),
+      data: updatedProducer,
+    },
+    ...animals.docs
+      .filter((item) => removedWorkIds.has(String(item.data().workId)))
+      .map((item) => ({ kind: "delete" as const, ref: item.ref })),
+    ...removedWorks.map((item) => ({ kind: "delete" as const, ref: item.ref })),
+  ]);
 }
 
 export async function saveWorkMetadata(

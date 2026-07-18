@@ -20,6 +20,8 @@ import {
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import {
+  deleteEstablishmentData,
+  deleteProducerData,
   deleteStockItem,
   deletePatientData,
   loadVeterinaryData,
@@ -4422,6 +4424,8 @@ function ProducersPanel({
   const [showProducer, setShowProducer] = useState(false);
   const [showEstablishment, setShowEstablishment] = useState(false);
   const [showWork, setShowWork] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [workType, setWorkType] = useState("Sangrado");
   const activeEstablishment = selected
     ? producerEstablishments(selected).find(
@@ -4524,6 +4528,53 @@ function ProducersPanel({
       setShowWork(false);
     } catch {
       window.alert("No pudimos guardar el trabajo en Firebase.");
+    }
+  }
+  async function removeProducer() {
+    if (!selected || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteProducerData(uid, selected.id);
+      setProducers((items) => items.filter((item) => item.id !== selected.id));
+      setShowDelete(false);
+      setSelected(null);
+      setSelectedEstablishmentId("");
+    } catch {
+      window.alert("No pudimos eliminar el productor de Firebase.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+  async function removeEstablishment() {
+    if (!selected || !activeEstablishment || deleting) return;
+    const establishments = producerEstablishments(selected);
+    if (establishments.length <= 1) return;
+    setDeleting(true);
+    try {
+      await deleteEstablishmentData(uid, selected, activeEstablishment.id);
+      const remaining = establishments.filter(
+        (item) => item.id !== activeEstablishment.id,
+      );
+      const updated = {
+        ...selected,
+        establishment: remaining[0].name,
+        renspa: remaining[0].renspa,
+        address: remaining[0].address,
+        establishments: remaining,
+        works: selected.works.filter(
+          (work) => workEstablishment(selected, work).id !== activeEstablishment.id,
+        ),
+      };
+      setProducers((items) =>
+        items.map((item) => item.id === updated.id ? updated : item),
+      );
+      setSelected(updated);
+      setSelectedEstablishmentId(remaining[0].id);
+      setShowDelete(false);
+    } catch {
+      window.alert("No pudimos eliminar el establecimiento de Firebase.");
+    } finally {
+      setDeleting(false);
     }
   }
   async function exportProducerPdf() {
@@ -4651,6 +4702,12 @@ function ProducersPanel({
             </button>
             <button className="clinical-action" onClick={exportProducerPdf}>
               Exportar PDF
+            </button>
+            <button
+              className="clinical-action danger"
+              onClick={() => setShowDelete(true)}
+            >
+              Eliminar
             </button>
             <button className="primary" onClick={() => setShowWork(true)}>
               ＋ Nuevo trabajo
@@ -4795,6 +4852,61 @@ function ProducersPanel({
                 </button>
               ))}
             </div>
+          </section>
+        </div>
+      )}
+      {showDelete && selected && activeEstablishment && (
+        <div className="modal-backdrop">
+          <section className="modal-card delete-producer-modal">
+            <div>
+              <h2>Eliminar datos</h2>
+              <button type="button" onClick={() => setShowDelete(false)}>×</button>
+            </div>
+            <p>Elegí con cuidado qué información querés eliminar.</p>
+            <div className="delete-scope-options">
+              <article>
+                <div>
+                  <b>Establecimiento: {activeEstablishment.name}</b>
+                  <small>
+                    Elimina este establecimiento y todos sus trabajos, animales y resultados asociados.
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  className="danger-button"
+                  disabled={deleting || producerEstablishments(selected).length <= 1}
+                  onClick={removeEstablishment}
+                >
+                  {deleting ? "Eliminando…" : "Eliminar establecimiento"}
+                </button>
+                {producerEstablishments(selected).length <= 1 && (
+                  <small className="delete-help">
+                    Es el único establecimiento. Para eliminarlo debés eliminar el productor completo.
+                  </small>
+                )}
+              </article>
+              <article className="delete-producer-option">
+                <div>
+                  <b>Productor completo: {selected.name}</b>
+                  <small>
+                    Elimina todos sus establecimientos, trabajos, animales e historial sanitario.
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  className="danger-button"
+                  disabled={deleting}
+                  onClick={removeProducer}
+                >
+                  {deleting ? "Eliminando…" : "Eliminar productor"}
+                </button>
+              </article>
+            </div>
+            <footer>
+              <button className="ghost" type="button" onClick={() => setShowDelete(false)}>
+                Cancelar
+              </button>
+            </footer>
           </section>
         </div>
       )}
