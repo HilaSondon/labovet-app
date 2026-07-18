@@ -651,6 +651,9 @@ export default function Home() {
   const [defaultId, setDefaultId] = useState("Caravana");
   const [defaultAge, setDefaultAge] = useState("ADULTO");
   const [rows, setRows] = useState<AnimalRow[]>([]);
+  const [previewFilter, setPreviewFilter] = useState<
+    "Todos" | "Correctos" | "Errores"
+  >("Todos");
   const [activeSigatmJob, setActiveSigatmJob] = useState<{
     producerId: number;
     workIndex: number;
@@ -706,8 +709,24 @@ export default function Home() {
   }, [authUser, dataReload]);
 
   const errors = useMemo(() => validateRows(rows, species), [rows, species]);
-  const errorRows = new Set(Object.keys(errors).map((key) => key.split(":")[0]))
-    .size;
+  const errorRowIndexes = new Set(
+    Object.keys(errors).map((key) => Number(key.split(":")[0])),
+  );
+  const errorRows = errorRowIndexes.size;
+  const visiblePreviewRows = rows
+    .map((row, index) => ({ row, index }))
+    .filter(({ index }) =>
+      previewFilter === "Errores"
+        ? errorRowIndexes.has(index)
+        : previewFilter === "Correctos"
+          ? !errorRowIndexes.has(index)
+          : true,
+    );
+  useEffect(() => {
+    if (previewFilter === "Errores" && errorRows === 0) {
+      setPreviewFilter("Todos");
+    }
+  }, [errorRows, previewFilter]);
   const ready = rows.length > 0 && Object.keys(errors).length === 0;
   if (authLoading)
     return (
@@ -768,6 +787,7 @@ export default function Home() {
           "No pude encontrar datos. Necesito columnas TUBO, IDENTIFICACION y CATEGORIA.",
         );
       setRows(parsed);
+      setPreviewFilter("Todos");
       setFilename(file.name);
       setMessage(`${parsed.length} animales detectados en ${file.name}`);
     } catch (error) {
@@ -839,6 +859,7 @@ export default function Home() {
       }
     }
     setRows([]);
+    setPreviewFilter("Todos");
     setFilename("");
     setMessage("Elegí una planilla para comenzar");
     if (activeSigatmJob) setSigatmFilter("Finalizado");
@@ -847,6 +868,7 @@ export default function Home() {
 
   function reset() {
     setRows([]);
+    setPreviewFilter("Todos");
     setFilename("");
     setMessage("Elegí una planilla para comenzar");
     setActiveSigatmJob(null);
@@ -904,6 +926,7 @@ export default function Home() {
         notes: `${producer.name} · ${work.detail}`,
       })),
     );
+    setPreviewFilter("Todos");
     setFilename(`${producer.name} · ${work.type}`);
     setMessage(
       `${work.records?.length || 0} animales cargados desde el trabajo`,
@@ -1341,11 +1364,29 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="summary">
-                    <span className="ok">
+                    <button
+                      type="button"
+                      className={`ok ${previewFilter === "Correctos" ? "selected" : ""}`}
+                      onClick={() =>
+                        setPreviewFilter((current) =>
+                          current === "Correctos" ? "Todos" : "Correctos",
+                        )
+                      }
+                    >
                       {rows.length - errorRows} correctos
-                    </span>
+                    </button>
                     {errorRows > 0 && (
-                      <span className="bad">{errorRows} con error</span>
+                      <button
+                        type="button"
+                        className={`bad ${previewFilter === "Errores" ? "selected" : ""}`}
+                        onClick={() =>
+                          setPreviewFilter((current) =>
+                            current === "Errores" ? "Todos" : "Errores",
+                          )
+                        }
+                      >
+                        {errorRows} con error
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1365,7 +1406,7 @@ export default function Home() {
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map((r, i) => (
+                      {visiblePreviewRows.map(({ row: r, index: i }) => (
                         <tr
                           key={i}
                           className={
@@ -5846,6 +5887,7 @@ function ManualAnimalEntry({
   const [resultFilter, setResultFilter] = useState<
     "" | "Positivo" | "Sospechoso"
   >("");
+  const [quantityConfirmation, setQuantityConfirmation] = useState(false);
   const [resultsEnabled, setResultsEnabled] = useState(() =>
     existing.some((record) => Boolean(record.result)),
   );
@@ -5979,25 +6021,7 @@ function ManualAnimalEntry({
     );
     focus(start, "identifier");
   };
-  const save = () => {
-    if (!valid.length) return;
-    const keys = valid.map((r) => `${norm(r.cuig)}-${norm(r.identifier)}`);
-    const duplicates = new Set(keys.filter((v, i) => keys.indexOf(v) !== i));
-    if (
-      duplicates.size &&
-      !window.confirm(
-        `Hay ${duplicates.size} identificaciones repetidas. ¿Querés guardarlas igualmente?`,
-      )
-    )
-      return;
-    if (
-      expected &&
-      valid.length !== expected &&
-      !window.confirm(
-        `El trabajo indica ${expected} animales, pero cargaste ${valid.length}. ¿Querés guardar y cambiar la cantidad del trabajo a ${valid.length}?`,
-      )
-    )
-      return;
+  const commitSave = () => {
     const sigatmWork =
       work.type === "Sangrado" || work.type === "Muestreo equino";
     const works = producer.works.map((w, i) =>
@@ -6014,7 +6038,25 @@ function ManualAnimalEntry({
     );
     onSave({ ...producer, works });
   };
+  const save = () => {
+    if (!valid.length) return;
+    const keys = valid.map((r) => `${norm(r.cuig)}-${norm(r.identifier)}`);
+    const duplicates = new Set(keys.filter((v, i) => keys.indexOf(v) !== i));
+    if (
+      duplicates.size &&
+      !window.confirm(
+        `Hay ${duplicates.size} identificaciones repetidas. ¿Querés guardarlas igualmente?`,
+      )
+    )
+      return;
+    if (expected && valid.length !== expected) {
+      setQuantityConfirmation(true);
+      return;
+    }
+    commitSave();
+  };
   return (
+    <>
     <div className="modal-backdrop">
       <div className="modal-card manual-entry-modal">
         <div>
@@ -6073,6 +6115,7 @@ function ManualAnimalEntry({
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar por identificación..."
+              autoFocus
             />
           </label>
           <button
@@ -6146,7 +6189,6 @@ function ManualAnimalEntry({
                 onKeyDown={(e) => next(e, i, "cuig")}
               />
               <input
-                autoFocus={i === 0}
                 data-manual={`${i}-identifier`}
                 value={row.identifier}
                 placeholder="Ej. A236"
@@ -6236,6 +6278,39 @@ function ManualAnimalEntry({
         </footer>
       </div>
     </div>
+    {quantityConfirmation && (
+      <div className="modal-backdrop quantity-confirmation-backdrop">
+        <section className="modal-card feedback-modal quantity-confirmation-modal">
+          <div>
+            <h2>Actualizar cantidad de animales</h2>
+            <button type="button" onClick={() => setQuantityConfirmation(false)}>×</button>
+          </div>
+          <span className="feedback-icon warning">!</span>
+          <h3>La cantidad cargada es diferente</h3>
+          <p>
+            El trabajo indica <b>{expected} animales</b>, pero la carga contiene{" "}
+            <b>{valid.length} animales</b>.
+          </p>
+          <p>Si continuás, LabOVet actualizará automáticamente la cantidad del trabajo.</p>
+          <footer>
+            <button type="button" className="ghost" onClick={() => setQuantityConfirmation(false)}>
+              Volver a revisar
+            </button>
+            <button
+              type="button"
+              className="primary"
+              onClick={() => {
+                setQuantityConfirmation(false);
+                commitSave();
+              }}
+            >
+              Guardar y actualizar a {valid.length}
+            </button>
+          </footer>
+        </section>
+      </div>
+    )}
+    </>
   );
 }
 
