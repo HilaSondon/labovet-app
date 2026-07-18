@@ -4380,6 +4380,10 @@ const workEstablishment = (producer: Producer, work: Work) => {
 };
 const sampledAnimalsInWork = (work: Work) =>
   work.records?.length || Number.parseInt(work.animals, 10) || 0;
+const workDisplayStatus = (work: Work) => {
+  if (dateToIso(displayDate(work.date)) > localIsoDate()) return "Pendiente";
+  return "Realizado";
+};
 const sampledAnimalsForProducer = (producer: Producer) =>
   producer.works.reduce(
     (total, work) =>
@@ -4709,7 +4713,7 @@ function ProducersPanel({
         line("Establecimiento", `${establishment.name} - RENSPA ${establishment.renspa || "No informado"}`);
         line("Práctica", work.detail);
         line("Cantidad", work.animals);
-        line("Estado", work.status);
+        line("Estado", workDisplayStatus(work));
         if (work.type === "Sangrado" || work.type === "Muestreo equino") {
           line("SIGATM", work.sigatmStatus || "Pendiente");
           const positives = (work.records || []).filter((record) => record.result === "Positivo");
@@ -4798,6 +4802,17 @@ function ProducersPanel({
               <small>cartera actual</small>
             </article>
             <article className="panel stat-card">
+              <span>Establecimientos</span>
+              <strong>
+                {producers.reduce(
+                  (total, producer) =>
+                    total + producerEstablishments(producer).length,
+                  0,
+                )}
+              </strong>
+              <small>establecimientos activos</small>
+            </article>
+            <article className="panel stat-card">
               <span>Animales muestreados</span>
               <strong>
                 {producers.reduce(
@@ -4809,23 +4824,15 @@ function ProducersPanel({
               <small>incluidos en trabajos registrados</small>
             </article>
             <article className="panel stat-card">
-              <span>Trabajos pendientes</span>
+              <span>Archivos SIGATM</span>
               <strong>
                 {
                   producers
                     .flatMap((p) => p.works)
-                    .filter(
-                      (w) =>
-                        dateToIso(displayDate(w.date)) > localIsoDate(),
-                    ).length
+                    .filter((work) => work.sigatmStatus === "Finalizado").length
                 }
               </strong>
-              <small>próximas actividades</small>
-            </article>
-            <article className="panel stat-card">
-              <span>Archivos SIGATM</span>
-              <strong>1</strong>
-              <small>listo para generar</small>
+              <small>archivos generados</small>
             </article>
           </div>
           <section className="panel producer-list">
@@ -5702,13 +5709,9 @@ function ProducerDetail({
                     <b>{w.animals}</b>
                   </div>
                   <span
-                    className={
-                      w.status.includes("SIGATM")
-                        ? "sigatm-badge"
-                        : "table-status"
-                    }
+                    className="table-status"
                   >
-                    {w.status}
+                    {workDisplayStatus(w)}
                   </span>
                   <div className="excel-actions">
                     <a
