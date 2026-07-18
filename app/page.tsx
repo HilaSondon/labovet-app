@@ -4183,12 +4183,12 @@ function ClinicalPatientsPanel({
         <>
           <header className="topbar module-topbar clinical-header patient-selected-header">
             <div>
-              <button className="back-link" onClick={() => setSelected(null)}>← Pacientes</button>
               <span className="eyebrow">{selected.species}</span>
-              <span className="editable-patient-name"><h1>{selected.name}</h1><button type="button" onClick={() => setEditPatient(true)} title="Editar datos del paciente y propietario" aria-label="Editar datos del paciente y propietario">✎</button></span>
+              <h1>{selected.name}</h1>
               <p>{selected.breed || "Sin raza"} · {selected.sex || "Sexo sin informar"} · {selected.approximateAge || "Edad sin informar"}</p>
             </div>
             <div className="header-actions clinical-actions">
+              <button className="clinical-action" onClick={() => setSelected(null)}>← Volver</button>
               <button className="clinical-action danger" onClick={() => setDeleteConfirm(true)}>Eliminar</button>
               <button className="clinical-action" onClick={exportClinicalPdf}>Exportar PDF</button>
               <button className="clinical-action whatsapp" onClick={shareClinicalHistory}>Enviar WhatsApp</button>
@@ -4202,7 +4202,10 @@ function ClinicalPatientsPanel({
           {feedback && <div className="stock-notice"><span>{feedback}</span><button onClick={() => setFeedback("")}>×</button></div>}
           <div className="clinical-summary">
             <section className="panel patient-identity">
-              <div><span className="patient-avatar large">{selected.name.slice(0, 2).toUpperCase()}</span><span><b>{selected.name}</b><small>{selected.species} · {selected.breed}</small></span></div>
+              <div className="patient-identity-head">
+                <div className="patient-identity-person"><span className="patient-avatar large">{selected.name.slice(0, 2).toUpperCase()}</span><span><b>{selected.name}</b><small>{selected.species} · {selected.breed}</small></span></div>
+                <button className="edit-patient-data" type="button" onClick={() => setEditPatient(true)} title="Editar datos del paciente y propietario">✎ Editar datos</button>
+              </div>
               <dl>
                 <div><dt>Sexo</dt><dd>{selected.sex || "—"}</dd></div>
                 <div><dt>Castrado</dt><dd>{selected.neutered || "—"}</dd></div>

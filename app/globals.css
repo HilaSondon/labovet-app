@@ -753,11 +753,32 @@
 .clinical-summary > section {
   padding: 18px;
 }
-.patient-identity > div:first-child {
+.patient-identity-head,
+.patient-identity-person {
   display: flex;
   align-items: center;
-  gap: 12px;
+}
+.patient-identity-head {
+  justify-content: space-between;
+  gap: 18px;
   margin-bottom: 16px;
+}
+.patient-identity-person {
+  gap: 12px;
+}
+.edit-patient-data {
+  border: 1px solid #9abde4;
+  border-radius: 7px;
+  background: #edf5ff;
+  padding: 8px 11px;
+  color: #2366a6;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.edit-patient-data:hover {
+  border-color: #4b86c2;
+  background: #dfeeff;
 }
 .patient-identity b,
 .patient-identity small {
