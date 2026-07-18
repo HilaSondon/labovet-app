@@ -17,7 +17,7 @@ import {
   updateProfile,
   User,
 } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore/lite";
 import { auth, db } from "../lib/firebase";
 import {
   resolveUserAccess,

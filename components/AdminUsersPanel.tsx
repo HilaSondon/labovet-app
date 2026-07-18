@@ -7,7 +7,7 @@ import {
   getDocs,
   serverTimestamp,
   updateDoc,
-} from "firebase/firestore";
+} from "firebase/firestore/lite";
 import { db } from "../lib/firebase";
 import {
   PLAN_DEFINITIONS,
