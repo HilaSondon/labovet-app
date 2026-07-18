@@ -23,6 +23,7 @@ import {
   resolveUserAccess,
   UserAccess,
 } from "../lib/access-control";
+import AdminUsersPanel from "../components/AdminUsersPanel";
 import {
   deleteEstablishmentData,
   deleteProducerData,
@@ -505,7 +506,8 @@ type ViewKey =
   | "turnos"
   | "sigatm"
   | "stock"
-  | "planes";
+  | "planes"
+  | "admin";
 const LARGE_MENU: [ViewKey, string][] = [
   ["productores", "Productores"],
   ["agenda-rural", "Agenda rural"],
@@ -718,6 +720,7 @@ export default function Home() {
   const canAccessView = (view: ViewKey) => {
     if (!userAccess) return false;
     if (view === "planes" || view === "estadisticas") return true;
+    if (view === "admin") return userAccess.role === "admin";
     if (view === "stock") return userAccess.permissions.stock;
     if (view === "sigatm") return userAccess.permissions.sigatm;
     if (LARGE_MENU.some(([key]) => key === view))
@@ -1044,6 +1047,15 @@ export default function Home() {
           >
             <span>◇</span> Elegir plan
           </button>
+          {userAccess.role === "admin" && <>
+            <p>ADMINISTRACIÓN</p>
+            <button
+              className={activeView === "admin" ? "active" : ""}
+              onClick={() => navigateTo("admin")}
+            >
+              <span>⚙</span> Usuarios y accesos
+            </button>
+          </>}
         </nav>
         <div className="sidebar-bottom">
           <div className="mini-avatar">
@@ -1668,7 +1680,7 @@ function AuthScreen() {
 }
 
 const VIEW_CONTENT: Record<
-  Exclude<ViewKey, "sigatm" | "planes" | "stock">,
+  Exclude<ViewKey, "sigatm" | "planes" | "stock" | "admin">,
   {
     eyebrow: string;
     title: string;
@@ -3102,6 +3114,7 @@ function ModuleView({
       />
     );
   if (view === "planes") return <SubscriptionPlans access={access} />;
+  if (view === "admin") return <AdminUsersPanel currentUid={uid} />;
   if (view === "stock")
     return (
       <StockPanel
