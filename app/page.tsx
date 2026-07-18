@@ -3285,6 +3285,16 @@ type PatientEvent = {
   dose?: string;
   studyType?: string;
   fileName?: string;
+  procedureType?: string;
+  procedure?: string;
+  anesthesia?: string;
+  hospitalizationReason?: string;
+  dischargeDate?: string;
+  dailyEvolution?: string;
+  hospitalTreatments?: string;
+  necropsyReason?: string;
+  necropsyFindings?: string;
+  causeOfDeath?: string;
 };
 type Patient = {
   id: number;
@@ -3717,6 +3727,27 @@ const CONSULTATION_MOTIVES = [
   "Seguimiento de tratamiento",
   "Otro",
 ];
+const CLINICAL_RECORD_TYPES = [
+  "Consulta",
+  "Vacunación",
+  "Desparasitación",
+  "Estudio",
+  "Cirugía",
+  "Internación",
+  "Autopsia / necropsia",
+];
+const CLINICAL_EVENT_MARKS: Record<string, string> = {
+  Consulta: "+",
+  Vacunación: "V",
+  Desparasitación: "D",
+  Estudio: "E",
+  Cirugía: "C",
+  Internación: "I",
+  "Autopsia / necropsia": "N",
+};
+const clinicalEventMark = (type: string) => CLINICAL_EVENT_MARKS[type] || "+";
+const clinicalEventClass = (type: string) =>
+  norm(type).toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
 function ClinicalPatientsPanel({
   patients,
@@ -3736,6 +3767,7 @@ function ClinicalPatientsPanel({
   const today = displayDate(localIsoDate());
   const [recordDate, setRecordDate] = useState(today);
   const [reminderDate, setReminderDate] = useState("");
+  const [dischargeDate, setDischargeDate] = useState("");
   const [eventFilter, setEventFilter] = useState("");
   const [expanded, setExpanded] = useState<Set<string | number>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -3772,6 +3804,7 @@ function ClinicalPatientsPanel({
       setNewPatient(false);
       setRecordDate(today);
       setReminderDate("");
+      setDischargeDate("");
       setRecordType("Consulta");
       setNewRecord(true);
       setFeedback("Paciente creado. Completá ahora su primera consulta.");
@@ -3787,12 +3820,35 @@ function ClinicalPatientsPanel({
     const motive = String(form.get("motive") || "");
     const product = String(form.get("product") || "");
     const studyType = String(form.get("studyType") || "");
+    const procedureType = String(form.get("procedureType") || "");
+    const hospitalizationReason = String(
+      form.get("hospitalizationReason") || "",
+    );
+    const necropsyReason = String(form.get("necropsyReason") || "");
     const detail =
       recordType === "Consulta"
         ? motive
         : recordType === "Estudio"
           ? studyType
-          : product;
+          : recordType === "Cirugía"
+            ? procedureType
+            : recordType === "Internación"
+              ? hospitalizationReason
+              : recordType === "Autopsia / necropsia"
+                ? necropsyReason
+                : product;
+    const defaultResult =
+      recordType === "Consulta"
+        ? "En seguimiento"
+        : recordType === "Internación"
+          ? dischargeDate
+            ? "Alta registrada"
+            : "En internación"
+          : recordType === "Cirugía"
+            ? "Procedimiento realizado"
+            : recordType === "Autopsia / necropsia"
+              ? "Informe registrado"
+              : "Registrado";
     const event: PatientEvent = {
       id: editingEvent?.id,
       date: displayDate(String(form.get("date"))),
@@ -3801,7 +3857,7 @@ function ClinicalPatientsPanel({
       result:
         String(form.get("result") || "") ||
         editingEvent?.result ||
-        (recordType === "Consulta" ? "En seguimiento" : "Registrado"),
+        defaultResult,
       nextDate: String(form.get("nextDate") || "") || undefined,
       motive: motive || undefined,
       anamnesis: String(form.get("anamnesis") || "") || undefined,
@@ -3822,6 +3878,18 @@ function ClinicalPatientsPanel({
       product: product || undefined,
       dose: String(form.get("dose") || "") || undefined,
       studyType: studyType || undefined,
+      procedureType: procedureType || undefined,
+      procedure: String(form.get("procedure") || "") || undefined,
+      anesthesia: String(form.get("anesthesia") || "") || undefined,
+      hospitalizationReason: hospitalizationReason || undefined,
+      dischargeDate: dischargeDate || undefined,
+      dailyEvolution: String(form.get("dailyEvolution") || "") || undefined,
+      hospitalTreatments:
+        String(form.get("hospitalTreatments") || "") || undefined,
+      necropsyReason: necropsyReason || undefined,
+      necropsyFindings:
+        String(form.get("necropsyFindings") || "") || undefined,
+      causeOfDeath: String(form.get("causeOfDeath") || "") || undefined,
     };
     try {
       await savePatientEvent(uid, selected.id, event);
@@ -3849,6 +3917,7 @@ function ClinicalPatientsPanel({
       setRecordType("Consulta");
       setRecordDate(today);
       setReminderDate("");
+      setDischargeDate("");
       setFeedback(editingEvent ? `${recordType} actualizada correctamente.` : `${recordType} registrada correctamente.`);
     } catch {
       setFeedback("No pudimos guardar el registro clínico.");
@@ -3859,6 +3928,7 @@ function ClinicalPatientsPanel({
     setEditingEvent(null);
     setRecordDate(today);
     setReminderDate("");
+    setDischargeDate("");
     setRecordType("Consulta");
     setNewRecord(true);
   }
@@ -3868,6 +3938,9 @@ function ClinicalPatientsPanel({
     setRecordType(event.type);
     setRecordDate(displayDate(event.date));
     setReminderDate(event.nextDate ? displayDate(event.nextDate) : "");
+    setDischargeDate(
+      event.dischargeDate ? displayDate(event.dischargeDate) : "",
+    );
     setNewRecord(true);
   }
 
@@ -4050,6 +4123,19 @@ function ClinicalPatientsPanel({
       ["Tratamiento", event.treatment],
       ["Producto", event.product],
       ["Dosis", event.dose],
+      ["Tipo de procedimiento", event.procedureType],
+      ["Detalle quirúrgico", event.procedure],
+      ["Anestesia", event.anesthesia],
+      ["Motivo de internación", event.hospitalizationReason],
+      [
+        "Fecha de alta",
+        event.dischargeDate ? displayDate(event.dischargeDate) : "",
+      ],
+      ["Evolución durante la internación", event.dailyEvolution],
+      ["Tratamientos realizados", event.hospitalTreatments],
+      ["Motivo de la necropsia", event.necropsyReason],
+      ["Hallazgos", event.necropsyFindings],
+      ["Causa de muerte / conclusión", event.causeOfDeath],
       ["Peso", event.weight ? `${event.weight} kg` : ""],
       ["Temperatura", event.temperature ? `${event.temperature} °C` : ""],
       ["Frecuencia cardíaca", event.heartRate],
@@ -4145,7 +4231,7 @@ function ClinicalPatientsPanel({
             <div className="timeline-toolbar">
               <div><h2>Línea de tiempo clínica</h2><p>Cada atención, tratamiento y control en orden cronológico.</p></div>
               <div className="timeline-filters">
-                {["", "Consulta", "Vacunación", "Desparasitación", "Estudio"].map((type) => (
+                {["", ...CLINICAL_RECORD_TYPES].map((type) => (
                   <button key={type || "Todos"} className={eventFilter === type ? "selected" : ""} onClick={() => setEventFilter(type)}>{type || "Todos"}</button>
                 ))}
               </div>
@@ -4157,7 +4243,7 @@ function ClinicalPatientsPanel({
                 return (
                   <article className={`timeline-event ${isOpen ? "open" : ""}`} key={key}>
                     <button onClick={() => toggleEvent(key)}>
-                      <span className={`timeline-dot ${event.type.toLowerCase()}`}>{event.type === "Consulta" ? "＋" : event.type === "Vacunación" ? "V" : event.type === "Desparasitación" ? "D" : "E"}</span>
+                      <span className={`timeline-dot ${clinicalEventClass(event.type)}`}>{clinicalEventMark(event.type)}</span>
                       <time>{displayDate(event.date)}</time>
                       <span><b>{event.type}</b><small>{event.detail}</small></span>
                       <span className="timeline-result">{event.result}</span><i>{isOpen ? "⌃" : "⌄"}</i>
@@ -4202,7 +4288,7 @@ function ClinicalPatientsPanel({
       {newRecord && selected && (
         <div className="modal-backdrop"><form key={editingEvent?.id || `new-${recordType}`} className="modal-card clinical-modal record-modal" onSubmit={addClinicalRecord}>
           <div><h2>{editingEvent ? "Editar registro" : "Nueva atención"} · {selected.name}</h2><button type="button" onClick={() => { setNewRecord(false); setEditingEvent(null); }}>×</button></div>
-          <div className="record-type-tabs">{["Consulta", "Vacunación", "Desparasitación", "Estudio"].map((type) => <button type="button" key={type} className={recordType === type ? "selected" : ""} onClick={() => setRecordType(type)}>{type}</button>)}</div>
+          <div className="record-type-tabs">{CLINICAL_RECORD_TYPES.map((type) => <button type="button" key={type} className={recordType === type ? "selected" : ""} onClick={() => setRecordType(type)}>{type}</button>)}</div>
           <div className="form-grid">
             <label>Fecha<DateField name="date" value={recordDate} onChange={setRecordDate} required /></label>
             <label>
@@ -4217,6 +4303,9 @@ function ClinicalPatientsPanel({
           {recordType === "Vacunación" && <fieldset><legend>Vacuna aplicada</legend><div className="form-grid"><label>Vacuna<input name="product" defaultValue={editingEvent?.product} required /></label><label>Dosis<input name="dose" defaultValue={editingEvent?.dose} /></label></div></fieldset>}
           {recordType === "Desparasitación" && <fieldset><legend>Desparasitación</legend><div className="form-grid"><label>Producto<input name="product" defaultValue={editingEvent?.product} required /></label><label>Dosis<input name="dose" defaultValue={editingEvent?.dose} required /></label></div></fieldset>}
           {recordType === "Estudio" && <fieldset><legend>Estudio</legend><label>Tipo<select name="studyType" defaultValue={editingEvent?.studyType}><option>Laboratorio</option><option>Radiografía</option><option>Ecografía</option><option>Tomografía</option><option>Fotografía clínica</option></select></label><label>Resultado / informe<textarea name="result" defaultValue={editingEvent?.result} placeholder="Ingresá una síntesis del resultado o las conclusiones del estudio" /></label></fieldset>}
+          {recordType === "Cirugía" && <fieldset><legend>Cirugía</legend><div className="form-grid"><label>Tipo de procedimiento<select name="procedureType" defaultValue={editingEvent?.procedureType || "Castración"}><option>Castración</option><option>Ovariohisterectomía</option><option>Cirugía de tejidos blandos</option><option>Cirugía traumatológica</option><option>Cirugía odontológica</option><option>Otra cirugía</option></select></label><label>Anestesia<input name="anesthesia" defaultValue={editingEvent?.anesthesia} placeholder="Protocolo anestésico utilizado" /></label></div><label>Descripción del procedimiento<textarea name="procedure" defaultValue={editingEvent?.procedure} placeholder="Técnica, hallazgos y desarrollo de la cirugía" required /></label><label>Tratamiento posoperatorio<textarea name="treatment" defaultValue={editingEvent?.treatment} placeholder="Medicación, curaciones e indicaciones" /></label></fieldset>}
+          {recordType === "Internación" && <fieldset><legend>Internación</legend><div className="form-grid"><label>Motivo de internación<input name="hospitalizationReason" defaultValue={editingEvent?.hospitalizationReason} required /></label><label>Fecha de alta <span className="optional-label">Opcional</span><DateField name="dischargeDate" value={dischargeDate} onChange={setDischargeDate} /></label></div><label>Evolución durante la internación<textarea name="dailyEvolution" defaultValue={editingEvent?.dailyEvolution} placeholder="Evolución clínica, controles y cambios observados" /></label><label>Tratamientos realizados<textarea name="hospitalTreatments" defaultValue={editingEvent?.hospitalTreatments} placeholder="Medicación, fluidoterapia, alimentación y procedimientos" /></label></fieldset>}
+          {recordType === "Autopsia / necropsia" && <fieldset><legend>Autopsia / necropsia</legend><label>Motivo del estudio<input name="necropsyReason" defaultValue={editingEvent?.necropsyReason} placeholder="Motivo, antecedentes o circunstancias" required /></label><label>Hallazgos<textarea name="necropsyFindings" defaultValue={editingEvent?.necropsyFindings} placeholder="Hallazgos macroscópicos relevantes" required /></label><label>Causa de muerte / conclusión<textarea name="causeOfDeath" defaultValue={editingEvent?.causeOfDeath} placeholder="Conclusión presuntiva o definitiva" /></label></fieldset>}
           {recordType !== "Estudio" && <label>Observaciones generales<textarea name="observations" defaultValue={editingEvent?.observations} /></label>}
           <footer><button type="button" className="ghost" onClick={() => { setNewRecord(false); setEditingEvent(null); }}>Cancelar</button><button className="primary">{editingEvent ? "Guardar cambios" : "Guardar en historia clínica"}</button></footer>
         </form></div>

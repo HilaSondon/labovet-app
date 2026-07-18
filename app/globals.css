@@ -3828,3 +3828,6 @@ button {
 
 /* Confirmaciones propias y filtros de validación SIGATM */
 .quantity-confirmation-backdrop{z-index:240}.feedback-icon.warning{background:#fff3d6;color:#936710}.quantity-confirmation-modal>p+p{margin-top:8px!important;color:#71838a}.summary button{border:1px solid transparent;border-radius:12px;padding:6px 9px;font-size:10px;font-weight:700;cursor:pointer}.summary button.ok{background:#e5f4ee;color:#14745f}.summary button.bad{background:#fbe9e7;color:#b74540}.summary button.selected{border-color:currentColor;box-shadow:0 0 0 2px white inset}
+
+/* Eventos clínicos ampliados */
+.timeline-dot.cirugia{background:#e8eef9;color:#365f9e}.timeline-dot.internacion{background:#fff1dc;color:#9a6717}.timeline-dot.autopsia-necropsia{background:#ecebed;color:#5f5966}.optional-label{margin-left:4px;color:#829399;font-size:8px;font-weight:500}

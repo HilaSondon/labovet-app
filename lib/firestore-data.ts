@@ -70,6 +70,16 @@ export type StoredPatientEvent = {
   dose?: string;
   studyType?: string;
   fileName?: string;
+  procedureType?: string;
+  procedure?: string;
+  anesthesia?: string;
+  hospitalizationReason?: string;
+  dischargeDate?: string;
+  dailyEvolution?: string;
+  hospitalTreatments?: string;
+  necropsyReason?: string;
+  necropsyFindings?: string;
+  causeOfDeath?: string;
 };
 export type StoredPatient = {
   id: number;
