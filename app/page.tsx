@@ -3159,6 +3159,7 @@ function SubscriptionPlans({
   const [requestStatus, setRequestStatus] = useState("");
   const [requesting, setRequesting] = useState("");
   const [requestFeedback, setRequestFeedback] = useState("");
+  const [planToRequest, setPlanToRequest] = useState("");
 
   useEffect(() => {
     getDoc(doc(db, "subscriptionRequests", uid))
@@ -3185,13 +3186,31 @@ function SubscriptionPlans({
       });
       setRequestedPlan(plan);
       setRequestStatus("pending");
-      setRequestFeedback("Solicitud enviada. La revisaremos desde Administración.");
+      setRequestFeedback("Solicitud enviada correctamente. Ya figura pendiente de aprobación.");
     } catch (error) {
       console.error("No pudimos solicitar el plan", error);
-      setRequestFeedback("No pudimos enviar la solicitud. Intentá nuevamente.");
+      const code = typeof error === "object" && error && "code" in error
+        ? String((error as { code?: unknown }).code || "")
+        : "";
+      setRequestFeedback(
+        code.includes("permission-denied")
+          ? "Firebase rechazó la solicitud por permisos. Publicá las reglas actualizadas de Firestore e intentá nuevamente."
+          : "No pudimos enviar la solicitud. Revisá tu conexión e intentá nuevamente.",
+      );
     } finally {
       setRequesting("");
     }
+  };
+
+  const planDetails: Record<string, { name: string; price: string }> = {
+    small_animals: { name: "Pequeños animales", price: "$25.000 mensuales" },
+    large_animals: { name: "Grandes animales", price: "$50.000 mensuales" },
+    administrative_service: { name: "Servicio administrativo", price: "$150.000 mensuales" },
+  };
+
+  const confirmPlanRequest = async () => {
+    if (!planToRequest) return;
+    await requestPlan(planToRequest);
   };
 
   const planButtonLabel = (plan: string, label: string) =>
@@ -3222,7 +3241,6 @@ function SubscriptionPlans({
         </div>
         {access.permissions.managedService && <b>Gestionado por LabOVet</b>}
       </section>
-      {requestFeedback && <div className="stock-notice"><span>{requestFeedback}</span><button type="button" onClick={() => setRequestFeedback("")}>×</button></div>}
       <section className="plan-grid">
         <article className="panel plan-card">
           <span className="plan-tag">CLÍNICA</span>
@@ -3245,7 +3263,7 @@ function SubscriptionPlans({
               Grandes animales y SIGATM bloqueados
             </li>
           </ul>
-          <button className="outline-btn plan-action" onClick={() => requestPlan("small_animals")} disabled={access.plan === "small_animals" || requesting !== "" || (requestedPlan === "small_animals" && requestStatus === "pending")}>
+          <button className="primary plan-action" onClick={() => { setRequestFeedback(""); setPlanToRequest("small_animals"); }} disabled={access.plan === "small_animals" || requesting !== "" || (requestedPlan === "small_animals" && requestStatus === "pending")}>
             {access.plan === "small_animals" ? "Plan actual" : planButtonLabel("small_animals", "Solicitar Pequeños animales")}
           </button>
         </article>
@@ -3267,7 +3285,7 @@ function SubscriptionPlans({
             <li>Conversión y archivos SIGATM</li>
             <li>También incluye Pequeños animales</li>
           </ul>
-          <button className="primary plan-action" onClick={() => requestPlan("large_animals")} disabled={access.plan === "large_animals" || requesting !== "" || (requestedPlan === "large_animals" && requestStatus === "pending")}>
+          <button className="primary plan-action" onClick={() => { setRequestFeedback(""); setPlanToRequest("large_animals"); }} disabled={access.plan === "large_animals" || requesting !== "" || (requestedPlan === "large_animals" && requestStatus === "pending")}>
             {access.plan === "large_animals" ? "Plan actual" : planButtonLabel("large_animals", "Solicitar Grandes animales")}
           </button>
         </article>
@@ -3289,7 +3307,7 @@ function SubscriptionPlans({
             <li>Preparación de archivos para SIGATM</li>
             <li>Acompañamiento personalizado</li>
           </ul>
-          <button className="primary plan-action" onClick={() => requestPlan("administrative_service")} disabled={access.plan === "administrative_service" || requesting !== "" || (requestedPlan === "administrative_service" && requestStatus === "pending")}>
+          <button className="primary plan-action" onClick={() => { setRequestFeedback(""); setPlanToRequest("administrative_service"); }} disabled={access.plan === "administrative_service" || requesting !== "" || (requestedPlan === "administrative_service" && requestStatus === "pending")}>
             {access.plan === "administrative_service" ? "Plan actual" : planButtonLabel("administrative_service", "Solicitar servicio administrativo")}
           </button>
         </article>
@@ -3299,11 +3317,43 @@ function SubscriptionPlans({
         <div>
           <b>Modalidades iniciales de LabOVet</b>
           <p>
-            La activación todavía se realiza manualmente. El próximo paso será
-            incorporar el panel administrador para asignar planes y estados.
+            La solicitud queda pendiente hasta que LabOVet revise y active el
+            acceso desde el panel de administración.
           </p>
         </div>
       </section>
+      {planToRequest && (
+        <div className="modal-backdrop">
+          <section className="modal-card feedback-modal subscription-request-modal" role="dialog" aria-modal="true" aria-labelledby="subscription-request-title">
+            <div>
+              <h2 id="subscription-request-title">Solicitar plan</h2>
+              <button type="button" aria-label="Cerrar" onClick={() => { if (!requesting) { setPlanToRequest(""); setRequestFeedback(""); } }}>×</button>
+            </div>
+            {requestFeedback ? (
+              <>
+                <span className={`feedback-icon ${requestStatus === "pending" && requestedPlan === planToRequest ? "success" : "danger"}`}>
+                  {requestStatus === "pending" && requestedPlan === planToRequest ? "✓" : "!"}
+                </span>
+                <h3>{requestStatus === "pending" && requestedPlan === planToRequest ? "Solicitud enviada" : "No se pudo enviar"}</h3>
+                <p>{requestFeedback}</p>
+                <footer>
+                  <button type="button" className="primary" onClick={() => { setPlanToRequest(""); setRequestFeedback(""); }}>Entendido</button>
+                </footer>
+              </>
+            ) : (
+              <>
+                <span className="feedback-icon">i</span>
+                <h3>{planDetails[planToRequest]?.name}</h3>
+                <p>Vas a solicitar el plan <b>{planDetails[planToRequest]?.name}</b> por <b>{planDetails[planToRequest]?.price}</b>. La activación se realizará cuando LabOVet apruebe la solicitud.</p>
+                <footer>
+                  <button type="button" className="ghost" disabled={Boolean(requesting)} onClick={() => setPlanToRequest("")}>Cancelar</button>
+                  <button type="button" className="primary" disabled={Boolean(requesting)} onClick={confirmPlanRequest}>{requesting ? "Enviando…" : "Confirmar solicitud"}</button>
+                </footer>
+              </>
+            )}
+          </section>
+        </div>
+      )}
     </>
   );
 }
