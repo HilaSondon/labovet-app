@@ -3366,7 +3366,7 @@ function PatientsPanel({
     <>
       {!selected ? (
         <>
-          <header className="topbar">
+          <header className="topbar module-topbar patient-list-header">
             <div>
               <span className="eyebrow">PEQUEÑOS ANIMALES</span>
               <h1>Pacientes</h1>
@@ -4014,7 +4014,7 @@ function ClinicalPatientsPanel({
     <>
       {!selected ? (
         <>
-          <header className="topbar">
+          <header className="topbar module-topbar patient-list-header">
             <div>
               <span className="eyebrow">PEQUEÑOS ANIMALES</span>
               <h1>Pacientes</h1>
@@ -4036,7 +4036,7 @@ function ClinicalPatientsPanel({
             </article>
           </div>
           {feedback && <div className="stock-notice"><span>{feedback}</span><button onClick={() => setFeedback("")}>×</button></div>}
-          <section className="panel patient-list clinical-patient-list">
+          <section className="panel patient-list clinical-patient-list patient-list-panel">
             <div className="module-toolbar"><div><h2>Base de pacientes</h2><p>Seleccioná un paciente para abrir su historia clínica.</p></div><label>⌕ <input value={patientSearch} onChange={(event) => setPatientSearch(event.target.value)} placeholder="Buscar paciente o propietario..." /></label></div>
             {filteredPatients.map((patient) => (
               <button key={patient.id} className="patient-row" onClick={() => setSelected(patient)}>
@@ -4052,7 +4052,7 @@ function ClinicalPatientsPanel({
         </>
       ) : (
         <>
-          <header className="topbar clinical-header">
+          <header className="topbar module-topbar clinical-header patient-selected-header">
             <div>
               <button className="back-link" onClick={() => setSelected(null)}>← Pacientes</button>
               <span className="eyebrow">{selected.species}</span>
@@ -4066,6 +4066,7 @@ function ClinicalPatientsPanel({
               <button className="primary" onClick={openNewRecord}>＋ Nueva atención</button>
             </div>
           </header>
+          <div className="patient-detail-view">
           {selected.allergies && (
             <div className="clinical-alert"><b>ALERGIAS</b><span>{selected.allergies}</span></div>
           )}
@@ -4115,6 +4116,7 @@ function ClinicalPatientsPanel({
               {!visibleEvents.length && <div className="empty-agenda"><b>Sin eventos clínicos</b><span>Registrá la primera consulta para iniciar el seguimiento.</span></div>}
             </div>
           </section>
+          </div>
         </>
       )}
 
