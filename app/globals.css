@@ -1039,6 +1039,9 @@
   justify-content: space-between;
   gap: 8px;
 }
+.record-date-grid {
+  align-items: end;
+}
 .reminder-label > span:last-child {
   display: flex;
   gap: 3px;

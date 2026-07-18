@@ -3845,7 +3845,10 @@ function ClinicalPatientsPanel({
         String(form.get("result") || "") ||
         editingEvent?.result ||
         defaultResult,
-      nextDate: String(form.get("nextDate") || "") || undefined,
+      nextDate:
+        recordType === "Autopsia / necropsia"
+          ? undefined
+          : String(form.get("nextDate") || "") || undefined,
       motive: motive || undefined,
       anamnesis: String(form.get("anamnesis") || "") || undefined,
       clinicalExam: String(form.get("clinicalExam") || "") || undefined,
@@ -4276,12 +4279,14 @@ function ClinicalPatientsPanel({
         <div className="modal-backdrop"><form key={editingEvent?.id || `new-${recordType}`} className="modal-card clinical-modal record-modal" onSubmit={addClinicalRecord}>
           <div><h2>{editingEvent ? "Editar registro" : "Nueva atención"} · {selected.name}</h2><button type="button" onClick={() => { setNewRecord(false); setEditingEvent(null); }}>×</button></div>
           <div className="record-type-tabs">{CLINICAL_RECORD_TYPES.map((type) => <button type="button" key={type} className={recordType === type ? "selected" : ""} onClick={() => setRecordType(type)}>{type}</button>)}</div>
-          <div className="form-grid">
+          <div className="form-grid record-date-grid">
             <label>Fecha<DateField name="date" value={recordDate} onChange={setRecordDate} required /></label>
-            <label>
-              <span className="reminder-label"><span>Próximo recordatorio</span><span>{[7, 15, 30, 60, 90].map((days) => <button type="button" key={days} onClick={() => setQuickReminder(days)}>+{days}</button>)}</span></span>
-              <DateField name="nextDate" value={reminderDate} onChange={setReminderDate} />
-            </label>
+            {recordType !== "Autopsia / necropsia" && (
+              <label>
+                <span className="reminder-label"><span>Próximo recordatorio</span><span>{[7, 15, 30, 60, 90].map((days) => <button type="button" key={days} onClick={() => setQuickReminder(days)}>+{days}</button>)}</span></span>
+                <DateField name="nextDate" value={reminderDate} onChange={setReminderDate} />
+              </label>
+            )}
           </div>
           {recordType === "Consulta" && <>
             <fieldset><legend>Motivo y evaluación</legend><label>Motivo de consulta<select name="motive" defaultValue={editingEvent?.motive} required>{CONSULTATION_MOTIVES.map((motive) => <option key={motive}>{motive}</option>)}</select></label><label>Anamnesis<textarea name="anamnesis" defaultValue={editingEvent?.anamnesis} /></label><label>Examen clínico<textarea name="clinicalExam" defaultValue={editingEvent?.clinicalExam} /></label><div className="form-grid"><label>Diagnóstico presuntivo<textarea name="presumptiveDiagnosis" defaultValue={editingEvent?.presumptiveDiagnosis} /></label><label>Diagnóstico definitivo<textarea name="definitiveDiagnosis" defaultValue={editingEvent?.definitiveDiagnosis} /></label></div><label>Tratamiento indicado<textarea name="treatment" defaultValue={editingEvent?.treatment} /></label></fieldset>
