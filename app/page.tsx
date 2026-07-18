@@ -4578,7 +4578,10 @@ function ProducersPanel({
     }
   }
   async function exportProducerPdf() {
-    if (!selected) return;
+    if (!selected || !activeEstablishment) return;
+    const establishmentWorks = selected.works.filter(
+      (work) => workEstablishment(selected, work).id === activeEstablishment.id,
+    );
     const { jsPDF } = await import("jspdf");
     const pdf = new jsPDF();
     const margin = 17;
@@ -4615,21 +4618,22 @@ function ProducersPanel({
     pdf.setFontSize(18);
     pdf.text("LabOVet - Historial de trabajos", margin, 17);
     pdf.setFontSize(10);
-    pdf.text(`${selected.name} - Emitido ${displayDate(localIsoDate())}`, margin, 26);
+    pdf.text(
+      `${selected.name} - ${activeEstablishment.name} - Emitido ${displayDate(localIsoDate())}`,
+      margin,
+      26,
+    );
     y = 45;
     heading("Datos del productor");
     line("Razón social", selected.name);
     line("Teléfono", selected.phone);
     line("Correo electrónico", selected.email);
-    heading("Establecimientos");
-    producerEstablishments(selected).forEach((establishment) => {
-      line("Establecimiento", establishment.name);
-      line("RENSPA", establishment.renspa || "No informado");
-      line("Dirección", establishment.address || "No informada");
-      y += 2;
-    });
+    heading("Datos del establecimiento");
+    line("Establecimiento", activeEstablishment.name);
+    line("RENSPA", activeEstablishment.renspa || "No informado");
+    line("Dirección", activeEstablishment.address || "No informada");
     heading("Historial de trabajos");
-    [...selected.works]
+    [...establishmentWorks]
       .sort((a, b) => dateToIso(a.date).localeCompare(dateToIso(b.date)))
       .forEach((work) => {
         pageBreak(27);
@@ -4659,7 +4663,9 @@ function ProducersPanel({
         }
         y += 3;
       });
-    if (!selected.works.length) line("Trabajos", "Todavía no hay trabajos registrados");
+    if (!establishmentWorks.length) {
+      line("Trabajos", "Todavía no hay trabajos registrados en este establecimiento");
+    }
     const pages = pdf.getNumberOfPages();
     for (let page = 1; page <= pages; page += 1) {
       pdf.setPage(page);
@@ -4667,7 +4673,9 @@ function ProducersPanel({
       pdf.setFontSize(8);
       pdf.text(`Página ${page} de ${pages}`, pdf.internal.pageSize.getWidth() - margin, pdf.internal.pageSize.getHeight() - 8, { align: "right" });
     }
-    pdf.save(`Historial_${selected.name.replace(/\s+/g, "_")}.pdf`);
+    pdf.save(
+      `Historial_${selected.name.replace(/\s+/g, "_")}_${activeEstablishment.name.replace(/\s+/g, "_")}.pdf`,
+    );
   }
   return (
     <>
@@ -4701,7 +4709,9 @@ function ProducersPanel({
               ＋ Establecimiento
             </button>
             <button className="clinical-action" onClick={exportProducerPdf}>
-              Exportar PDF
+              {producerEstablishments(selected).length > 1
+                ? "Exportar establecimiento"
+                : "Exportar PDF"}
             </button>
             <button
               className="clinical-action danger"
