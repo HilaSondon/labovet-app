@@ -6,6 +6,7 @@ import {
   doc,
   getDocs,
   serverTimestamp,
+  setDoc,
   updateDoc,
 } from "firebase/firestore/lite";
 import { db } from "../lib/firebase";
@@ -22,6 +23,8 @@ type AdminUser = {
   role: string;
   plan: PlanId;
   subscriptionStatus: SubscriptionStatus;
+  subscriptionEndsAt: string;
+  request?: { plan: PlanId; status: string };
   createdAt?: { toDate?: () => Date };
 };
 
@@ -62,12 +65,19 @@ export default function AdminUsersPanel({ currentUid }: { currentUid: string }) 
     setLoading(true);
     setFeedback("");
     try {
-      const snapshot = await getDocs(collection(db, "users"));
+      const [snapshot, requestSnapshot] = await Promise.all([
+        getDocs(collection(db, "users")),
+        getDocs(collection(db, "subscriptionRequests")),
+      ]);
+      const requests = new Map(
+        requestSnapshot.docs.map((item) => [item.id, item.data()]),
+      );
       setUsers(
         snapshot.docs
           .map((item) => {
             const data = item.data();
             const legacyAccount = !data.subscriptionStatus;
+            const request = requests.get(item.id);
             return {
               uid: item.id,
               name: String(data.name || "Veterinario sin nombre"),
@@ -77,6 +87,13 @@ export default function AdminUsersPanel({ currentUid }: { currentUid: string }) 
               subscriptionStatus: legacyAccount
                 ? "active"
                 : normalizeStatus(data.subscriptionStatus),
+              subscriptionEndsAt: String(data.subscriptionEndsAt || ""),
+              request: request
+                ? {
+                    plan: normalizePlan(request.plan),
+                    status: String(request.status || "pending"),
+                  }
+                : undefined,
               createdAt: data.createdAt,
             };
           })
@@ -109,7 +126,7 @@ export default function AdminUsersPanel({ currentUid }: { currentUid: string }) 
 
   const updateLocal = (
     uid: string,
-    changes: Partial<Pick<AdminUser, "plan" | "subscriptionStatus">>,
+    changes: Partial<Pick<AdminUser, "plan" | "subscriptionStatus" | "subscriptionEndsAt">>,
   ) =>
     setUsers((current) =>
       current.map((user) =>
@@ -124,6 +141,7 @@ export default function AdminUsersPanel({ currentUid }: { currentUid: string }) 
       await updateDoc(doc(db, "users", user.uid), {
         plan: user.plan,
         subscriptionStatus: user.subscriptionStatus,
+        subscriptionEndsAt: user.subscriptionEndsAt,
         subscriptionUpdatedAt: serverTimestamp(),
         subscriptionUpdatedBy: currentUid,
       });
@@ -131,6 +149,50 @@ export default function AdminUsersPanel({ currentUid }: { currentUid: string }) 
     } catch (error) {
       console.error("No pudimos actualizar el acceso", error);
       setFeedback("No pudimos guardar el cambio. Revisá los permisos de administrador.");
+    } finally {
+      setSaving("");
+    }
+  };
+
+  const defaultExpiration = () => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 1);
+    return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
+  };
+
+  const reviewRequest = async (user: AdminUser, approved: boolean) => {
+    if (!user.request) return;
+    setSaving(user.uid);
+    setFeedback("");
+    try {
+      const successMessage = approved
+        ? `Plan ${PLAN_DEFINITIONS[user.request.plan].name} activado para ${user.name}.`
+        : `Solicitud rechazada para ${user.name}.`;
+      if (approved) {
+        const endsAt = user.subscriptionEndsAt || defaultExpiration();
+        await updateDoc(doc(db, "users", user.uid), {
+          plan: user.request.plan,
+          subscriptionStatus: "active",
+          subscriptionStartedAt: serverTimestamp(),
+          subscriptionEndsAt: endsAt,
+          subscriptionUpdatedAt: serverTimestamp(),
+          subscriptionUpdatedBy: currentUid,
+        });
+      }
+      await setDoc(
+        doc(db, "subscriptionRequests", user.uid),
+        {
+          status: approved ? "approved" : "rejected",
+          reviewedAt: serverTimestamp(),
+          reviewedBy: currentUid,
+        },
+        { merge: true },
+      );
+      await loadUsers();
+      setFeedback(successMessage);
+    } catch (error) {
+      console.error("No pudimos revisar la solicitud", error);
+      setFeedback("No pudimos completar la revisión de la solicitud.");
     } finally {
       setSaving("");
     }
@@ -182,21 +244,21 @@ export default function AdminUsersPanel({ currentUid }: { currentUid: string }) 
           </div>
         </div>
 
-        <div className="admin-users-head"><span>Usuario</span><span>Plan</span><span>Estado</span><span>Registro</span><span>Acción</span></div>
+        <div className="admin-users-head"><span>Usuario</span><span>Plan</span><span>Estado</span><span>Vencimiento</span><span>Acción</span></div>
         {loading ? (
           <div className="admin-users-empty">Cargando usuarios…</div>
         ) : visibleUsers.length ? (
           visibleUsers.map((user) => (
             <article className="admin-user-row" key={user.uid}>
-              <div><b>{user.name}</b><small>{user.email}{user.role === "admin" ? " · Administrador" : ""}</small></div>
+              <div><b>{user.name}</b><small>{user.email}{user.role === "admin" ? " · Administrador" : ""}</small>{user.request?.status === "pending" && <em>Solicitó: {PLAN_DEFINITIONS[user.request.plan].name}</em>}</div>
               <select value={user.plan} onChange={(event) => updateLocal(user.uid, { plan: event.target.value as PlanId })}>
                 {plans.map((plan) => <option key={plan} value={plan}>{PLAN_DEFINITIONS[plan].name}</option>)}
               </select>
               <select className={`subscription-${user.subscriptionStatus}`} value={user.subscriptionStatus} onChange={(event) => updateLocal(user.uid, { subscriptionStatus: event.target.value as SubscriptionStatus })}>
                 {statuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
               </select>
-              <time>{user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString("es-AR") : "—"}</time>
-              <button type="button" onClick={() => saveAccess(user)} disabled={saving === user.uid}>{saving === user.uid ? "Guardando…" : "Guardar"}</button>
+              <input className="admin-expiration-input" value={user.subscriptionEndsAt} onChange={(event) => updateLocal(user.uid, { subscriptionEndsAt: event.target.value })} placeholder="DD/MM/AAAA" />
+              {user.request?.status === "pending" ? <div className="request-actions"><button type="button" onClick={() => reviewRequest(user, true)} disabled={saving === user.uid}>Aprobar</button><button type="button" onClick={() => reviewRequest(user, false)} disabled={saving === user.uid}>Rechazar</button></div> : <button type="button" onClick={() => saveAccess(user)} disabled={saving === user.uid}>{saving === user.uid ? "Guardando…" : "Guardar"}</button>}
             </article>
           ))
         ) : (

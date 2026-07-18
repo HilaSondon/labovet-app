@@ -1011,6 +1011,8 @@ export default function Home() {
             onNavigate={navigateTo}
             access={userAccess}
             sigatmCatalog={sigatmCatalog}
+            userName={authUser.displayName || "Veterinario"}
+            userEmail={authUser.email || ""}
           />
         ) : (
           <>
@@ -3003,6 +3005,8 @@ function ModuleView({
   onNavigate,
   access,
   sigatmCatalog,
+  userName,
+  userEmail,
 }: {
   view: Exclude<ViewKey, "sigatm">;
   producers: Producer[];
@@ -3017,6 +3021,8 @@ function ModuleView({
   onNavigate: (view: ViewKey) => void;
   access: UserAccess;
   sigatmCatalog: SigatmCatalog;
+  userName: string;
+  userEmail: string;
 }) {
   if (view === "estadisticas")
     return (
@@ -3027,7 +3033,15 @@ function ModuleView({
         access={access}
       />
     );
-  if (view === "planes") return <SubscriptionPlans access={access} />;
+  if (view === "planes")
+    return (
+      <SubscriptionPlans
+        access={access}
+        uid={uid}
+        userName={userName}
+        userEmail={userEmail}
+      />
+    );
   if (view === "admin") return <AdminUsersPanel currentUid={uid} />;
   if (view === "admin-sigatm")
     return <AdminSigatmCatalog currentUid={uid} />;
@@ -3130,7 +3144,63 @@ function ModuleView({
   );
 }
 
-function SubscriptionPlans({ access }: { access: UserAccess }) {
+function SubscriptionPlans({
+  access,
+  uid,
+  userName,
+  userEmail,
+}: {
+  access: UserAccess;
+  uid: string;
+  userName: string;
+  userEmail: string;
+}) {
+  const [requestedPlan, setRequestedPlan] = useState("");
+  const [requestStatus, setRequestStatus] = useState("");
+  const [requesting, setRequesting] = useState("");
+  const [requestFeedback, setRequestFeedback] = useState("");
+
+  useEffect(() => {
+    getDoc(doc(db, "subscriptionRequests", uid))
+      .then((snapshot) => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.data();
+        setRequestedPlan(String(data.plan || ""));
+        setRequestStatus(String(data.status || ""));
+      })
+      .catch(() => undefined);
+  }, [uid]);
+
+  const requestPlan = async (plan: string) => {
+    setRequesting(plan);
+    setRequestFeedback("");
+    try {
+      await setDoc(doc(db, "subscriptionRequests", uid), {
+        userId: uid,
+        name: userName,
+        email: userEmail,
+        plan,
+        status: "pending",
+        requestedAt: serverTimestamp(),
+      });
+      setRequestedPlan(plan);
+      setRequestStatus("pending");
+      setRequestFeedback("Solicitud enviada. La revisaremos desde Administración.");
+    } catch (error) {
+      console.error("No pudimos solicitar el plan", error);
+      setRequestFeedback("No pudimos enviar la solicitud. Intentá nuevamente.");
+    } finally {
+      setRequesting("");
+    }
+  };
+
+  const planButtonLabel = (plan: string, label: string) =>
+    requestedPlan === plan && requestStatus === "pending"
+      ? "Solicitud enviada"
+      : requesting === plan
+        ? "Enviando…"
+        : label;
+
   return (
     <>
       <header className="topbar module-topbar">
@@ -3148,9 +3218,11 @@ function SubscriptionPlans({ access }: { access: UserAccess }) {
           <span>PLAN ACTUAL</span>
           <strong>{access.planName}</strong>
           <small>Estado: {access.status === "active" ? "Activo" : access.status === "trial" ? "Período de prueba" : access.status === "pending" ? "Pendiente de activación" : access.status === "expired" ? "Vencido" : "Suspendido"}</small>
+          {access.endsAt && <small>Vigente hasta: {access.endsAt}</small>}
         </div>
         {access.permissions.managedService && <b>Gestionado por LabOVet</b>}
       </section>
+      {requestFeedback && <div className="stock-notice"><span>{requestFeedback}</span><button type="button" onClick={() => setRequestFeedback("")}>×</button></div>}
       <section className="plan-grid">
         <article className="panel plan-card">
           <span className="plan-tag">CLÍNICA</span>
@@ -3173,8 +3245,8 @@ function SubscriptionPlans({ access }: { access: UserAccess }) {
               Grandes animales y SIGATM bloqueados
             </li>
           </ul>
-          <button className="outline-btn plan-action" disabled={access.plan === "small_animals"}>
-            {access.plan === "small_animals" ? "Plan actual" : "Solicitar Pequeños animales"}
+          <button className="outline-btn plan-action" onClick={() => requestPlan("small_animals")} disabled={access.plan === "small_animals" || requesting !== "" || (requestedPlan === "small_animals" && requestStatus === "pending")}>
+            {access.plan === "small_animals" ? "Plan actual" : planButtonLabel("small_animals", "Solicitar Pequeños animales")}
           </button>
         </article>
         <article className="panel plan-card recommended">
@@ -3195,8 +3267,8 @@ function SubscriptionPlans({ access }: { access: UserAccess }) {
             <li>Conversión y archivos SIGATM</li>
             <li>También incluye Pequeños animales</li>
           </ul>
-          <button className="primary plan-action" disabled={access.plan === "large_animals"}>
-            {access.plan === "large_animals" ? "Plan actual" : "Solicitar Grandes animales"}
+          <button className="primary plan-action" onClick={() => requestPlan("large_animals")} disabled={access.plan === "large_animals" || requesting !== "" || (requestedPlan === "large_animals" && requestStatus === "pending")}>
+            {access.plan === "large_animals" ? "Plan actual" : planButtonLabel("large_animals", "Solicitar Grandes animales")}
           </button>
         </article>
         <article className="panel plan-card premium">
@@ -3217,8 +3289,8 @@ function SubscriptionPlans({ access }: { access: UserAccess }) {
             <li>Preparación de archivos para SIGATM</li>
             <li>Acompañamiento personalizado</li>
           </ul>
-          <button className="primary plan-action" disabled={access.plan === "administrative_service"}>
-            {access.plan === "administrative_service" ? "Plan actual" : "Solicitar servicio administrativo"}
+          <button className="primary plan-action" onClick={() => requestPlan("administrative_service")} disabled={access.plan === "administrative_service" || requesting !== "" || (requestedPlan === "administrative_service" && requestStatus === "pending")}>
+            {access.plan === "administrative_service" ? "Plan actual" : planButtonLabel("administrative_service", "Solicitar servicio administrativo")}
           </button>
         </article>
       </section>

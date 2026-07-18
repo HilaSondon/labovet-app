@@ -371,7 +371,7 @@
 .admin-users-head,
 .admin-user-row {
   display: grid;
-  grid-template-columns: minmax(210px, 1.5fr) minmax(170px, 1fr) 130px 100px 90px;
+  grid-template-columns: minmax(210px, 1.5fr) minmax(170px, 1fr) 130px 120px 150px;
   align-items: center;
   gap: 12px;
 }
@@ -404,6 +404,44 @@
   margin-top: 4px;
   color: #71838b;
   font-size: 9px;
+}
+.admin-user-row em {
+  display: inline-block;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #fff3d8;
+  padding: 4px 7px;
+  color: #86600f;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 800;
+}
+.admin-expiration-input {
+  min-width: 0;
+  border: 1px solid #cad9dd;
+  border-radius: 7px;
+  padding: 9px;
+  color: #244552;
+  font: inherit;
+}
+.request-actions {
+  display: flex;
+  gap: 5px;
+}
+.request-actions button {
+  flex: 1;
+  border: 1px solid #168a70;
+  border-radius: 6px;
+  background: #168a70;
+  padding: 8px 6px;
+  color: white;
+  font-size: 8px;
+  font-weight: 800;
+}
+.request-actions button:last-child {
+  border-color: #dcaaa7;
+  background: #fff2f1;
+  color: #a1433d;
 }
 .admin-user-row > button {
   border: 1px solid #168a70;

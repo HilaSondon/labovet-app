@@ -25,6 +25,7 @@ export type UserAccess = {
   status: SubscriptionStatus;
   planName: string;
   permissions: PlanPermissions;
+  endsAt?: string;
   legacyAccess?: boolean;
 };
 
@@ -94,11 +95,24 @@ export function resolveUserAccess(data?: Record<string, unknown>): UserAccess {
     : isPlanId(data?.plan)
       ? data.plan
       : "unassigned";
-  const status: SubscriptionStatus = legacyAccess
+  let status: SubscriptionStatus = legacyAccess
     ? "active"
     : isSubscriptionStatus(data?.subscriptionStatus)
       ? data.subscriptionStatus
       : "pending";
+  const endsAt = typeof data?.subscriptionEndsAt === "string"
+    ? data.subscriptionEndsAt
+    : undefined;
+  if (
+    !legacyAccess &&
+    endsAt &&
+    (status === "active" || status === "trial") &&
+    /^\d{2}\/\d{2}\/\d{4}$/.test(endsAt)
+  ) {
+    const [day, month, year] = endsAt.split("/").map(Number);
+    const expiration = new Date(year, month - 1, day, 23, 59, 59);
+    if (expiration.getTime() < Date.now()) status = "expired";
+  }
   const enabled = role === "admin" || status === "active" || status === "trial";
   const permissions = role === "admin"
     ? PLAN_DEFINITIONS.administrative_service.permissions
@@ -112,6 +126,7 @@ export function resolveUserAccess(data?: Record<string, unknown>): UserAccess {
     status,
     planName: PLAN_DEFINITIONS[plan].name,
     permissions,
+    endsAt,
     legacyAccess,
   };
 }
