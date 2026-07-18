@@ -17,8 +17,12 @@ import {
   updateProfile,
   User,
 } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
+import {
+  resolveUserAccess,
+  UserAccess,
+} from "../lib/access-control";
 import {
   deleteEstablishmentData,
   deleteProducerData,
@@ -625,6 +629,7 @@ const WORK_TYPE_ORDER = [
 export default function Home() {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [userAccess, setUserAccess] = useState<UserAccess | null>(null);
   const [activeView, setActiveView] = useState<ViewKey>("estadisticas");
   const [largeOpen, setLargeOpen] = useState(false);
   const [smallOpen, setSmallOpen] = useState(false);
@@ -666,12 +671,25 @@ export default function Home() {
     [],
   );
   useEffect(() => {
-    if (!authUser) return;
+    if (!authUser) {
+      setUserAccess(null);
+      return;
+    }
     let active = true;
     setDataLoading(true);
-    loadVeterinaryData(authUser.uid)
-      .then((data) => {
+    Promise.all([
+      loadVeterinaryData(authUser.uid),
+      getDoc(doc(db, "users", authUser.uid)),
+    ])
+      .then(([data, profile]) => {
         if (!active) return;
+        setUserAccess(
+          resolveUserAccess(
+            profile.exists()
+              ? (profile.data() as Record<string, unknown>)
+              : undefined,
+          ),
+        );
         setProducers(data.producers as Producer[]);
         setPatients(data.patients as Patient[]);
         setStockItems(data.stockItems as StockItem[]);
@@ -696,6 +714,29 @@ export default function Home() {
       active = false;
     };
   }, [authUser, dataReload]);
+
+  const canAccessView = (view: ViewKey) => {
+    if (!userAccess) return false;
+    if (view === "planes" || view === "estadisticas") return true;
+    if (view === "stock") return userAccess.permissions.stock;
+    if (view === "sigatm") return userAccess.permissions.sigatm;
+    if (LARGE_MENU.some(([key]) => key === view))
+      return userAccess.permissions.largeAnimals;
+    if (SMALL_MENU.some(([key]) => key === view))
+      return userAccess.permissions.smallAnimals;
+    return false;
+  };
+  const navigateTo = (view: ViewKey) =>
+    setActiveView(canAccessView(view) ? view : "planes");
+  useEffect(() => {
+    if (!userAccess) return;
+    const hasAnyModule =
+      userAccess.permissions.smallAnimals ||
+      userAccess.permissions.largeAnimals ||
+      userAccess.permissions.stock;
+    if (!hasAnyModule) setActiveView("planes");
+    else if (!canAccessView(activeView)) setActiveView("estadisticas");
+  }, [userAccess, activeView]);
 
   const errors = useMemo(() => validateRows(rows, species), [rows, species]);
   const errorRowIndexes = new Set(
@@ -725,7 +766,7 @@ export default function Home() {
       </div>
     );
   if (!authUser) return <AuthScreen />;
-  if (dataLoading)
+  if (dataLoading || !userAccess)
     return (
       <div className="auth-loading">
         <span className="brand-mark">L</span>
@@ -936,10 +977,11 @@ export default function Home() {
           <p>PRINCIPAL</p>
           <button
             className={activeView === "estadisticas" ? "active" : ""}
-            onClick={() => setActiveView("estadisticas")}
+            onClick={() => navigateTo("estadisticas")}
           >
             <span>⌂</span> Inicio
           </button>
+          {userAccess.permissions.largeAnimals && <>
           <button
             className={
               LARGE_MENU.some(([key]) => key === activeView) ? "active" : ""
@@ -960,8 +1002,8 @@ export default function Home() {
                 </button>
               ))}
             </div>
-          )}
-          <button
+          )}</>}
+          {userAccess.permissions.smallAnimals && <><button
             className={
               SMALL_MENU.some(([key]) => key === activeView) ? "active" : ""
             }
@@ -981,20 +1023,20 @@ export default function Home() {
                 </button>
               ))}
             </div>
-          )}
-          <button
+          )}</>}
+          {userAccess.permissions.stock && <button
             className={activeView === "stock" ? "active" : ""}
-            onClick={() => setActiveView("stock")}
+            onClick={() => navigateTo("stock")}
           >
             <span>▦</span> Lista de precios / Stock
-          </button>
-          <p>HERRAMIENTAS</p>
-          <button
+          </button>}
+          {userAccess.permissions.sigatm && <p>HERRAMIENTAS</p>}
+          {userAccess.permissions.sigatm && <button
             className={activeView === "sigatm" ? "active" : ""}
-            onClick={() => setActiveView("sigatm")}
+            onClick={() => navigateTo("sigatm")}
           >
             <span>⇄</span> Conversor SIGATM
-          </button>
+          </button>}
           <p>SUSCRIPCIONES</p>
           <button
             className={activeView === "planes" ? "active" : ""}
@@ -1043,7 +1085,8 @@ export default function Home() {
             stockCategories={stockCategories}
             setStockCategories={setStockCategories}
             uid={authUser.uid}
-            onNavigate={setActiveView}
+            onNavigate={navigateTo}
+            access={userAccess}
           />
         ) : (
           <>
@@ -1537,6 +1580,7 @@ function AuthScreen() {
           email,
           role: "veterinarian",
           plan: "unassigned",
+          subscriptionStatus: "pending",
           createdAt: serverTimestamp(),
         });
       } else await signInWithEmailAndPassword(auth, email, password);
@@ -2965,10 +3009,12 @@ function HomeDashboard({
   producers,
   patients,
   onNavigate,
+  access,
 }: {
   producers: Producer[];
   patients: Patient[];
   onNavigate: (view: ViewKey) => void;
+  access: UserAccess;
 }) {
   const today = localIsoDate();
   const todayReminders = patients.flatMap((patient) =>
@@ -3005,15 +3051,15 @@ function HomeDashboard({
         ))}
       </section>
       <div className="dashboard-sections">
-        <button className="panel dashboard-module large" onClick={() => onNavigate("productores")}>
+        {access.permissions.largeAnimals && <button className="panel dashboard-module large" onClick={() => onNavigate("productores")}>
           <span>GRANDES ANIMALES</span><h2>{producers.length} productores</h2><p>{pendingRural} trabajos próximos o pendientes</p><i>Ir al panel →</i>
-        </button>
-        <button className="panel dashboard-module small" onClick={() => onNavigate("pacientes")}>
+        </button>}
+        {access.permissions.smallAnimals && <button className="panel dashboard-module small" onClick={() => onNavigate("pacientes")}>
           <span>PEQUEÑOS ANIMALES</span><h2>{patients.length} pacientes</h2><p>{allReminders} recordatorios programados</p><i>Ir al panel →</i>
-        </button>
-        <button className="panel dashboard-module sigatm" onClick={() => onNavigate("sigatm")}>
+        </button>}
+        {access.permissions.sigatm && <button className="panel dashboard-module sigatm" onClick={() => onNavigate("sigatm")}>
           <span>SIGATM</span><h2>{pendingSigatm} pendientes</h2><p>{sigatmWorks.length} trabajos disponibles</p><i>Abrir conversor →</i>
-        </button>
+        </button>}
       </div>
     </>
   );
@@ -3031,6 +3077,7 @@ function ModuleView({
   setStockCategories,
   uid,
   onNavigate,
+  access,
 }: {
   view: Exclude<ViewKey, "sigatm">;
   producers: Producer[];
@@ -3043,6 +3090,7 @@ function ModuleView({
   setStockCategories: React.Dispatch<React.SetStateAction<string[]>>;
   uid: string;
   onNavigate: (view: ViewKey) => void;
+  access: UserAccess;
 }) {
   if (view === "estadisticas")
     return (
@@ -3050,9 +3098,10 @@ function ModuleView({
         producers={producers}
         patients={patients}
         onNavigate={onNavigate}
+        access={access}
       />
     );
-  if (view === "planes") return <SubscriptionPlans />;
+  if (view === "planes") return <SubscriptionPlans access={access} />;
   if (view === "stock")
     return (
       <StockPanel
@@ -3151,7 +3200,7 @@ function ModuleView({
   );
 }
 
-function SubscriptionPlans() {
+function SubscriptionPlans({ access }: { access: UserAccess }) {
   return (
     <>
       <header className="topbar module-topbar">
@@ -3164,6 +3213,14 @@ function SubscriptionPlans() {
           </p>
         </div>
       </header>
+      <section className="panel current-plan-summary">
+        <div>
+          <span>PLAN ACTUAL</span>
+          <strong>{access.planName}</strong>
+          <small>Estado: {access.status === "active" ? "Activo" : access.status === "trial" ? "Período de prueba" : access.status === "pending" ? "Pendiente de activación" : access.status === "expired" ? "Vencido" : "Suspendido"}</small>
+        </div>
+        {access.permissions.managedService && <b>Gestionado por LabOVet</b>}
+      </section>
       <section className="plan-grid">
         <article className="panel plan-card">
           <span className="plan-tag">CLÍNICA</span>
@@ -3173,7 +3230,7 @@ function SubscriptionPlans() {
             herramientas rurales.
           </p>
           <div className="plan-price">
-            <strong>Precio a definir</strong>
+            <strong>$25.000</strong>
             <small>Suscripción mensual</small>
           </div>
           <ul>
@@ -3181,12 +3238,13 @@ function SubscriptionPlans() {
             <li>Historial sanitario y clínico</li>
             <li>Vacunas, desparasitaciones y estudios</li>
             <li>Agenda y recordatorios automáticos</li>
+            <li>Lista de precios y stock</li>
             <li className="plan-locked">
               Grandes animales y SIGATM bloqueados
             </li>
           </ul>
-          <button className="outline-btn plan-action">
-            Elegir Pequeños animales
+          <button className="outline-btn plan-action" disabled={access.plan === "small_animals"}>
+            {access.plan === "small_animals" ? "Plan actual" : "Solicitar Pequeños animales"}
           </button>
         </article>
         <article className="panel plan-card recommended">
@@ -3197,7 +3255,7 @@ function SubscriptionPlans() {
             desde LabOVet.
           </p>
           <div className="plan-price">
-            <strong>Precio a definir</strong>
+            <strong>$50.000</strong>
             <small>Suscripción mensual</small>
           </div>
           <ul>
@@ -3207,20 +3265,20 @@ function SubscriptionPlans() {
             <li>Conversión y archivos SIGATM</li>
             <li>También incluye Pequeños animales</li>
           </ul>
-          <button className="primary plan-action">
-            Elegir Grandes animales
+          <button className="primary plan-action" disabled={access.plan === "large_animals"}>
+            {access.plan === "large_animals" ? "Plan actual" : "Solicitar Grandes animales"}
           </button>
         </article>
         <article className="panel plan-card premium">
           <span className="plan-tag">SERVICIO ADMINISTRADO</span>
-          <h2>Servicio Premium</h2>
+          <h2>Servicio administrativo</h2>
           <p>
             Para veterinarios que prefieren delegarnos la administración y carga
             del sistema.
           </p>
           <div className="plan-price">
-            <strong>Presupuesto personalizado</strong>
-            <small>Según volumen de trabajo</small>
+            <strong>$150.000</strong>
+            <small>Suscripción mensual</small>
           </div>
           <ul>
             <li>Acceso completo a LabOVet</li>
@@ -3229,8 +3287,8 @@ function SubscriptionPlans() {
             <li>Preparación de archivos para SIGATM</li>
             <li>Acompañamiento personalizado</li>
           </ul>
-          <button className="primary plan-action">
-            Solicitar Servicio Premium
+          <button className="primary plan-action" disabled={access.plan === "administrative_service"}>
+            {access.plan === "administrative_service" ? "Plan actual" : "Solicitar servicio administrativo"}
           </button>
         </article>
       </section>
@@ -3239,8 +3297,8 @@ function SubscriptionPlans() {
         <div>
           <b>Modalidades iniciales de LabOVet</b>
           <p>
-            Más adelante definiremos precios, medios de pago y el proceso de
-            contratación.
+            La activación todavía se realiza manualmente. El próximo paso será
+            incorporar el panel administrador para asignar planes y estados.
           </p>
         </div>
       </section>
