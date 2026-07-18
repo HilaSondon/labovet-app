@@ -5173,7 +5173,6 @@ function ProducerDetail({
   const [open, setOpen] = useState({ data: false, health: false, works: true });
   const [editing, setEditing] = useState(false);
   const [manualWork, setManualWork] = useState<number | null>(null);
-  const [resultWork, setResultWork] = useState<number | null>(null);
   const [expandedHealthAnimals, setExpandedHealthAnimals] = useState<Set<string>>(new Set());
   const [uploadFeedback, setUploadFeedback] = useState<{
     count: number;
@@ -5610,12 +5609,6 @@ function ProducerDetail({
             {scopedWorks.map(({ work: w, index: i }) => {
               const sigatmWork =
                 w.type === "Sangrado" || w.type === "Muestreo equino";
-              const acceptsResults = [
-                "Sangrado",
-                "Muestreo equino",
-                "Muestreo reproductivo",
-                "Tuberculinización",
-              ].includes(w.type);
               return (
                 <article className="work-row" key={i}>
                   <time className="work-date">{w.date}</time>
@@ -5670,16 +5663,6 @@ function ProducerDetail({
                     >
                       {w.records?.length ? "⌕ Ver carga" : "＋ Carga manual"}
                     </button>
-                    {acceptsResults && Boolean(w.records?.length && w.source) && (
-                      <button
-                        className="results-entry-btn"
-                        onClick={() => setResultWork(i)}
-                      >
-                        {w.records?.some((record) => record.result)
-                          ? "Ver resultados"
-                          : "Cargar resultados"}
-                      </button>
-                    )}
                   </div>
                 </article>
               );
@@ -5702,25 +5685,6 @@ function ProducerDetail({
               setManualWork(null);
             } catch {
               window.alert("No pudimos guardar los animales en Firebase.");
-            }
-          }}
-        />
-      )}
-      {resultWork !== null && (
-        <AnimalResultsEntry
-          producer={producer}
-          workIndex={resultWork}
-          onClose={() => setResultWork(null)}
-          onSave={async (updated) => {
-            try {
-              await saveWorkData(uid, updated.id, updated.works[resultWork]);
-              setProducers((current) =>
-                current.map((item) => item.id === updated.id ? updated : item),
-              );
-              setSelected(updated);
-              setResultWork(null);
-            } catch {
-              window.alert("No pudimos guardar los resultados en Firebase.");
             }
           }}
         />
@@ -5835,7 +5799,12 @@ function AnimalResultsEntry({
   );
 }
 
-type ManualAnimal = { cuig: string; identifier: string; category: string };
+type ManualAnimal = {
+  cuig: string;
+  identifier: string;
+  category: string;
+  result?: WorkAnimal["result"];
+};
 function ManualAnimalEntry({
   producer,
   workIndex,
@@ -5851,12 +5820,17 @@ function ManualAnimalEntry({
   const equine = work.type === "Muestreo equino";
   const categories = Object.keys(CATEGORIES[equine ? "EQUINO" : "BOVINO"]);
   const expected = parseInt(work.animals) || 0;
-  const empty = (): ManualAnimal => ({
+  const empty = (result?: WorkAnimal["result"]): ManualAnimal => ({
     cuig: "",
     identifier: "",
     category: "",
+    result,
   });
   const existing = work.records || [];
+  const [search, setSearch] = useState("");
+  const [resultsEnabled, setResultsEnabled] = useState(() =>
+    existing.some((record) => Boolean(record.result)),
+  );
   const [rows, setRows] = useState<ManualAnimal[]>(() =>
     existing.length
       ? existing.map((r) => ({ ...r }))
@@ -5874,6 +5848,9 @@ function ManualAnimalEntry({
       : "",
   );
   const valid = rows.filter((r) => r.identifier.trim() && r.category);
+  const visibleRows = rows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => norm(row.identifier).includes(norm(search)));
   const update = (i: number, key: keyof ManualAnimal, value: string) =>
     setRows((v) => v.map((r, n) => (n === i ? { ...r, [key]: value } : r)));
   const focus = (i: number, key: keyof ManualAnimal) =>
@@ -5888,8 +5865,11 @@ function ManualAnimalEntry({
     if (e.key !== "Enter") return;
     e.preventDefault();
     if (key === "cuig") focus(i, "identifier");
+    else if (key === "category" && resultsEnabled) focus(i, "result");
     else {
-      if (i === rows.length - 1) setRows((v) => [...v, empty()]);
+      if (i === rows.length - 1) {
+        setRows((v) => [...v, empty(resultsEnabled ? "Negativo" : undefined)]);
+      }
       focus(i + 1, "identifier");
     }
   };
@@ -5915,6 +5895,7 @@ function ManualAnimalEntry({
           cuig: three ? (cells[0] || "").trim() : globalCuig,
           identifier: (cells[three ? 1 : 0] || "").trim(),
           category,
+          result: resultsEnabled ? copy[i]?.result || "Negativo" : undefined,
         };
       });
       return copy;
@@ -5928,6 +5909,12 @@ function ManualAnimalEntry({
   const applyCategory = (value: string) => {
     setGlobalCategory(value);
     setRows((v) => v.map((r) => ({ ...r, category: value })));
+  };
+  const enableResults = () => {
+    setResultsEnabled(true);
+    setRows((current) =>
+      current.map((row) => ({ ...row, result: row.result || "Negativo" })),
+    );
   };
   const fillSequence = () => {
     const start = rows.findIndex((r) => r.identifier.trim());
@@ -6050,7 +6037,24 @@ function ManualAnimalEntry({
                 : "Categorías bovinas"}
           </span>
         </div>
-        <div className="manual-grid">
+        <div className="manual-search-tools">
+          <label>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por identificación..."
+            />
+          </label>
+          <button
+            type="button"
+            className={resultsEnabled ? "enabled" : ""}
+            onClick={enableResults}
+            disabled={resultsEnabled}
+          >
+            {resultsEnabled ? "✓ Resultados agregados" : "+ Agregar resultados"}
+          </button>
+        </div>
+        <div className={`manual-grid ${resultsEnabled ? "with-results" : ""}`}>
           <div className="manual-grid-head">
             <span>#</span>
             <span>CUIg · opcional</span>
@@ -6066,9 +6070,10 @@ function ManualAnimalEntry({
               </button>
             </span>
             <span>Categoría</span>
+            {resultsEnabled && <span>Resultado</span>}
             <span />
           </div>
-          {rows.map((row, i) => (
+          {visibleRows.map(({ row, index: i }) => (
             <div className="manual-grid-row" key={i}>
               <span>{i + 1}</span>
               <input
@@ -6100,6 +6105,25 @@ function ManualAnimalEntry({
                   <option key={c}>{c}</option>
                 ))}
               </select>
+              {resultsEnabled && (
+                <select
+                  className={`manual-result-select ${row.result?.toLowerCase()}`}
+                  data-manual={`${i}-result`}
+                  value={row.result || "Negativo"}
+                  onChange={(e) =>
+                    update(
+                      i,
+                      "result",
+                      e.target.value as NonNullable<WorkAnimal["result"]>,
+                    )
+                  }
+                  onKeyDown={(e) => next(e, i, "result")}
+                >
+                  <option>Negativo</option>
+                  <option>Sospechoso</option>
+                  <option>Positivo</option>
+                </select>
+              )}
               <button
                 type="button"
                 aria-label={`Eliminar fila ${i + 1}`}
@@ -6113,6 +6137,11 @@ function ManualAnimalEntry({
               </button>
             </div>
           ))}
+          {!visibleRows.length && (
+            <div className="manual-empty-search">
+              No encontramos animales con esa identificación.
+            </div>
+          )}
         </div>
         <button
           type="button"
@@ -6120,7 +6149,12 @@ function ManualAnimalEntry({
           onClick={() => {
             setRows((v) => [
               ...v,
-              { cuig: globalCuig, identifier: "", category: globalCategory },
+              {
+                cuig: globalCuig,
+                identifier: "",
+                category: globalCategory,
+                result: resultsEnabled ? "Negativo" : undefined,
+              },
             ]);
             focus(rows.length, "identifier");
           }}
