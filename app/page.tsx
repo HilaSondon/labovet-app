@@ -24,6 +24,13 @@ import {
   UserAccess,
 } from "../lib/access-control";
 import AdminUsersPanel from "../components/AdminUsersPanel";
+import AdminSigatmCatalog from "../components/AdminSigatmCatalog";
+import {
+  activeCodeMap,
+  DEFAULT_SIGATM_CATALOG,
+  normalizeSigatmCatalog,
+  SigatmCatalog,
+} from "../lib/sigatm-catalog";
 import {
   deleteEstablishmentData,
   deleteProducerData,
@@ -51,131 +58,11 @@ type AnimalRow = {
 };
 type ErrorMap = Record<string, string>;
 
-const SPECIES = [
-  "BOVINO",
-  "BUBALINO",
-  "CAPRINO",
-  "EQUINO",
-  "OVINO",
-  "PORCINO",
-] as const;
-const ANIMALS: Record<string, number> = {
-  "No aplica": 1,
-  "Animal sano": 2,
-  "Animal enfermo": 3,
-  "Animal caído": 4,
-  "Animal muerto": 5,
-};
-const ID_TYPES: Record<string, number> = {
-  Caravana: 1,
-  Nombre: 2,
-  "Nro de Certificado": 3,
-  "Nro de Libreta": 4,
-  "Nro Pasaporte": 5,
-  "Nro Chip": 6,
-  "Nro de Registro RRI": 7,
-  "Marcas y Señales": 8,
-  "Lote/Lance": 9,
-  Tanque: 10,
-  Colmena: 11,
-  "No aplica": 12,
-  Sexo: 13,
-};
-const CATEGORIES: Record<string, Record<string, number>> = {
-  BOVINO: {
-    BUEYES: 101,
-    NOVILLITO: 8,
-    NOVILLO: 50,
-    "SIN ESPECIFICAR": 11410,
-    TERNERA: 351,
-    TERNERO: 350,
-    TORITO: 470,
-    MEJ: 470,
-    TORO: 100,
-    VACA: 7,
-    VAQUILLONA: 200,
-  },
-  BUBALINO: {
-    BUEYES: 408,
-    NOVILLITO: 404,
-    NOVILLO: 403,
-    "SIN ESPECIFICAR": 11417,
-    TERNERA: 406,
-    TERNERO: 405,
-    TORITO: 471,
-    MEJ: 471,
-    TORO: 407,
-    VACA: 401,
-    VAQUILLONA: 402,
-  },
-  CAPRINO: {
-    CABRA: 20,
-    "CABRILLAS/CHIVITOS": 418,
-    CABRITO: 21,
-    CAPON: 417,
-    CHIVO: 19,
-    "SIN ESPECIFICAR": 11402,
-  },
-  EQUINO: {
-    ASNO: 28,
-    BURRO: 27,
-    CABALLO: 23,
-    MULA: 26,
-    PADRILLO: 22,
-    "POTRILLO/A": 25,
-    POTRILLO: 25,
-    POTRILLA: 25,
-    "SIN ESPECIFICAR": 11406,
-    YEGUA: 24,
-  },
-  OVINO: {
-    "BORREGO/A": 11,
-    CAPON: 12,
-    CARNERO: 9,
-    "CORDERO/A": 13,
-    OVEJA: 10,
-    "SIN ESPECIFICAR": 11401,
-  },
-  PORCINO: {
-    CACHORRA: 476,
-    CACHORRO: 18,
-    "CAPON/ HEMBRA SIN SERVICIO": 17,
-    CERDA: 15,
-    LECHON: 16,
-    MEI: 437,
-    PADRILLO: 14,
-    "SIN ESPECIFICAR": 11399,
-  },
-};
-const AGES: Record<string, Record<string, number>> = {
-  BOVINO: {
-    "< A 1 AÑO": 2,
-    "< A 6 MESES": 1,
-    "< DE 2 AÑOS": 3,
-    ADULTO: 5,
-    CRIA: 6,
-    "DE 1 A 2 AÑOS": 4,
-    JUVENIL: 7,
-    MAYORES: 8,
-    MENORES: 9,
-    "N/A": 10,
-    ">=2 Y <4 AÑOS": 41,
-    ">=4 Y <7 AÑOS": 42,
-    "6 A 18 MESES": 21,
-    ">=7 Y <9 AÑOS": 61,
-    ">=9 AÑOS": 62,
-  },
-  BUBALINO: { "< A 1 AÑO": 2, ADULTO: 5, CRIA: 6, JUVENIL: 7, "N/A": 10 },
-  CAPRINO: { "N/A": 10 },
-  EQUINO: { "N/A": 10 },
-  OVINO: {
-    "BOCA LLENA (> DE 4 AÑOS)": 181,
-    "2 DIENTES (1 AÑO)": 161,
-    "4 DIENTES (2 AÑOS)": 162,
-    "N/A": 10,
-  },
-  PORCINO: { "N/A": 10 },
-};
+const SPECIES = DEFAULT_SIGATM_CATALOG.species;
+const ANIMALS = DEFAULT_SIGATM_CATALOG.animals;
+const ID_TYPES = DEFAULT_SIGATM_CATALOG.idTypes;
+const CATEGORIES = DEFAULT_SIGATM_CATALOG.categories;
+const AGES = DEFAULT_SIGATM_CATALOG.ages;
 
 const norm = (v: unknown) =>
   String(v ?? "")
@@ -507,7 +394,8 @@ type ViewKey =
   | "sigatm"
   | "stock"
   | "planes"
-  | "admin";
+  | "admin"
+  | "admin-sigatm";
 const LARGE_MENU: [ViewKey, string][] = [
   ["productores", "Productores"],
   ["agenda-rural", "Agenda rural"],
@@ -632,6 +520,9 @@ export default function Home() {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [userAccess, setUserAccess] = useState<UserAccess | null>(null);
+  const [sigatmCatalog, setSigatmCatalog] = useState<SigatmCatalog>(
+    DEFAULT_SIGATM_CATALOG,
+  );
   const [activeView, setActiveView] = useState<ViewKey>("estadisticas");
   const [largeOpen, setLargeOpen] = useState(false);
   const [smallOpen, setSmallOpen] = useState(false);
@@ -682,8 +573,9 @@ export default function Home() {
     Promise.all([
       loadVeterinaryData(authUser.uid),
       getDoc(doc(db, "users", authUser.uid)),
+      getDoc(doc(db, "systemConfig", "sigatm")).catch(() => null),
     ])
-      .then(([data, profile]) => {
+      .then(([data, profile, catalogSnapshot]) => {
         if (!active) return;
         setUserAccess(
           resolveUserAccess(
@@ -691,6 +583,11 @@ export default function Home() {
               ? (profile.data() as Record<string, unknown>)
               : undefined,
           ),
+        );
+        setSigatmCatalog(
+          catalogSnapshot?.exists()
+            ? normalizeSigatmCatalog(catalogSnapshot.data())
+            : DEFAULT_SIGATM_CATALOG,
         );
         setProducers(data.producers as Producer[]);
         setPatients(data.patients as Patient[]);
@@ -720,7 +617,8 @@ export default function Home() {
   const canAccessView = (view: ViewKey) => {
     if (!userAccess) return false;
     if (view === "planes" || view === "estadisticas") return true;
-    if (view === "admin") return userAccess.role === "admin";
+    if (view === "admin" || view === "admin-sigatm")
+      return userAccess.role === "admin";
     if (view === "stock") return userAccess.permissions.stock;
     if (view === "sigatm") return userAccess.permissions.sigatm;
     if (LARGE_MENU.some(([key]) => key === view))
@@ -741,7 +639,14 @@ export default function Home() {
     else if (!canAccessView(activeView)) setActiveView("estadisticas");
   }, [userAccess, activeView]);
 
-  const errors = useMemo(() => validateRows(rows, species), [rows, species]);
+  const catalogAnimals = activeCodeMap(sigatmCatalog, "animals");
+  const catalogIdTypes = activeCodeMap(sigatmCatalog, "idTypes");
+  const catalogCategories = activeCodeMap(sigatmCatalog, "categories", species);
+  const catalogAges = activeCodeMap(sigatmCatalog, "ages", species);
+  const errors = useMemo(
+    () => validateRows(rows, catalogCategories, catalogAges),
+    [rows, catalogCategories, catalogAges],
+  );
   const errorRowIndexes = new Set(
     Object.keys(errors).map((key) => Number(key.split(":")[0])),
   );
@@ -846,11 +751,11 @@ export default function Home() {
       "Método recolección": 1,
       "Cantidad Recolección": 1,
       "Numero tubo / muestra": r.tube,
-      "Código de Animal muestreado": ANIMALS[r.animal],
-      "Código de Tipo Identificación": ID_TYPES[r.idType],
+      "Código de Animal muestreado": catalogAnimals[r.animal],
+      "Código de Tipo Identificación": catalogIdTypes[r.idType],
       Identificador: r.identifier,
-      "Código de Categoría": findCode(CATEGORIES[species], r.category),
-      "Código de Edad": findCode(AGES[species], r.age),
+      "Código de Categoría": findCode(catalogCategories, r.category),
+      "Código de Edad": findCode(catalogAges, r.age),
       "Fecha Vacunación": r.vaccination,
       Observaciones: r.notes,
     }));
@@ -939,9 +844,9 @@ export default function Home() {
     const targetSpecies = work.type === "Muestreo equino" ? "EQUINO" : "BOVINO";
     setSpecies(targetSpecies);
     setDefaultAge(
-      "N/A" in AGES[targetSpecies]
+      "N/A" in activeCodeMap(sigatmCatalog, "ages", targetSpecies)
         ? "N/A"
-        : Object.keys(AGES[targetSpecies])[0],
+        : Object.keys(activeCodeMap(sigatmCatalog, "ages", targetSpecies))[0],
     );
     setRows(
       (work.records || []).map((r, i) => ({
@@ -951,9 +856,9 @@ export default function Home() {
         identifier: [r.cuig, r.identifier].filter(Boolean).join(" "),
         category: r.category,
         age:
-          "N/A" in AGES[targetSpecies]
+          "N/A" in activeCodeMap(sigatmCatalog, "ages", targetSpecies)
             ? "N/A"
-            : Object.keys(AGES[targetSpecies])[0],
+            : Object.keys(activeCodeMap(sigatmCatalog, "ages", targetSpecies))[0],
         vaccination: "",
         notes: `${producer.name} · ${work.detail}`,
       })),
@@ -1055,6 +960,12 @@ export default function Home() {
             >
               <span>⚙</span> Usuarios y accesos
             </button>
+            <button
+              className={activeView === "admin-sigatm" ? "active" : ""}
+              onClick={() => navigateTo("admin-sigatm")}
+            >
+              <span>⌘</span> Catálogo SIGATM
+            </button>
           </>}
         </nav>
         <div className="sidebar-bottom">
@@ -1099,6 +1010,7 @@ export default function Home() {
             uid={authUser.uid}
             onNavigate={navigateTo}
             access={userAccess}
+            sigatmCatalog={sigatmCatalog}
           />
         ) : (
           <>
@@ -1162,11 +1074,11 @@ export default function Home() {
                       onChange={(e) => {
                         const s = e.target.value;
                         setSpecies(s);
-                        setDefaultAge(Object.keys(AGES[s])[0]);
+                        setDefaultAge(Object.keys(activeCodeMap(sigatmCatalog, "ages", s))[0]);
                         setRows([]);
                       }}
                     >
-                      {SPECIES.map((v) => (
+                      {sigatmCatalog.species.map((v) => (
                         <option key={v}>{v}</option>
                       ))}
                     </select>
@@ -1177,7 +1089,7 @@ export default function Home() {
                       value={defaultAnimal}
                       onChange={(e) => setDefaultAnimal(e.target.value)}
                     >
-                      {Object.keys(ANIMALS).map((v) => (
+                      {Object.keys(catalogAnimals).map((v) => (
                         <option key={v}>{v}</option>
                       ))}
                     </select>
@@ -1188,7 +1100,7 @@ export default function Home() {
                       value={defaultId}
                       onChange={(e) => setDefaultId(e.target.value)}
                     >
-                      {Object.keys(ID_TYPES).map((v) => (
+                      {Object.keys(catalogIdTypes).map((v) => (
                         <option key={v}>{v}</option>
                       ))}
                     </select>
@@ -1199,7 +1111,7 @@ export default function Home() {
                       value={defaultAge}
                       onChange={(e) => setDefaultAge(e.target.value)}
                     >
-                      {Object.keys(AGES[species]).map((v) => (
+                      {Object.keys(catalogAges).map((v) => (
                         <option key={v}>{v}</option>
                       ))}
                     </select>
@@ -1439,11 +1351,11 @@ export default function Home() {
                       <tr>
                         <th className="sigatm-col-index">#</th>
                         <th className="sigatm-col-tube">Tubo / muestra</th>
-                        <th className="sigatm-col-animal"><BulkColumnHeader label="Animal" options={Object.keys(ANIMALS)} onApply={(value) => applyToAllRows("animal", value)} /></th>
-                        <th className="sigatm-col-idType"><BulkColumnHeader label="Tipo identificación" options={Object.keys(ID_TYPES)} onApply={(value) => applyToAllRows("idType", value)} /></th>
+                        <th className="sigatm-col-animal"><BulkColumnHeader label="Animal" options={Object.keys(catalogAnimals)} onApply={(value) => applyToAllRows("animal", value)} /></th>
+                        <th className="sigatm-col-idType"><BulkColumnHeader label="Tipo identificación" options={Object.keys(catalogIdTypes)} onApply={(value) => applyToAllRows("idType", value)} /></th>
                         <th className="sigatm-col-identifier">Identificador</th>
-                        <th className="sigatm-col-category"><BulkColumnHeader label="Categoría" options={Object.keys(CATEGORIES[species])} onApply={(value) => applyToAllRows("category", value)} /></th>
-                        <th className="sigatm-col-age"><BulkColumnHeader label="Edad" options={Object.keys(AGES[species])} onApply={(value) => applyToAllRows("age", value)} /></th>
+                        <th className="sigatm-col-category"><BulkColumnHeader label="Categoría" options={Object.keys(catalogCategories)} onApply={(value) => applyToAllRows("category", value)} /></th>
+                        <th className="sigatm-col-age"><BulkColumnHeader label="Edad" options={Object.keys(catalogAges)} onApply={(value) => applyToAllRows("age", value)} /></th>
                         <th className="sigatm-col-vaccination">Fecha vacunación</th>
                         <th className="sigatm-col-notes">Observaciones</th>
                       </tr>
@@ -1489,12 +1401,12 @@ export default function Home() {
                                 >
                                   {Object.keys(
                                     field === "animal"
-                                      ? ANIMALS
+                                      ? catalogAnimals
                                       : field === "idType"
-                                        ? ID_TYPES
+                                        ? catalogIdTypes
                                         : field === "category"
-                                          ? CATEGORIES[species]
-                                          : AGES[species],
+                                          ? catalogCategories
+                                          : catalogAges,
                                   ).map((v) => (
                                     <option key={v}>{v}</option>
                                   ))}
@@ -1680,7 +1592,7 @@ function AuthScreen() {
 }
 
 const VIEW_CONTENT: Record<
-  Exclude<ViewKey, "sigatm" | "planes" | "stock" | "admin">,
+  Exclude<ViewKey, "sigatm" | "planes" | "stock" | "admin" | "admin-sigatm">,
   {
     eyebrow: string;
     title: string;
@@ -3090,6 +3002,7 @@ function ModuleView({
   uid,
   onNavigate,
   access,
+  sigatmCatalog,
 }: {
   view: Exclude<ViewKey, "sigatm">;
   producers: Producer[];
@@ -3103,6 +3016,7 @@ function ModuleView({
   uid: string;
   onNavigate: (view: ViewKey) => void;
   access: UserAccess;
+  sigatmCatalog: SigatmCatalog;
 }) {
   if (view === "estadisticas")
     return (
@@ -3115,6 +3029,8 @@ function ModuleView({
     );
   if (view === "planes") return <SubscriptionPlans access={access} />;
   if (view === "admin") return <AdminUsersPanel currentUid={uid} />;
+  if (view === "admin-sigatm")
+    return <AdminSigatmCatalog currentUid={uid} />;
   if (view === "stock")
     return (
       <StockPanel
@@ -3131,6 +3047,7 @@ function ModuleView({
         producers={producers}
         setProducers={setProducers}
         uid={uid}
+        sigatmCatalog={sigatmCatalog}
       />
     );
   if (view === "agenda-rural") return <RuralAgenda producers={producers} />;
@@ -4641,10 +4558,12 @@ function ProducersPanel({
   producers,
   setProducers,
   uid,
+  sigatmCatalog,
 }: {
   producers: Producer[];
   setProducers: React.Dispatch<React.SetStateAction<Producer[]>>;
   uid: string;
+  sigatmCatalog: SigatmCatalog;
 }) {
   const [selected, setSelected] = useState<Producer | null>(null);
   const [selectedEstablishmentId, setSelectedEstablishmentId] = useState("");
@@ -5070,6 +4989,7 @@ function ProducersPanel({
             setProducers={setProducers}
             onNewWork={() => setShowWork(true)}
             uid={uid}
+            sigatmCatalog={sigatmCatalog}
           />
         </div>
       )}
@@ -5413,6 +5333,7 @@ function ProducerDetail({
   setProducers,
   onNewWork,
   uid,
+  sigatmCatalog,
 }: {
   producer: Producer;
   establishment: Establishment;
@@ -5420,6 +5341,7 @@ function ProducerDetail({
   setProducers: React.Dispatch<React.SetStateAction<Producer[]>>;
   onNewWork: () => void;
   uid: string;
+  sigatmCatalog: SigatmCatalog;
 }) {
   const [open, setOpen] = useState({ data: false, health: false, works: true });
   const [editing, setEditing] = useState(false);
@@ -5924,6 +5846,7 @@ function ProducerDetail({
         <ManualAnimalEntry
           producer={producer}
           workIndex={manualWork}
+          sigatmCatalog={sigatmCatalog}
           onClose={() => setManualWork(null)}
           onSave={async (updated) => {
             try {
@@ -6058,18 +5981,26 @@ type ManualAnimal = {
 function ManualAnimalEntry({
   producer,
   workIndex,
+  sigatmCatalog,
   onClose,
   onSave,
 }: {
   producer: Producer;
   workIndex: number;
+  sigatmCatalog: SigatmCatalog;
   onClose: () => void;
   onSave: (producer: Producer) => void;
 }) {
   const work = producer.works[workIndex];
   const equine = work.type === "Muestreo equino";
   const canAddResults = work.type === "Sangrado";
-  const categories = Object.keys(CATEGORIES[equine ? "EQUINO" : "BOVINO"]);
+  const categories = Object.keys(
+    activeCodeMap(
+      sigatmCatalog,
+      "categories",
+      equine ? "EQUINO" : "BOVINO",
+    ),
+  );
   const expected = parseInt(work.animals) || 0;
   const empty = (result?: WorkAnimal["result"]): ManualAnimal => ({
     cuig: "",
@@ -6751,7 +6682,11 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
   );
 }
 
-function validateRows(rows: AnimalRow[], species: string): ErrorMap {
+function validateRows(
+  rows: AnimalRow[],
+  categories: Record<string, number>,
+  ages: Record<string, number>,
+): ErrorMap {
   const errors: ErrorMap = {};
   const tubes = new Map<string, number>();
   const ids = new Map<string, number>();
@@ -6766,9 +6701,9 @@ function validateRows(rows: AnimalRow[], species: string): ErrorMap {
       errors[`${i}:identifier`] = "Identificador repetido";
       errors[`${ids.get(r.identifier)}:identifier`] = "Identificador repetido";
     } else ids.set(r.identifier, i);
-    if (!findCode(CATEGORIES[species], r.category))
+    if (!findCode(categories, r.category))
       errors[`${i}:category`] = "Categoría inválida";
-    if (!findCode(AGES[species], r.age)) errors[`${i}:age`] = "Edad inválida";
+    if (!findCode(ages, r.age)) errors[`${i}:age`] = "Edad inválida";
     if (r.vaccination && !isValidDate(r.vaccination))
       errors[`${i}:vaccination`] = "Ingresar una fecha válida: DD/MM/AAAA";
   });

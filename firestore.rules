@@ -33,5 +33,11 @@ service cloud.firestore {
         allow read, write: if isOwner(userId) || isAdmin();
       }
     }
+
+    match /systemConfig/{documentId} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
   }
 }
