@@ -450,6 +450,37 @@ function DateField({
   );
 }
 
+function BulkColumnHeader({
+  label,
+  options,
+  onApply,
+}: {
+  label: string;
+  options: string[];
+  onApply: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  return (
+    <div className="bulk-column-head">
+      <button type="button" onClick={() => setOpen((current) => !current)}>
+        {label} <span>⌄</span>
+      </button>
+      {open && (
+        <div className="bulk-column-menu">
+          <b>Cambiar toda la columna</b>
+          <p>La opción elegida se aplicará a todos los animales.</p>
+          <select value={value} onChange={(event) => setValue(event.target.value)}>
+            <option value="">Seleccionar…</option>
+            {options.map((option) => <option key={option}>{option}</option>)}
+          </select>
+          <div><button type="button" onClick={() => setOpen(false)}>Cancelar</button><button type="button" disabled={!value} onClick={() => { onApply(value); setOpen(false); setValue(""); }}>Aplicar a todos</button></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type ViewKey =
   | "estadisticas"
   | "productores"
@@ -739,6 +770,9 @@ export default function Home() {
     setRows((current) =>
       current.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
     );
+  }
+  function applyToAllRows(field: keyof AnimalRow, value: string) {
+    setRows((current) => current.map((row) => ({ ...row, [field]: value })));
   }
 
   function download() {
@@ -1307,15 +1341,15 @@ export default function Home() {
                   <table>
                     <thead>
                       <tr>
-                        <th>#</th>
-                        <th>Tubo / muestra</th>
-                        <th>Animal</th>
-                        <th>Tipo identificación</th>
-                        <th>Identificador</th>
-                        <th>Categoría</th>
-                        <th>Edad</th>
-                        <th>Fecha vacunación</th>
-                        <th>Observaciones</th>
+                        <th className="sigatm-col-index">#</th>
+                        <th className="sigatm-col-tube">Tubo / muestra</th>
+                        <th className="sigatm-col-animal"><BulkColumnHeader label="Animal" options={Object.keys(ANIMALS)} onApply={(value) => applyToAllRows("animal", value)} /></th>
+                        <th className="sigatm-col-idType"><BulkColumnHeader label="Tipo identificación" options={Object.keys(ID_TYPES)} onApply={(value) => applyToAllRows("idType", value)} /></th>
+                        <th className="sigatm-col-identifier">Identificador</th>
+                        <th className="sigatm-col-category"><BulkColumnHeader label="Categoría" options={Object.keys(CATEGORIES[species])} onApply={(value) => applyToAllRows("category", value)} /></th>
+                        <th className="sigatm-col-age"><BulkColumnHeader label="Edad" options={Object.keys(AGES[species])} onApply={(value) => applyToAllRows("age", value)} /></th>
+                        <th className="sigatm-col-vaccination">Fecha vacunación</th>
+                        <th className="sigatm-col-notes">Observaciones</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1330,7 +1364,7 @@ export default function Home() {
                               : ""
                           }
                         >
-                          <td>{i + 1}</td>
+                          <td className="sigatm-col-index">{i + 1}</td>
                           {(
                             [
                               "tube",
@@ -1343,7 +1377,7 @@ export default function Home() {
                               "notes",
                             ] as (keyof AnimalRow)[]
                           ).map((field) => (
-                            <td key={field}>
+                            <td key={field} className={`sigatm-col-${field}`}>
                               {field === "animal" ||
                               field === "idType" ||
                               field === "category" ||
@@ -4561,6 +4595,14 @@ function ProducersPanel({
         line("Estado", work.status);
         if (work.type === "Sangrado" || work.type === "Muestreo equino") {
           line("SIGATM", work.sigatmStatus || "Pendiente");
+          const positives = (work.records || []).filter((record) => record.result === "Positivo");
+          const suspicious = (work.records || []).filter((record) => record.result === "Sospechoso");
+          const negatives = (work.records || []).filter((record) => record.result === "Negativo");
+          if (positives.length || suspicious.length || negatives.length) {
+            line("Resumen de resultados", `${negatives.length} negativos - ${suspicious.length} sospechosos - ${positives.length} positivos`);
+            if (positives.length) line("Animales positivos", positives.map((record) => [record.cuig, record.identifier].filter(Boolean).join(" ")).join(", "));
+            if (suspicious.length) line("Animales sospechosos", suspicious.map((record) => [record.cuig, record.identifier].filter(Boolean).join(" ")).join(", "));
+          }
         }
         y += 3;
       });
@@ -4576,7 +4618,7 @@ function ProducersPanel({
   }
   return (
     <>
-      <header className="topbar module-topbar">
+      <header className={`topbar module-topbar ${selected ? "producer-selected-header" : "producer-list-header"}`}>
         <div>
           <span className="eyebrow">GRANDES ANIMALES</span>
           <h1>{selected ? selected.name : "Productores"}</h1>
@@ -4705,14 +4747,16 @@ function ProducersPanel({
           </section>
         </>
       ) : (
-        <ProducerDetail
-          producer={selected}
-          establishment={activeEstablishment!}
-          setSelected={setSelected}
-          setProducers={setProducers}
-          onNewWork={() => setShowWork(true)}
-          uid={uid}
-        />
+        <div className="producer-detail-view">
+          <ProducerDetail
+            producer={selected}
+            establishment={activeEstablishment!}
+            setSelected={setSelected}
+            setProducers={setProducers}
+            onNewWork={() => setShowWork(true)}
+            uid={uid}
+          />
+        </div>
       )}
       {choosingEstablishments && (
         <div className="modal-backdrop">
@@ -5006,6 +5050,7 @@ function ProducerDetail({
   const [editing, setEditing] = useState(false);
   const [manualWork, setManualWork] = useState<number | null>(null);
   const [resultWork, setResultWork] = useState<number | null>(null);
+  const [expandedHealthAnimals, setExpandedHealthAnimals] = useState<Set<string>>(new Set());
   const [uploadFeedback, setUploadFeedback] = useState<{
     count: number;
     file: string;
@@ -5046,6 +5091,36 @@ function ProducerDetail({
     suspicious: events.filter((event) => norm(event.result) === "SOSPECHOSO").length,
     positive: events.filter((event) => norm(event.result) === "POSITIVO").length,
   };
+  const pendingResults = events.filter((event) => norm(event.result) === "SIN RESULTADO").length;
+  const groupedAnimals = Object.values(
+    filtered.reduce<Record<string, { animal: string; category: string; events: HealthEvent[] }>>(
+      (groups, event) => {
+        const key = norm(event.animal);
+        if (!groups[key]) groups[key] = { animal: event.animal, category: event.category, events: [] };
+        groups[key].events.push(event);
+        return groups;
+      },
+      {},
+    ),
+  ).map((group) => {
+    const ordered = [...group.events].sort((a, b) => dateToIso(b.date).localeCompare(dateToIso(a.date)));
+    const status = ordered.some((event) => norm(event.result) === "POSITIVO")
+      ? "Positivo"
+      : ordered.some((event) => norm(event.result) === "SOSPECHOSO")
+        ? "Sospechoso"
+        : ordered.every((event) => norm(event.result) === "NEGATIVO")
+          ? "Negativo"
+          : "Sin resultado";
+    return { ...group, events: ordered, latest: ordered[0], status };
+  }).sort((a, b) => a.animal.localeCompare(b.animal, "es", { numeric: true }));
+  function toggleHealthAnimal(animal: string) {
+    setExpandedHealthAnimals((current) => {
+      const next = new Set(current);
+      if (next.has(animal)) next.delete(animal);
+      else next.add(animal);
+      return next;
+    });
+  }
   const toggle = (key: keyof typeof open) =>
     setOpen((v) => ({ ...v, [key]: !v[key] }));
   async function saveData(e: React.FormEvent<HTMLFormElement>) {
@@ -5160,37 +5235,15 @@ function ProducerDetail({
     <>
       <div className="producer-kpis">
         <article className="panel">
-          <span>Animales registrados</span>
+          <span>Animales identificados</span>
           <strong>{new Set(events.map((e) => e.animal)).size}</strong>
           <small>
             {new Set(events.map((e) => e.animal)).size} con historial individual
           </small>
         </article>
-        <article className="panel">
-          <span>Trabajos realizados</span>
-          <strong>
-            {
-              scopedWorks.filter(({ work }) => work.status !== "Pendiente")
-                .length
-            }
-          </strong>
-          <small>en este establecimiento</small>
-        </article>
-        <article className="panel">
-          <span>Trabajos pendientes</span>
-          <strong>
-            {
-              scopedWorks.filter(({ work }) => work.status === "Pendiente")
-                .length
-            }
-          </strong>
-          <small>en Agenda rural</small>
-        </article>
-        <article className="panel">
-          <span>Eventos sanitarios</span>
-          <strong>{events.length}</strong>
-          <small>registros por animal</small>
-        </article>
+        <article className={`panel ${pendingResults ? "attention" : ""}`}><span>Resultados pendientes</span><strong>{pendingResults}</strong><small>animales sin resultado informado</small></article>
+        <article className={`panel ${resultCounts.positive ? "danger" : ""}`}><span>Resultados positivos</span><strong>{resultCounts.positive}</strong><small>requieren seguimiento sanitario</small></article>
+        <article className={`panel ${resultCounts.suspicious ? "warning" : ""}`}><span>Resultados sospechosos</span><strong>{resultCounts.suspicious}</strong><small>pendientes de confirmación</small></article>
       </div>
       <section className="panel accordion">
         <button className="accordion-head" onClick={() => toggle("data")}>
@@ -5379,35 +5432,28 @@ function ProducerDetail({
               </label>
             </div>
             <div className="health-result-summary">
-              <article className="negative"><span>Negativos</span><b>{resultCounts.negative}</b></article>
-              <article className="suspicious"><span>Sospechosos</span><b>{resultCounts.suspicious}</b></article>
-              <article className="positive"><span>Positivos</span><b>{resultCounts.positive}</b></article>
+              <button className={`negative ${healthFilters.result === "Negativo" ? "selected" : ""}`} onClick={() => setHealthFilters((current) => ({ ...current, result: current.result === "Negativo" ? "" : "Negativo" }))}><span>Negativos</span><b>{resultCounts.negative}</b></button>
+              <button className={`suspicious ${healthFilters.result === "Sospechoso" ? "selected" : ""}`} onClick={() => setHealthFilters((current) => ({ ...current, result: current.result === "Sospechoso" ? "" : "Sospechoso" }))}><span>Sospechosos</span><b>{resultCounts.suspicious}</b></button>
+              <button className={`positive ${healthFilters.result === "Positivo" ? "selected" : ""}`} onClick={() => setHealthFilters((current) => ({ ...current, result: current.result === "Positivo" ? "" : "Positivo" }))}><span>Positivos</span><b>{resultCounts.positive}</b></button>
             </div>
-            <div className="health-table">
+            <div className="health-table health-animal-groups">
               <div className="health-head">
                 <span>Animal</span>
                 <span>Categoría</span>
-                <span>Fecha</span>
-                <span>Trabajo / práctica</span>
-                <span>Resultado</span>
+                <span>Último control</span>
+                <span>Registros</span>
+                <span>Estado sanitario</span>
               </div>
-              {filtered.map((e, i) => (
-                <article key={i}>
-                  <b>{e.animal}</b>
-                  <span>{e.category}</span>
-                  <time>{e.date}</time>
-                  <div>
-                    <b>{e.work}</b>
-                    <small>{e.practice}</small>
-                  </div>
-                  <span
-                    className={`health-result ${norm(e.result).toLowerCase()}`}
-                  >
-                    {e.result}
-                  </span>
-                </article>
-              ))}
-              {!filtered.length && (
+              {groupedAnimals.map((group) => {
+                const expanded = expandedHealthAnimals.has(group.animal);
+                return <section className={`health-animal-group ${expanded ? "expanded" : ""}`} key={group.animal}>
+                  <button className="health-animal-row" onClick={() => toggleHealthAnimal(group.animal)}>
+                    <b>{group.animal}</b><span>{group.category}</span><time>{group.latest.date}<small>{group.latest.work}</small></time><span>{group.events.length} {group.events.length === 1 ? "registro" : "registros"}</span><span className={`health-result ${norm(group.status).toLowerCase()}`}>{group.status}</span><i>{expanded ? "⌃" : "⌄"}</i>
+                  </button>
+                  {expanded && <div className="animal-health-timeline">{group.events.map((event, index) => <article key={`${event.date}-${event.work}-${index}`}><time>{event.date}</time><div><b>{event.work}</b><small>{event.practice}</small></div><span className={`health-result ${norm(event.result).toLowerCase()}`}>{event.result}</span></article>)}</div>}
+                </section>;
+              })}
+              {!groupedAnimals.length && (
                 <div className="empty-health">
                   No hay eventos que coincidan con los filtros.
                 </div>
