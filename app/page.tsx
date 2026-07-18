@@ -622,6 +622,16 @@ const WORK_CATALOG: Record<string, { label: string; scope: string }[]> = {
     { label: "Otro trabajo veterinario", scope: "Definido por el profesional" },
   ],
 };
+const WORK_TYPE_ORDER = [
+  "Sangrado",
+  "Muestreo equino",
+  "Tacto",
+  "Vacunación",
+  "Revisión",
+  "Muestreo reproductivo",
+  "Tuberculinización",
+  "Otro",
+];
 
 export default function Home() {
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -5022,7 +5032,7 @@ function ProducersPanel({
               {selected.name} · {activeEstablishment?.name}
             </p>
             <div className="work-types">
-              {Object.keys(WORK_CATALOG).map((t) => (
+              {WORK_TYPE_ORDER.map((t) => (
                 <button
                   type="button"
                   className={workType === t ? "chosen" : ""}
@@ -5036,7 +5046,12 @@ function ProducersPanel({
             <div className="form-grid">
               <label>
                 Fecha
-                <input name="date" type="date" required />
+                <input
+                  name="date"
+                  type="date"
+                  defaultValue={localIsoDate()}
+                  required
+                />
               </label>
               <label>
                 Cantidad estimada
@@ -5828,6 +5843,9 @@ function ManualAnimalEntry({
   });
   const existing = work.records || [];
   const [search, setSearch] = useState("");
+  const [resultFilter, setResultFilter] = useState<
+    "" | "Positivo" | "Sospechoso"
+  >("");
   const [resultsEnabled, setResultsEnabled] = useState(() =>
     existing.some((record) => Boolean(record.result)),
   );
@@ -5850,7 +5868,12 @@ function ManualAnimalEntry({
   const valid = rows.filter((r) => r.identifier.trim() && r.category);
   const visibleRows = rows
     .map((row, index) => ({ row, index }))
-    .filter(({ row }) => norm(row.identifier).includes(norm(search)));
+    .filter(({ row }) => norm(row.identifier).includes(norm(search)))
+    .filter(({ row }) => !resultFilter || row.result === resultFilter);
+  const resultCounts = {
+    positive: rows.filter((row) => row.result === "Positivo").length,
+    suspicious: rows.filter((row) => row.result === "Sospechoso").length,
+  };
   const update = (i: number, key: keyof ManualAnimal, value: string) =>
     setRows((v) => v.map((r, n) => (n === i ? { ...r, [key]: value } : r)));
   const focus = (i: number, key: keyof ManualAnimal) =>
@@ -5914,6 +5937,13 @@ function ManualAnimalEntry({
     setResultsEnabled(true);
     setRows((current) =>
       current.map((row) => ({ ...row, result: row.result || "Negativo" })),
+    );
+  };
+  const removeResults = () => {
+    setResultsEnabled(false);
+    setResultFilter("");
+    setRows((current) =>
+      current.map(({ result: _, ...row }) => row),
     );
   };
   const fillSequence = () => {
@@ -6048,11 +6078,38 @@ function ManualAnimalEntry({
           <button
             type="button"
             className={resultsEnabled ? "enabled" : ""}
-            onClick={enableResults}
-            disabled={resultsEnabled}
+            onClick={resultsEnabled ? removeResults : enableResults}
           >
-            {resultsEnabled ? "✓ Resultados agregados" : "+ Agregar resultados"}
+            {resultsEnabled ? "− Quitar resultados" : "+ Agregar resultados"}
           </button>
+          {resultsEnabled &&
+            (resultCounts.positive > 0 || resultFilter === "Positivo") && (
+            <button
+              type="button"
+              className={`result-quick-filter positive ${resultFilter === "Positivo" ? "selected" : ""}`}
+              onClick={() =>
+                setResultFilter((current) =>
+                  current === "Positivo" ? "" : "Positivo",
+                )
+              }
+            >
+              Positivos {resultCounts.positive}
+            </button>
+          )}
+          {resultsEnabled &&
+            (resultCounts.suspicious > 0 || resultFilter === "Sospechoso") && (
+            <button
+              type="button"
+              className={`result-quick-filter suspicious ${resultFilter === "Sospechoso" ? "selected" : ""}`}
+              onClick={() =>
+                setResultFilter((current) =>
+                  current === "Sospechoso" ? "" : "Sospechoso",
+                )
+              }
+            >
+              Sospechosos {resultCounts.suspicious}
+            </button>
+          )}
         </div>
         <div className={`manual-grid ${resultsEnabled ? "with-results" : ""}`}>
           <div className="manual-grid-head">
@@ -6074,7 +6131,10 @@ function ManualAnimalEntry({
             <span />
           </div>
           {visibleRows.map(({ row, index: i }) => (
-            <div className="manual-grid-row" key={i}>
+            <div
+              className={`manual-grid-row ${resultsEnabled && row.result ? `result-${row.result.toLowerCase()}` : ""}`}
+              key={i}
+            >
               <span>{i + 1}</span>
               <input
                 data-manual={`${i}-cuig`}
