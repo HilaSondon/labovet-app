@@ -4378,6 +4378,16 @@ const workEstablishment = (producer: Producer, work: Work) => {
     establishments[0]
   );
 };
+const sampledAnimalsInWork = (work: Work) =>
+  work.records?.length || Number.parseInt(work.animals, 10) || 0;
+const sampledAnimalsForProducer = (producer: Producer) =>
+  producer.works.reduce(
+    (total, work) =>
+      dateToIso(displayDate(work.date)) <= localIsoDate()
+        ? total + sampledAnimalsInWork(work)
+        : total,
+    0,
+  );
 const INITIAL_PRODUCERS: Producer[] = [
   {
     id: 1,
@@ -4558,8 +4568,7 @@ function ProducersPanel({
     const f = new FormData(e.currentTarget);
     const dateValue = String(f.get("date"));
     const iso = dateToIso(dateValue);
-    const status =
-      new Date(`${iso}T23:59:59`) >= new Date() ? "Pendiente" : "Realizado";
+    const status = iso > localIsoDate() ? "Pendiente" : "Realizado";
     const detail = String(f.get("detail"));
     const notes = String(f.get("notes") || "").trim();
     const work: Work = {
@@ -4789,9 +4798,15 @@ function ProducersPanel({
               <small>cartera actual</small>
             </article>
             <article className="panel stat-card">
-              <span>Animales registrados</span>
-              <strong>{producers.reduce((a, p) => a + p.animals, 0)}</strong>
-              <small>en todos los establecimientos</small>
+              <span>Animales muestreados</span>
+              <strong>
+                {producers.reduce(
+                  (total, producer) =>
+                    total + sampledAnimalsForProducer(producer),
+                  0,
+                )}
+              </strong>
+              <small>incluidos en trabajos registrados</small>
             </article>
             <article className="panel stat-card">
               <span>Trabajos pendientes</span>
@@ -4799,7 +4814,10 @@ function ProducersPanel({
                 {
                   producers
                     .flatMap((p) => p.works)
-                    .filter((w) => w.status === "Pendiente").length
+                    .filter(
+                      (w) =>
+                        dateToIso(displayDate(w.date)) > localIsoDate(),
+                    ).length
                 }
               </strong>
               <small>próximas actividades</small>
@@ -4854,8 +4872,8 @@ function ProducersPanel({
                   </b>
                 </span>
                 <span>
-                  <small>Animales</small>
-                  <b>{p.animals}</b>
+                  <small>Animales muestreados</small>
+                  <b>{sampledAnimalsForProducer(p)}</b>
                 </span>
                 <span>
                   <small>Último trabajo</small>
@@ -6315,9 +6333,9 @@ function ManualAnimalEntry({
 }
 
 function RuralAgenda({ producers }: { producers: Producer[] }) {
-  const [filter, setFilter] = useState<"pendientes" | "realizados">(
-    "pendientes",
-  );
+  const [filter, setFilter] = useState<
+    "todos" | "pendientes" | "realizados"
+  >("todos");
   const [columnFilters, setColumnFilters] = useState({
     date: "",
     producer: "",
@@ -6339,14 +6357,19 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const pending = all
-    .filter((item) => item.date >= now)
+    .filter((item) => item.date > now)
     .sort((a, b) => a.date.getTime() - b.date.getTime());
   const completed = all
-    .filter((item) => item.date < now)
+    .filter((item) => item.date <= now)
     .sort((a, b) => b.date.getTime() - a.date.getTime());
-  const base = filter === "pendientes" ? pending : completed;
-  const visible = base.filter(({ producer, work, establishment }) => {
-    const status = filter === "pendientes" ? "Pendiente" : "Realizado";
+  const base =
+    filter === "pendientes"
+      ? pending
+      : filter === "realizados"
+        ? completed
+        : [...pending, ...completed];
+  const visible = base.filter(({ producer, work, establishment, date }) => {
+    const status = date > now ? "Pendiente" : "Realizado";
     const quantity = work.animals.replace(/\D/g, "");
     return (
       (!columnFilters.date || displayDate(work.date) === columnFilters.date) &&
@@ -6405,6 +6428,12 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
             </p>
           </div>
           <div className="agenda-filters">
+            <button
+              className={filter === "todos" ? "selected" : ""}
+              onClick={() => setFilter("todos")}
+            >
+              Todos <b>{all.length}</b>
+            </button>
             <button
               className={filter === "pendientes" ? "selected" : ""}
               onClick={() => setFilter("pendientes")}
@@ -6486,7 +6515,9 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
           </label>
         </div>
         {visible.length ? (
-          visible.map(({ producer, work, establishment }, i) => (
+          visible.map(({ producer, work, establishment, date }, i) => {
+            const pendingWork = date > now;
+            return (
             <article
               className="agenda-row"
               key={`${producer.id}-${i}-${work.date}`}
@@ -6494,7 +6525,7 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
               <time>
                 <b>{work.date}</b>
                 <small>
-                  {filter === "pendientes" ? "Programado" : "Registrado"}
+                  {pendingWork ? "Programado" : "Registrado"}
                 </small>
               </time>
               <div>
@@ -6511,10 +6542,11 @@ function RuralAgenda({ producers }: { producers: Producer[] }) {
               </div>
               <b>{work.animals}</b>
               <span className="table-status">
-                {filter === "pendientes" ? "Pendiente" : "Realizado"}
+                {pendingWork ? "Pendiente" : "Realizado"}
               </span>
             </article>
-          ))
+            );
+          })
         ) : (
           <div className="empty-agenda">
             <b>No hay trabajos que coincidan</b>
