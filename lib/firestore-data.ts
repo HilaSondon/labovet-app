@@ -367,7 +367,7 @@ export async function saveWorkData(
     records.map((animal, index) => ({
       kind: "set" as const,
       ref: doc(userCollection(uid, "animals"), `${id}-${index}`),
-      data: { ...animal, producerId, workId: id, position: index },
+      data: clean({ ...animal, producerId, workId: id, position: index }),
     })),
   );
 }

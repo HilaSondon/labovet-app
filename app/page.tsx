@@ -576,6 +576,10 @@ const WORK_CATALOG: Record<string, { label: string; scope: string }[]> = {
       scope: "Programa SENASA",
     },
     { label: "Leucosis bovina", scope: "Diagnóstico sanitario" },
+    {
+      label: "Tuberculosis bovina · prueba tuberculínica",
+      scope: "Programa Nacional de Tuberculosis",
+    },
     { label: "Diarrea viral bovina · DVB", scope: "Diagnóstico sanitario" },
     {
       label: "Rinotraqueítis infecciosa bovina · IBR",
@@ -604,20 +608,6 @@ const WORK_CATALOG: Record<string, { label: string; scope: string }[]> = {
       scope: "Control reproductivo de toros",
     },
   ],
-  Tuberculinización: [
-    {
-      label: "Prueba anocaudal con PPD bovina",
-      scope: "Programa Nacional de Tuberculosis",
-    },
-    {
-      label: "Prueba cervical simple",
-      scope: "Programa Nacional de Tuberculosis",
-    },
-    {
-      label: "Prueba cervical comparada",
-      scope: "Programa Nacional de Tuberculosis",
-    },
-  ],
   Otro: [
     { label: "Otro trabajo veterinario", scope: "Definido por el profesional" },
   ],
@@ -629,7 +619,6 @@ const WORK_TYPE_ORDER = [
   "Vacunación",
   "Revisión",
   "Muestreo reproductivo",
-  "Tuberculinización",
   "Otro",
 ];
 
@@ -890,8 +879,7 @@ export default function Home() {
     )
     .filter(
       (item) =>
-        (item.work.type === "Sangrado" ||
-          item.work.type === "Muestreo equino") &&
+        isSigatmEligibleWork(item.work) &&
         item.work.records?.length,
     );
   const visibleSigatmWorks = sigatmWorks.filter(
@@ -2989,13 +2977,12 @@ function HomeDashboard({
       .map((event) => ({ patient, event })),
   );
   const pendingRural = producers.flatMap((producer) => producer.works).filter(
-    (work) => dateToIso(displayDate(work.date)) >= today,
+    (work) => dateToIso(displayDate(work.date)) > today,
   ).length;
   const allReminders = patients.flatMap((patient) => patient.events).filter((event) => event.nextDate).length;
   const sigatmWorks = producers.flatMap((producer) => producer.works).filter(
     (work) =>
-      (work.type === "Sangrado" || work.type === "Muestreo equino") &&
-      work.records?.length,
+      isSigatmEligibleWork(work) && work.records?.length,
   );
   const pendingSigatm = sigatmWorks.filter((work) => (work.sigatmStatus || "Pendiente") === "Pendiente").length;
   return (
@@ -4473,6 +4460,15 @@ const workDisplayStatus = (work: Work) => {
   if (dateToIso(displayDate(work.date)) > localIsoDate()) return "Pendiente";
   return "Realizado";
 };
+const isSigatmEligibleWork = (work: Work) => {
+  const practice = norm(work.detail);
+  return (
+    (work.type === "Sangrado" &&
+      (practice.includes("BRUCELOSIS") || practice.includes("LEUCOSIS"))) ||
+    (work.type === "Muestreo equino" &&
+      practice.includes("ANEMIA INFECCIOSA EQUINA"))
+  );
+};
 const sampledAnimalsForProducer = (producer: Producer) =>
   producer.works.reduce(
     (total, work) =>
@@ -4803,8 +4799,10 @@ function ProducersPanel({
         line("Práctica", work.detail);
         line("Cantidad", work.animals);
         line("Estado", workDisplayStatus(work));
-        if (work.type === "Sangrado" || work.type === "Muestreo equino") {
+        if (isSigatmEligibleWork(work)) {
           line("SIGATM", work.sigatmStatus || "Pendiente");
+        }
+        if (work.type === "Sangrado") {
           const positives = (work.records || []).filter((record) => record.result === "Positivo");
           const suspicious = (work.records || []).filter((record) => record.result === "Sospechoso");
           const negatives = (work.records || []).filter((record) => record.result === "Negativo");
@@ -4918,7 +4916,11 @@ function ProducersPanel({
                 {
                   producers
                     .flatMap((p) => p.works)
-                    .filter((work) => work.sigatmStatus === "Finalizado").length
+                    .filter(
+                      (work) =>
+                        isSigatmEligibleWork(work) &&
+                        work.sigatmStatus === "Finalizado",
+                    ).length
                 }
               </strong>
               <small>archivos generados</small>
@@ -5497,8 +5499,7 @@ function ProducerDetail({
         )
       )
         return;
-      const sigatm =
-        work.type === "Sangrado" || work.type === "Muestreo equino";
+      const sigatm = isSigatmEligibleWork(work);
       const updated = {
         ...producer,
         works: producer.works.map((w, i) =>
@@ -5777,13 +5778,14 @@ function ProducerDetail({
               <span>Carga de animales</span>
             </div>
             {scopedWorks.map(({ work: w, index: i }) => {
-              const sigatmWork =
+              const sigatmWork = isSigatmEligibleWork(w);
+              const samplingWork =
                 w.type === "Sangrado" || w.type === "Muestreo equino";
               return (
                 <article className="work-row" key={i}>
                   <time className="work-date">{w.date}</time>
-                  <div className={`work-icon ${sigatmWork ? "blood" : ""}`}>
-                    {sigatmWork ? "◉" : "✓"}
+                  <div className={`work-icon ${samplingWork ? "blood" : ""}`}>
+                    {samplingWork ? "◉" : "✓"}
                   </div>
                   <div className="work-detail">
                     <b>{w.type}</b>
@@ -5984,6 +5986,7 @@ function ManualAnimalEntry({
 }) {
   const work = producer.works[workIndex];
   const equine = work.type === "Muestreo equino";
+  const canAddResults = work.type === "Sangrado";
   const categories = Object.keys(CATEGORIES[equine ? "EQUINO" : "BOVINO"]);
   const expected = parseInt(work.animals) || 0;
   const empty = (result?: WorkAnimal["result"]): ManualAnimal => ({
@@ -5999,11 +6002,19 @@ function ManualAnimalEntry({
   >("");
   const [quantityConfirmation, setQuantityConfirmation] = useState(false);
   const [resultsEnabled, setResultsEnabled] = useState(() =>
-    existing.some((record) => Boolean(record.result)),
+    canAddResults && existing.some((record) => Boolean(record.result)),
   );
   const [rows, setRows] = useState<ManualAnimal[]>(() =>
     existing.length
-      ? existing.map((r) => ({ ...r }))
+      ? existing.map((record) =>
+          canAddResults
+            ? { ...record }
+            : {
+                cuig: record.cuig,
+                identifier: record.identifier,
+                category: record.category,
+              },
+        )
       : Array.from({ length: expected || 1 }, empty),
   );
   const [globalCuig, setGlobalCuig] = useState(() =>
@@ -6132,8 +6143,7 @@ function ManualAnimalEntry({
     focus(start, "identifier");
   };
   const commitSave = () => {
-    const sigatmWork =
-      work.type === "Sangrado" || work.type === "Muestreo equino";
+    const sigatmWork = isSigatmEligibleWork(work);
     const works = producer.works.map((w, i) =>
       i === workIndex
         ? {
@@ -6228,13 +6238,15 @@ function ManualAnimalEntry({
               autoFocus
             />
           </label>
-          <button
-            type="button"
-            className={resultsEnabled ? "enabled" : ""}
-            onClick={resultsEnabled ? removeResults : enableResults}
-          >
-            {resultsEnabled ? "− Quitar resultados" : "+ Agregar resultados"}
-          </button>
+          {canAddResults && (
+            <button
+              type="button"
+              className={resultsEnabled ? "enabled" : ""}
+              onClick={resultsEnabled ? removeResults : enableResults}
+            >
+              {resultsEnabled ? "− Quitar resultados" : "+ Agregar resultados"}
+            </button>
+          )}
           {resultsEnabled &&
             (resultCounts.positive > 0 || resultFilter === "Positivo") && (
             <button
