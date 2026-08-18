@@ -397,7 +397,10 @@ type ViewKey =
   | "planes"
   | "admin"
   | "admin-sigatm"
-  | "laboratory";
+  | "laboratory"
+  | "lab-protocols"
+  | "lab-veterinarians"
+  | "lab-statistics";
 const LARGE_MENU: [ViewKey, string][] = [
   ["productores", "Productores"],
   ["agenda-rural", "Agenda rural"],
@@ -619,7 +622,8 @@ export default function Home() {
   const canAccessView = (view: ViewKey) => {
     if (!userAccess) return false;
     if (view === "planes" || view === "estadisticas") return true;
-    if (view === "laboratory") return userAccess.permissions.laboratory;
+    if (["laboratory", "lab-protocols", "lab-veterinarians", "lab-statistics"].includes(view))
+      return userAccess.permissions.laboratory;
     if (view === "admin" || view === "admin-sigatm")
       return userAccess.role === "admin";
     if (view === "stock") return userAccess.permissions.stock;
@@ -903,6 +907,11 @@ export default function Home() {
           >
             <span>⚗</span> Cargar resultados
           </button>}
+          {userAccess.permissions.laboratory && <div className="submenu laboratory-submenu">
+            <button className={activeView === "lab-protocols" ? "selected" : ""} onClick={() => navigateTo("lab-protocols")}>Protocolos</button>
+            <button className={activeView === "lab-veterinarians" ? "selected" : ""} onClick={() => navigateTo("lab-veterinarians")}>Veterinarios</button>
+            <button className={activeView === "lab-statistics" ? "selected" : ""} onClick={() => navigateTo("lab-statistics")}>Estadísticas</button>
+          </div>}
           {userAccess.permissions.largeAnimals && <>
           <button
             className={
@@ -1621,7 +1630,7 @@ function AuthScreen() {
 }
 
 const VIEW_CONTENT: Record<
-  Exclude<ViewKey, "sigatm" | "planes" | "stock" | "admin" | "admin-sigatm" | "laboratory">,
+  Exclude<ViewKey, "sigatm" | "planes" | "stock" | "admin" | "admin-sigatm" | "laboratory" | "lab-protocols" | "lab-veterinarians" | "lab-statistics">,
   {
     eyebrow: string;
     title: string;
@@ -3077,7 +3086,10 @@ function ModuleView({
         userEmail={userEmail}
       />
     );
-  if (view === "laboratory") return <LaboratoryGreCertPanel />;
+  if (view === "laboratory") return <LaboratoryGreCertPanel uid={uid} />;
+  if (view === "lab-protocols") return <LaboratoryGreCertPanel uid={uid} section="protocols" />;
+  if (view === "lab-veterinarians") return <LaboratoryGreCertPanel uid={uid} section="veterinarians" />;
+  if (view === "lab-statistics") return <LaboratoryGreCertPanel uid={uid} section="statistics" />;
   if (view === "admin") return <AdminUsersPanel currentUid={uid} />;
   if (view === "admin-sigatm")
     return <AdminSigatmCatalog currentUid={uid} />;
