@@ -45,6 +45,10 @@ type ResultRow = {
   age: string;
   analysisCode: string;
   resultCode: string;
+  antigen: string;
+  brand: string;
+  batch: string;
+  expiration: string;
   stamp: string;
 };
 
@@ -92,6 +96,10 @@ function rowsFromReport(report: GrecertReport): ResultRow[] {
       age: asText(sample.codigoDeEdad),
       analysisCode: asText(analysis.codigoEnsayo),
       resultCode: "",
+      antigen: "",
+      brand: "",
+      batch: "",
+      expiration: "",
       stamp: "",
     }));
   });
@@ -106,22 +114,42 @@ export default function LaboratoryGreCertPanel() {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
-  const [antigen, setAntigen] = useState("");
-  const [brand, setBrand] = useState("");
-  const [batch, setBatch] = useState("");
-  const [expiration, setExpiration] = useState("");
+  const [bulkAntigen, setBulkAntigen] = useState("");
+  const [bulkBrand, setBulkBrand] = useState("");
+  const [bulkBatch, setBulkBatch] = useState("");
+  const [bulkExpiration, setBulkExpiration] = useState("");
   const [firstStamp, setFirstStamp] = useState("");
+  const [search, setSearch] = useState("");
+  const [resultFilter, setResultFilter] = useState<"all" | "21" | "62">("all");
 
   const report = reports[selectedReport];
   const analyses = (report?.muestra?.analisis || []) as GrecertAnalysis[];
+  const mainAnalysis = analyses[0];
   const completed = rows.filter((row) => row.resultCode).length;
-  const ready = rows.length > 0 && completed === rows.length;
+  const requiredComplete = rows.filter((row) => row.resultCode && row.antigen && row.brand && row.batch && row.expiration).length;
+  const ready = rows.length > 0 && requiredComplete === rows.length;
   const positive = rows.filter((row) => row.resultCode === "21").length;
   const suspicious = rows.filter((row) => row.resultCode === "62").length;
   const assayCodes = useMemo(
     () => [...new Set(analyses.map((analysis) => asText(analysis.codigoEnsayo)).filter(Boolean))],
     [analyses],
   );
+  const assayName = asText(mainAnalysis?.codigoEnsayo) === "1056"
+    ? "Anemia Infecciosa Equina"
+    : `Ensayo ${asText(mainAnalysis?.codigoEnsayo) || "sin código"}`;
+  const matrixName = asText(mainAnalysis?.codigoMatriz) === "2"
+    ? "Suero"
+    : `Matriz ${asText(mainAnalysis?.codigoMatriz) || "sin código"}`;
+  const techniqueName = asText(mainAnalysis?.codigoTecnica) === "37"
+    ? "IDGA"
+    : `Técnica ${asText(mainAnalysis?.codigoTecnica) || "sin código"}`;
+  const visibleRows = rows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => {
+      const query = search.trim().toLowerCase();
+      return (!query || row.identification.toLowerCase().includes(query) || row.internalNumber.toLowerCase().includes(query))
+        && (resultFilter === "all" || row.resultCode === resultFilter);
+    });
 
   const openReport = (index: number, sourceReports = reports) => {
     setSelectedReport(index);
@@ -154,6 +182,30 @@ export default function LaboratoryGreCertPanel() {
   const updateRow = (index: number, changes: Partial<ResultRow>) =>
     setRows((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, ...changes } : row));
 
+  const applyBulkReagent = () => {
+    if (![bulkAntigen, bulkBrand, bulkBatch, bulkExpiration].some((value) => value.trim())) {
+      setError("Completá al menos un dato antes de aplicarlo a todas las filas.");
+      return;
+    }
+    setRows((current) => current.map((row) => ({
+      ...row,
+      antigen: bulkAntigen.trim() || row.antigen,
+      brand: bulkBrand.trim() || row.brand,
+      batch: bulkBatch.trim() || row.batch,
+      expiration: bulkExpiration.trim() || row.expiration,
+    })));
+    setError("");
+    setFeedback("Datos del reactivo aplicados a todas las muestras.");
+  };
+
+  const focusNextCell = (event: React.KeyboardEvent<HTMLInputElement>, rowIndex: number, column: string) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const next = document.querySelector<HTMLInputElement>(`[data-lab-row="${rowIndex + 1}"][data-lab-column="${column}"]`);
+    next?.focus();
+    next?.select();
+  };
+
   const assignStamps = () => {
     if (!/^\d+$/.test(firstStamp.trim())) {
       setError("Ingresá una primera estampilla numérica válida.");
@@ -173,8 +225,8 @@ export default function LaboratoryGreCertPanel() {
       "resultadoNumero", "idUnidadDeMedida", "observacion",
     ];
     const output = rows.map((row) => [
-      String(row.number), "", "", "", "", "", "", "", antigen, brand,
-      batch, expiration, row.stamp, row.resultCode, "", "", "",
+      String(row.number), "", "", "", "", "", "", "", row.antigen, row.brand,
+      row.batch, row.expiration, row.stamp, row.resultCode, "", "", "",
     ]);
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...output]);
     const workbook = XLSX.utils.book_new();
@@ -210,48 +262,58 @@ export default function LaboratoryGreCertPanel() {
         </section>
       ) : (
         <>
-          <section className="panel laboratory-report-summary">
-            <div className="laboratory-report-title"><div><span>ACTA SIGATM</span><h2>N.º {asText(report.numeroDocumentoUno)}</h2><p>{fileName}</p></div><button type="button" onClick={() => { setReports([]); setRows([]); setError(""); setFeedback(""); }}>Cargar otro TXT</button></div>
-            {reports.length > 1 && <label>Informe<select value={selectedReport} onChange={(event) => openReport(Number(event.target.value))}>{reports.map((item, index) => <option key={`${asText(item.numeroInforme)}-${index}`} value={index}>Informe {asText(item.numeroInforme)}</option>)}</select></label>}
-            <div className="laboratory-meta-grid">
-              <article><span>Informe</span><b>{asText(report.numeroInforme)}</b></article>
-              <article><span>Laboratorio</span><b>{asText(report.codigoLaboratorio)}</b></article>
-              <article><span>RENSPA</span><b>{asText(report.renspaUnidadProductiva)}</b></article>
-              <article><span>Fecha de toma</span><b>{asText(report.muestra?.fechaDeToma)}</b></article>
-              <article><span>Fecha de recepción</span><b>{asText(report.muestra?.fechaDeRecepcion)}</b></article>
-              <article><span>Ensayo</span><b>{assayCodes.join(", ") || "Sin código"}</b></article>
-              <article><span>Muestras</span><b>{rows.length}</b></article>
+          <section className="panel laboratory-protocol">
+            <div className="protocol-heading">
+              <div><span>INFORME DE ENSAYO</span><h2>N.º {asText(report.numeroInforme)}</h2><p>{asText(report.codigoLaboratorio)} · Documento oficial recibido desde GRECERT</p></div>
+              <div className="protocol-heading-actions"><div><span>ACTA SIGATM</span><b>N.º {asText(report.numeroDocumentoUno)}</b></div><button type="button" onClick={() => { setReports([]); setRows([]); setError(""); setFeedback(""); }}>Cargar otro TXT</button></div>
             </div>
+            {reports.length > 1 && <label className="protocol-report-picker">Informe<select value={selectedReport} onChange={(event) => openReport(Number(event.target.value))}>{reports.map((item, index) => <option key={`${asText(item.numeroInforme)}-${index}`} value={index}>Informe {asText(item.numeroInforme)}</option>)}</select></label>}
+            <div className="protocol-section">
+              <h3>Lugar de toma de muestra</h3>
+              <div className="protocol-data-grid"><p><span>RENSPA</span><b>{asText(report.renspaUnidadProductiva)}</b></p><p><span>Funcionario actuante</span><b>{asText(report.cuitDeFuncionario)}</b></p><p><span>Laboratorio</span><b>{asText(report.codigoLaboratorio)}</b></p></div>
+            </div>
+            <div className="protocol-section two-columns">
+              <div><h3>Detalle de la muestra recibida</h3><div className="protocol-data-grid"><p><span>Cantidad</span><b>{rows.length} {rows.length === 1 ? "muestra" : "muestras"}</b></p><p><span>Fecha de toma</span><b>{asText(report.muestra?.fechaDeToma)}</b></p><p><span>Ingreso al laboratorio</span><b>{asText(report.muestra?.fechaDeRecepcion)}</b></p></div></div>
+              <div><h3>Documento que ampara el lote</h3><div className="protocol-data-grid"><p><span>Tipo</span><b>Acta</b></p><p><span>Número</span><b>{asText(report.numeroDocumentoUno)}</b></p></div></div>
+            </div>
+            <div className="protocol-section analysis-summary">
+              <h3>Análisis realizado</h3>
+              <div className="protocol-data-grid"><p><span>Ensayo</span><b>{assayName}</b><small>Código {assayCodes.join(", ")}</small></p><p><span>Matriz</span><b>{matrixName}</b><small>Código {asText(mainAnalysis?.codigoMatriz)}</small></p><p><span>Técnica</span><b>{techniqueName}</b><small>Código {asText(mainAnalysis?.codigoTecnica)}</small></p><p><span>Analito</span><b>Código {asText(mainAnalysis?.codigoAnalito)}</b></p></div>
+            </div>
+            <p className="protocol-source">Archivo fuente: {fileName}. Los datos oficiales permanecen bloqueados.</p>
           </section>
 
           {feedback && <div className="laboratory-message success">{feedback}<button type="button" onClick={() => setFeedback("")}>×</button></div>}
           {error && <div className="laboratory-message error">{error}<button type="button" onClick={() => setError("")}>×</button></div>}
 
-          <section className="panel laboratory-reagent-panel">
-            <div><span className="eyebrow">DATOS DEL REACTIVO</span><h2>Aplicados a todas las muestras</h2></div>
-            <div className="laboratory-reagent-grid">
-              <label>Antígeno / Kit<input value={antigen} onChange={(event) => setAntigen(event.target.value)} /></label>
-              <label>Marca<input value={brand} onChange={(event) => setBrand(event.target.value)} /></label>
-              <label>Lote<input value={batch} onChange={(event) => setBatch(event.target.value)} /></label>
-              <label>Vencimiento<input value={expiration} onChange={(event) => setExpiration(event.target.value)} placeholder="DD/MM/AAAA" /></label>
-            </div>
-            <div className="laboratory-stamp-tools"><label>Primera estampilla<input value={firstStamp} onChange={(event) => setFirstStamp(event.target.value)} inputMode="numeric" /></label><button type="button" onClick={assignStamps}>Completar correlativas</button></div>
-          </section>
-
           <section className="panel laboratory-results-panel">
             <div className="laboratory-results-toolbar">
-              <div><span className="eyebrow">RESULTADOS</span><h2>{completed} de {rows.length} completos</h2></div>
-              <div><span className="result-pill positive">{positive} positivos</span><span className="result-pill suspicious">{suspicious} sospechosos</span><button type="button" onClick={() => setRows((current) => current.map((row) => ({ ...row, resultCode: "1" })))}>Todos negativos</button></div>
+              <div><span className="eyebrow">TABLA DE RESULTADOS</span><h2>{completed} de {rows.length} resultados informados</h2></div>
+              <div><button type="button" className={resultFilter === "21" ? "result-pill positive selected" : "result-pill positive"} onClick={() => setResultFilter((current) => current === "21" ? "all" : "21")}>{positive} positivos</button><button type="button" className={resultFilter === "62" ? "result-pill suspicious selected" : "result-pill suspicious"} onClick={() => setResultFilter((current) => current === "62" ? "all" : "62")}>{suspicious} sospechosos</button><button type="button" onClick={() => setRows((current) => current.map((row) => ({ ...row, resultCode: "1" })))}>Todos negativos</button></div>
             </div>
+            <div className="laboratory-fast-entry">
+              <div><b>Carga rápida</b><span>Completá solo los datos repetidos y aplicalos a todas las filas.</span></div>
+              <label>Antígeno / Kit<input value={bulkAntigen} onChange={(event) => setBulkAntigen(event.target.value)} /></label>
+              <label>Marca<input value={bulkBrand} onChange={(event) => setBulkBrand(event.target.value)} /></label>
+              <label>Lote<input value={bulkBatch} onChange={(event) => setBulkBatch(event.target.value)} /></label>
+              <label>Vencimiento<input value={bulkExpiration} onChange={(event) => setBulkExpiration(event.target.value)} placeholder="DD/MM/AAAA" /></label>
+              <button type="button" onClick={applyBulkReagent}>Aplicar a todas</button>
+            </div>
+            <div className="laboratory-table-tools"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar identificación o N.º interno…" /><div><label>Primera estampilla<input value={firstStamp} onChange={(event) => setFirstStamp(event.target.value)} inputMode="numeric" /></label><button type="button" onClick={assignStamps}>Completar correlativas</button></div></div>
             <div className="laboratory-table-scroll">
-              <div className="laboratory-table-head"><span>#</span><span>N.º interno</span><span>Identificación oficial</span><span>Tipo</span><span>Categoría</span><span>Edad</span><span>Resultado</span><span>Estampilla</span></div>
-              {rows.map((row, index) => <div className={`laboratory-result-row result-${row.resultCode || "empty"}`} key={`${row.analysisCode}-${row.number}`}>
-                <span>{row.number}</span><span>{row.internalNumber || "—"}</span><b>{row.identification || "Sin identificación"}</b><span>{ID_TYPE_LABELS[row.identificationType] || `Código ${row.identificationType}`}</span><span>{CATEGORY_LABELS[row.category] || `Código ${row.category}`}</span><span>{AGE_LABELS[row.age] || `Código ${row.age}`}</span>
+              <div className="laboratory-table-head"><span>#</span><span># Lab</span><span>Identificación</span><span>Categoría</span><span>Técnica</span><span>Edad</span><span>Resultado</span><span>Antígeno / Kit</span><span>Marca</span><span>Lote</span><span>Vencimiento</span><span>Estampilla</span></div>
+              {visibleRows.map(({ row, index }) => <div className={`laboratory-result-row result-${row.resultCode || "empty"}`} key={`${row.analysisCode}-${row.number}`}>
+                <span>{row.number}</span><span>{row.internalNumber || "—"}</span><b>{row.identification || "Sin identificación"}<small>{ID_TYPE_LABELS[row.identificationType] || `Tipo ${row.identificationType}`}</small></b><span>{CATEGORY_LABELS[row.category] || `Código ${row.category}`}</span><span>{techniqueName}</span><span>{AGE_LABELS[row.age] || `Código ${row.age}`}</span>
                 <select value={row.resultCode} onChange={(event) => updateRow(index, { resultCode: event.target.value })}><option value="">Elegir…</option>{RESULT_OPTIONS.map((option) => <option value={option.code} key={option.code}>{option.label}</option>)}</select>
-                <input value={row.stamp} onChange={(event) => updateRow(index, { stamp: event.target.value })} />
+                <input data-lab-row={index} data-lab-column="antigen" value={row.antigen} onChange={(event) => updateRow(index, { antigen: event.target.value })} onKeyDown={(event) => focusNextCell(event, index, "antigen")} />
+                <input data-lab-row={index} data-lab-column="brand" value={row.brand} onChange={(event) => updateRow(index, { brand: event.target.value })} onKeyDown={(event) => focusNextCell(event, index, "brand")} />
+                <input data-lab-row={index} data-lab-column="batch" value={row.batch} onChange={(event) => updateRow(index, { batch: event.target.value })} onKeyDown={(event) => focusNextCell(event, index, "batch")} />
+                <input data-lab-row={index} data-lab-column="expiration" value={row.expiration} onChange={(event) => updateRow(index, { expiration: event.target.value })} onKeyDown={(event) => focusNextCell(event, index, "expiration")} placeholder="DD/MM/AAAA" />
+                <input data-lab-row={index} data-lab-column="stamp" value={row.stamp} onChange={(event) => updateRow(index, { stamp: event.target.value })} onKeyDown={(event) => focusNextCell(event, index, "stamp")} />
               </div>)}
+              {!visibleRows.length && <div className="laboratory-empty-filter">No hay muestras que coincidan con el filtro.</div>}
             </div>
-            <footer className="laboratory-export-bar"><div><b>{ready ? "Resultados completos" : `${rows.length - completed} resultados pendientes`}</b><span>Los datos oficiales del TXT permanecen bloqueados.</span></div><button type="button" className="primary" disabled={!ready} onClick={exportGreCert}>Exportar Excel GRECERT</button></footer>
+            <footer className="laboratory-export-bar"><div><b>{ready ? "Protocolo completo" : `${rows.length - requiredComplete} filas con datos pendientes`}</b><span>Resultado, antígeno, marca, lote y vencimiento deben estar completos.</span></div><button type="button" className="primary" disabled={!ready} onClick={exportGreCert}>Exportar Excel GRECERT</button></footer>
           </section>
         </>
       )}
