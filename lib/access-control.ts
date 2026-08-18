@@ -2,7 +2,8 @@ export type PlanId =
   | "unassigned"
   | "small_animals"
   | "large_animals"
-  | "administrative_service";
+  | "administrative_service"
+  | "laboratory";
 
 export type SubscriptionStatus =
   | "pending"
@@ -17,10 +18,11 @@ export type PlanPermissions = {
   stock: boolean;
   sigatm: boolean;
   managedService: boolean;
+  laboratory: boolean;
 };
 
 export type UserAccess = {
-  role: "veterinarian" | "admin";
+  role: "veterinarian" | "laboratory" | "admin";
   plan: PlanId;
   status: SubscriptionStatus;
   planName: string;
@@ -41,6 +43,7 @@ export const PLAN_DEFINITIONS: Record<
       stock: false,
       sigatm: false,
       managedService: false,
+      laboratory: false,
     },
   },
   small_animals: {
@@ -51,6 +54,7 @@ export const PLAN_DEFINITIONS: Record<
       stock: true,
       sigatm: false,
       managedService: false,
+      laboratory: false,
     },
   },
   large_animals: {
@@ -61,6 +65,7 @@ export const PLAN_DEFINITIONS: Record<
       stock: true,
       sigatm: true,
       managedService: false,
+      laboratory: false,
     },
   },
   administrative_service: {
@@ -71,6 +76,18 @@ export const PLAN_DEFINITIONS: Record<
       stock: true,
       sigatm: true,
       managedService: true,
+      laboratory: false,
+    },
+  },
+  laboratory: {
+    name: "Laboratorio",
+    permissions: {
+      smallAnimals: false,
+      largeAnimals: false,
+      stock: false,
+      sigatm: false,
+      managedService: false,
+      laboratory: true,
     },
   },
 };
@@ -84,13 +101,19 @@ const isSubscriptionStatus = (value: unknown): value is SubscriptionStatus =>
   );
 
 export function resolveUserAccess(data?: Record<string, unknown>): UserAccess {
-  const role = data?.role === "admin" ? "admin" : "veterinarian";
+  const role = data?.role === "admin"
+    ? "admin"
+    : data?.role === "laboratory"
+      ? "laboratory"
+      : "veterinarian";
   const hasSubscriptionModel = isSubscriptionStatus(data?.subscriptionStatus);
 
   // Compatibilidad: las cuentas creadas antes de incorporar suscripciones
   // conservan acceso completo hasta que el administrador les asigne un plan.
   const legacyAccess = Boolean(data) && !hasSubscriptionModel;
-  const plan: PlanId = legacyAccess
+  const plan: PlanId = role === "laboratory"
+    ? "laboratory"
+    : legacyAccess
     ? "large_animals"
     : isPlanId(data?.plan)
       ? data.plan
@@ -115,7 +138,7 @@ export function resolveUserAccess(data?: Record<string, unknown>): UserAccess {
   }
   const enabled = role === "admin" || status === "active" || status === "trial";
   const permissions = role === "admin"
-    ? PLAN_DEFINITIONS.administrative_service.permissions
+    ? { ...PLAN_DEFINITIONS.administrative_service.permissions, laboratory: true }
     : enabled
       ? PLAN_DEFINITIONS[plan].permissions
       : PLAN_DEFINITIONS.unassigned.permissions;

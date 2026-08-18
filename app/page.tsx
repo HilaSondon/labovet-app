@@ -25,6 +25,7 @@ import {
 } from "../lib/access-control";
 import AdminUsersPanel from "../components/AdminUsersPanel";
 import AdminSigatmCatalog from "../components/AdminSigatmCatalog";
+import LaboratoryGreCertPanel from "../components/LaboratoryGreCertPanel";
 import {
   activeCodeMap,
   DEFAULT_SIGATM_CATALOG,
@@ -395,7 +396,8 @@ type ViewKey =
   | "stock"
   | "planes"
   | "admin"
-  | "admin-sigatm";
+  | "admin-sigatm"
+  | "laboratory";
 const LARGE_MENU: [ViewKey, string][] = [
   ["productores", "Productores"],
   ["agenda-rural", "Agenda rural"],
@@ -617,6 +619,7 @@ export default function Home() {
   const canAccessView = (view: ViewKey) => {
     if (!userAccess) return false;
     if (view === "planes" || view === "estadisticas") return true;
+    if (view === "laboratory") return userAccess.permissions.laboratory;
     if (view === "admin" || view === "admin-sigatm")
       return userAccess.role === "admin";
     if (view === "stock") return userAccess.permissions.stock;
@@ -634,7 +637,12 @@ export default function Home() {
     const hasAnyModule =
       userAccess.permissions.smallAnimals ||
       userAccess.permissions.largeAnimals ||
-      userAccess.permissions.stock;
+      userAccess.permissions.stock ||
+      userAccess.permissions.laboratory;
+    if (userAccess.role === "laboratory") {
+      setActiveView(userAccess.permissions.laboratory ? "laboratory" : "planes");
+      return;
+    }
     if (!hasAnyModule) setActiveView("planes");
     else if (!canAccessView(activeView)) setActiveView("estadisticas");
   }, [userAccess, activeView]);
@@ -883,12 +891,18 @@ export default function Home() {
         </div>
         <nav className="main-nav">
           <p>PRINCIPAL</p>
-          <button
+          {userAccess.role !== "laboratory" && <button
             className={activeView === "estadisticas" ? "active" : ""}
             onClick={() => navigateTo("estadisticas")}
           >
             <span>⌂</span> Inicio
-          </button>
+          </button>}
+          {userAccess.permissions.laboratory && <button
+            className={activeView === "laboratory" ? "active" : ""}
+            onClick={() => navigateTo("laboratory")}
+          >
+            <span>⚗</span> Cargar resultados
+          </button>}
           {userAccess.permissions.largeAnimals && <>
           <button
             className={
@@ -945,13 +959,13 @@ export default function Home() {
           >
             <span>⇄</span> Conversor SIGATM
           </button>}
-          <p>SUSCRIPCIONES</p>
+          {userAccess.role !== "laboratory" && <><p>SUSCRIPCIONES</p>
           <button
             className={activeView === "planes" ? "active" : ""}
             onClick={() => setActiveView("planes")}
           >
             <span>◇</span> Elegir plan
-          </button>
+          </button></>}
           {userAccess.role === "admin" && <>
             <p>ADMINISTRACIÓN</p>
             <button
@@ -975,7 +989,7 @@ export default function Home() {
               .toUpperCase()}
           </div>
           <div>
-            <b>{authUser.displayName || "Veterinario"}</b>
+            <b>{authUser.displayName || (userAccess.role === "laboratory" ? "Laboratorio" : "Veterinario")}</b>
             <small>{authUser.email}</small>
           </div>
           <button title="Cerrar sesión" onClick={() => signOut(auth)}>
@@ -1495,6 +1509,9 @@ function AuthScreen() {
     try {
       if (register) {
         const name = String(f.get("name")).trim();
+        const accountType = f.get("accountType") === "laboratory"
+          ? "laboratory"
+          : "veterinarian";
         const credential = await createUserWithEmailAndPassword(
           auth,
           email,
@@ -1504,11 +1521,21 @@ function AuthScreen() {
         await setDoc(doc(db, "users", credential.user.uid), {
           name,
           email,
-          role: "veterinarian",
-          plan: "unassigned",
+          role: accountType,
+          plan: accountType === "laboratory" ? "laboratory" : "unassigned",
           subscriptionStatus: "pending",
           createdAt: serverTimestamp(),
         });
+        if (accountType === "laboratory") {
+          await setDoc(doc(db, "subscriptionRequests", credential.user.uid), {
+            userId: credential.user.uid,
+            name,
+            email,
+            plan: "laboratory",
+            status: "pending",
+            requestedAt: serverTimestamp(),
+          });
+        }
       } else await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
       const code = String((err as { code?: string }).code || "");
@@ -1586,7 +1613,7 @@ function AuthScreen() {
       {showAccess && <div className="access-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAccess(false); }}><section className="auth-card access-modal">
         <button className="access-close" onClick={() => setShowAccess(false)}>×</button>
         <div><span className="eyebrow">LABOVET</span><h2>{register ? "Crear una cuenta" : "Ingresar"}</h2><p>{register ? "Completá tus datos para comenzar." : "Accedé a tu panel veterinario."}</p></div>
-        <form onSubmit={submit}>{register && <label>Nombre y apellido<input name="name" required autoComplete="name" /></label>}<label>Correo electrónico<input name="email" type="email" required autoComplete="email" /></label><label>Contraseña<input name="password" type="password" minLength={6} required autoComplete={register ? "new-password" : "current-password"} /></label>{error && <div className="auth-error">{error}</div>}<button className="primary" disabled={loading}>{loading ? "Procesando…" : register ? "Crear cuenta" : "Ingresar"}</button></form>
+        <form onSubmit={submit}>{register && <><label>Tipo de cuenta<select name="accountType" defaultValue="veterinarian"><option value="veterinarian">Veterinario</option><option value="laboratory">Laboratorio</option></select></label><label>Nombre o razón social<input name="name" required autoComplete="name" /></label></>}<label>Correo electrónico<input name="email" type="email" required autoComplete="email" /></label><label>Contraseña<input name="password" type="password" minLength={6} required autoComplete={register ? "new-password" : "current-password"} /></label>{error && <div className="auth-error">{error}</div>}<button className="primary" disabled={loading}>{loading ? "Procesando…" : register ? "Crear cuenta" : "Ingresar"}</button></form>
         <button className="auth-switch" onClick={() => { setRegister((value) => !value); setError(""); }}>{register ? "Ya tengo una cuenta" : "Crear una cuenta nueva"}</button>
       </section></div>}
     </main>
@@ -1594,7 +1621,7 @@ function AuthScreen() {
 }
 
 const VIEW_CONTENT: Record<
-  Exclude<ViewKey, "sigatm" | "planes" | "stock" | "admin" | "admin-sigatm">,
+  Exclude<ViewKey, "sigatm" | "planes" | "stock" | "admin" | "admin-sigatm" | "laboratory">,
   {
     eyebrow: string;
     title: string;
@@ -3034,6 +3061,14 @@ function ModuleView({
       />
     );
   if (view === "planes")
+    if (access.role === "laboratory")
+      return (
+        <>
+          <header className="topbar module-topbar"><div><span className="eyebrow">LABORATORIO</span><h1>Acceso a GRECERT</h1><p>Tu cuenta está preparada exclusivamente para el módulo de laboratorios.</p></div></header>
+          <section className="panel laboratory-access-status"><span>⌛</span><div><h2>Cuenta pendiente de activación</h2><p>El administrador de LabOVet debe aprobar el acceso antes de comenzar a cargar resultados.</p></div></section>
+        </>
+      );
+  if (view === "planes")
     return (
       <SubscriptionPlans
         access={access}
@@ -3042,6 +3077,7 @@ function ModuleView({
         userEmail={userEmail}
       />
     );
+  if (view === "laboratory") return <LaboratoryGreCertPanel />;
   if (view === "admin") return <AdminUsersPanel currentUid={uid} />;
   if (view === "admin-sigatm")
     return <AdminSigatmCatalog currentUid={uid} />;

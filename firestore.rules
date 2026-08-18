@@ -18,8 +18,10 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow create: if isOwner(userId)
-        && request.resource.data.role == 'veterinarian'
-        && request.resource.data.plan == 'unassigned'
+        && ((request.resource.data.role == 'veterinarian'
+            && request.resource.data.plan == 'unassigned')
+          || (request.resource.data.role == 'laboratory'
+            && request.resource.data.plan == 'laboratory'))
         && request.resource.data.subscriptionStatus == 'pending';
 
       allow read: if isOwner(userId) || isAdmin();
@@ -46,7 +48,7 @@ service cloud.firestore {
         || (isOwner(userId)
           && request.resource.data.userId == request.auth.uid
           && request.resource.data.status == 'pending'
-          && request.resource.data.plan in ['small_animals', 'large_animals', 'administrative_service']
+          && request.resource.data.plan in ['small_animals', 'large_animals', 'administrative_service', 'laboratory']
           && request.resource.data.keys().hasOnly([
             'userId', 'name', 'email', 'plan', 'status', 'requestedAt'
           ]));

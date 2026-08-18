@@ -41,6 +41,7 @@ const plans: PlanId[] = [
   "small_animals",
   "large_animals",
   "administrative_service",
+  "laboratory",
 ];
 
 const normalizePlan = (value: unknown): PlanId =>
@@ -250,9 +251,9 @@ export default function AdminUsersPanel({ currentUid }: { currentUid: string }) 
         ) : visibleUsers.length ? (
           visibleUsers.map((user) => (
             <article className="admin-user-row" key={user.uid}>
-              <div><b>{user.name}</b><small>{user.email}{user.role === "admin" ? " · Administrador" : ""}</small>{user.request?.status === "pending" && <em>Solicitó: {PLAN_DEFINITIONS[user.request.plan].name}</em>}</div>
+              <div><b>{user.name}</b><small>{user.email}{user.role === "admin" ? " · Administrador" : user.role === "laboratory" ? " · Laboratorio" : " · Veterinario"}</small>{user.request?.status === "pending" && <em>Solicitó: {PLAN_DEFINITIONS[user.request.plan].name}</em>}</div>
               <select value={user.plan} onChange={(event) => updateLocal(user.uid, { plan: event.target.value as PlanId })}>
-                {plans.map((plan) => <option key={plan} value={plan}>{PLAN_DEFINITIONS[plan].name}</option>)}
+                {plans.filter((plan) => user.role === "laboratory" ? plan === "laboratory" : plan !== "laboratory").map((plan) => <option key={plan} value={plan}>{PLAN_DEFINITIONS[plan].name}</option>)}
               </select>
               <select className={`subscription-${user.subscriptionStatus}`} value={user.subscriptionStatus} onChange={(event) => updateLocal(user.uid, { subscriptionStatus: event.target.value as SubscriptionStatus })}>
                 {statuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
