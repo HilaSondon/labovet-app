@@ -644,7 +644,9 @@ export default function Home() {
       userAccess.permissions.stock ||
       userAccess.permissions.laboratory;
     if (userAccess.role === "laboratory") {
-      setActiveView(userAccess.permissions.laboratory ? "laboratory" : "planes");
+      const laboratoryViews: ViewKey[] = ["laboratory", "lab-protocols", "lab-veterinarians", "lab-statistics"];
+      if (!userAccess.permissions.laboratory) setActiveView("planes");
+      else if (!laboratoryViews.includes(activeView)) setActiveView("laboratory");
       return;
     }
     if (!hasAnyModule) setActiveView("planes");
@@ -907,11 +909,11 @@ export default function Home() {
           >
             <span>⚗</span> Cargar resultados
           </button>}
-          {userAccess.permissions.laboratory && <div className="submenu laboratory-submenu">
-            <button className={activeView === "lab-protocols" ? "selected" : ""} onClick={() => navigateTo("lab-protocols")}>Protocolos</button>
-            <button className={activeView === "lab-veterinarians" ? "selected" : ""} onClick={() => navigateTo("lab-veterinarians")}>Veterinarios</button>
-            <button className={activeView === "lab-statistics" ? "selected" : ""} onClick={() => navigateTo("lab-statistics")}>Estadísticas</button>
-          </div>}
+          {userAccess.permissions.laboratory && <>
+            <button className={activeView === "lab-protocols" ? "active" : ""} onClick={() => navigateTo("lab-protocols")}><span>▤</span> Protocolos</button>
+            <button className={activeView === "lab-veterinarians" ? "active" : ""} onClick={() => navigateTo("lab-veterinarians")}><span>♙</span> Veterinarios</button>
+            <button className={activeView === "lab-statistics" ? "active" : ""} onClick={() => navigateTo("lab-statistics")}><span>▥</span> Estadísticas</button>
+          </>}
           {userAccess.permissions.largeAnimals && <>
           <button
             className={

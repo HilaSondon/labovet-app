@@ -1,0 +1,62 @@
+[
+  {
+    "numeroInforme": "54304-EJEMPLO-30",
+    "codigoLaboratorio": "LRS0361",
+    "renspaUnidadProductiva": "21.007.0.00159/00",
+    "codigoMotivo": 1497,
+    "codigoSubMotivo": 68,
+    "codigotipoDocumentoUno": 21,
+    "numeroDocumentoUno": "160182-EJEMPLO",
+    "cuitDeFuncionario": "20-12332919-9",
+    "muestra": {
+      "fechaDeToma": "13/08/2026 03:00",
+      "fechaDeRecepcion": "18/08/2026 17:17",
+      "cantidadDeLote": 30,
+      "codigoUnidadDeMedidaDeLote": 36,
+      "analisis": [
+        {
+          "id": 1807444,
+          "codigoDeCategoria": 22,
+          "codigoEnsayo": 1056,
+          "codigoAnalito": 26,
+          "codigoMatriz": 2,
+          "codigoTecnica": 37,
+          "resultadoUnico": false,
+          "subMuestras": [
+          {"identificacion":"032025000001887","identificacionInternaDeLaboratorio":"1","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001888","identificacionInternaDeLaboratorio":"2","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001889","identificacionInternaDeLaboratorio":"3","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001890","identificacionInternaDeLaboratorio":"4","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001891","identificacionInternaDeLaboratorio":"5","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001892","identificacionInternaDeLaboratorio":"6","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001893","identificacionInternaDeLaboratorio":"7","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001894","identificacionInternaDeLaboratorio":"8","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001895","identificacionInternaDeLaboratorio":"9","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001896","identificacionInternaDeLaboratorio":"10","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001897","identificacionInternaDeLaboratorio":"11","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001898","identificacionInternaDeLaboratorio":"12","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001899","identificacionInternaDeLaboratorio":"13","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001900","identificacionInternaDeLaboratorio":"14","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001901","identificacionInternaDeLaboratorio":"15","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001902","identificacionInternaDeLaboratorio":"16","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001903","identificacionInternaDeLaboratorio":"17","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001904","identificacionInternaDeLaboratorio":"18","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001905","identificacionInternaDeLaboratorio":"19","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001906","identificacionInternaDeLaboratorio":"20","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001907","identificacionInternaDeLaboratorio":"21","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001908","identificacionInternaDeLaboratorio":"22","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001909","identificacionInternaDeLaboratorio":"23","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001910","identificacionInternaDeLaboratorio":"24","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001911","identificacionInternaDeLaboratorio":"25","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001912","identificacionInternaDeLaboratorio":"26","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001913","identificacionInternaDeLaboratorio":"27","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001914","identificacionInternaDeLaboratorio":"28","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001915","identificacionInternaDeLaboratorio":"29","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22},
+          {"identificacion":"032025000001916","identificacionInternaDeLaboratorio":"30","codigoTipoIdentificacion":4,"codigoDeEdad":10,"codigoDeCategoria":22}
+          ]
+        }
+      ]
+    },
+    "codigoTipoDeTramite": 3
+  }
+]
