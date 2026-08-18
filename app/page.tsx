@@ -400,7 +400,8 @@ type ViewKey =
   | "laboratory"
   | "lab-protocols"
   | "lab-veterinarians"
-  | "lab-statistics";
+  | "lab-statistics"
+  | "lab-settings";
 const LARGE_MENU: [ViewKey, string][] = [
   ["productores", "Productores"],
   ["agenda-rural", "Agenda rural"],
@@ -622,7 +623,7 @@ export default function Home() {
   const canAccessView = (view: ViewKey) => {
     if (!userAccess) return false;
     if (view === "planes" || view === "estadisticas") return true;
-    if (["laboratory", "lab-protocols", "lab-veterinarians", "lab-statistics"].includes(view))
+    if (["laboratory", "lab-protocols", "lab-veterinarians", "lab-statistics", "lab-settings"].includes(view))
       return userAccess.permissions.laboratory;
     if (view === "admin" || view === "admin-sigatm")
       return userAccess.role === "admin";
@@ -644,7 +645,7 @@ export default function Home() {
       userAccess.permissions.stock ||
       userAccess.permissions.laboratory;
     if (userAccess.role === "laboratory") {
-      const laboratoryViews: ViewKey[] = ["laboratory", "lab-protocols", "lab-veterinarians", "lab-statistics"];
+      const laboratoryViews: ViewKey[] = ["laboratory", "lab-protocols", "lab-veterinarians", "lab-statistics", "lab-settings"];
       if (!userAccess.permissions.laboratory) setActiveView("planes");
       else if (!laboratoryViews.includes(activeView)) setActiveView("laboratory");
       return;
@@ -913,6 +914,7 @@ export default function Home() {
             <button className={activeView === "lab-protocols" ? "active" : ""} onClick={() => navigateTo("lab-protocols")}><span>▤</span> Protocolos</button>
             <button className={activeView === "lab-veterinarians" ? "active" : ""} onClick={() => navigateTo("lab-veterinarians")}><span>♙</span> Veterinarios</button>
             <button className={activeView === "lab-statistics" ? "active" : ""} onClick={() => navigateTo("lab-statistics")}><span>▥</span> Estadísticas</button>
+            <button className={activeView === "lab-settings" ? "active" : ""} onClick={() => navigateTo("lab-settings")}><span>⚙</span> Mis datos</button>
           </>}
           {userAccess.permissions.largeAnimals && <>
           <button
@@ -1632,7 +1634,7 @@ function AuthScreen() {
 }
 
 const VIEW_CONTENT: Record<
-  Exclude<ViewKey, "sigatm" | "planes" | "stock" | "admin" | "admin-sigatm" | "laboratory" | "lab-protocols" | "lab-veterinarians" | "lab-statistics">,
+  Exclude<ViewKey, "sigatm" | "planes" | "stock" | "admin" | "admin-sigatm" | "laboratory" | "lab-protocols" | "lab-veterinarians" | "lab-statistics" | "lab-settings">,
   {
     eyebrow: string;
     title: string;
@@ -3092,6 +3094,7 @@ function ModuleView({
   if (view === "lab-protocols") return <LaboratoryGreCertPanel uid={uid} section="protocols" />;
   if (view === "lab-veterinarians") return <LaboratoryGreCertPanel uid={uid} section="veterinarians" />;
   if (view === "lab-statistics") return <LaboratoryGreCertPanel uid={uid} section="statistics" />;
+  if (view === "lab-settings") return <LaboratoryGreCertPanel uid={uid} section="settings" />;
   if (view === "admin") return <AdminUsersPanel currentUid={uid} />;
   if (view === "admin-sigatm")
     return <AdminSigatmCatalog currentUid={uid} />;

@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, setDoc } from "firebase/firestore/lite";
+import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore/lite";
 import { db } from "./firebase";
 
 export type LaboratoryVeterinarian = {
@@ -25,13 +25,30 @@ export type LaboratoryProtocol = {
   savedAt: string;
 };
 
+export type LaboratoryProfile = {
+  laboratoryName: string;
+  laboratoryCode: string;
+  technicalDirector: string;
+  address: string;
+  phone: string;
+};
+
+export const EMPTY_LABORATORY_PROFILE: LaboratoryProfile = {
+  laboratoryName: "",
+  laboratoryCode: "",
+  technicalDirector: "",
+  address: "",
+  phone: "",
+};
+
 const userCollection = (uid: string, name: string) =>
   collection(db, "users", uid, name);
 
 export async function loadLaboratoryData(uid: string) {
-  const [protocolSnapshot, veterinarianSnapshot] = await Promise.all([
+  const [protocolSnapshot, veterinarianSnapshot, profileSnapshot] = await Promise.all([
     getDocs(userCollection(uid, "labProtocols")),
     getDocs(userCollection(uid, "labVeterinarians")),
+    getDoc(doc(userCollection(uid, "labSettings"), "profile")),
   ]);
   return {
     protocols: protocolSnapshot.docs
@@ -40,7 +57,14 @@ export async function loadLaboratoryData(uid: string) {
     veterinarians: veterinarianSnapshot.docs
       .map((item) => ({ ...item.data(), id: item.id }) as LaboratoryVeterinarian)
       .sort((a, b) => a.name.localeCompare(b.name)),
+    profile: profileSnapshot.exists()
+      ? { ...EMPTY_LABORATORY_PROFILE, ...profileSnapshot.data() } as LaboratoryProfile
+      : EMPTY_LABORATORY_PROFILE,
   };
+}
+
+export async function saveLaboratoryProfile(uid: string, profile: LaboratoryProfile) {
+  await setDoc(doc(userCollection(uid, "labSettings"), "profile"), profile);
 }
 
 export async function saveLaboratoryProtocol(uid: string, protocol: LaboratoryProtocol) {
