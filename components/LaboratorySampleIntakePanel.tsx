@@ -14,10 +14,22 @@ type Line = {
   query: string;
   quantity: number;
   manual: boolean;
+  ranges: string;
 };
 const makeId = () => Math.random().toString(36).slice(2, 8);
 const today = () => new Date().toISOString().slice(0, 10);
 const money = (v: unknown) => `$ ${Number(v || 0).toLocaleString("es-AR")}`;
+const parseTubeRanges = (value: string) => {
+  const tubes = new Set<number>();
+  value.split(",").map((part) => part.trim()).filter(Boolean).forEach((part) => {
+    const match = part.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
+    if (!match) throw new Error(`Rango inválido: ${part}`);
+    const start = Number(match[1]), end = Number(match[2] || match[1]);
+    if (start < 1 || end < start || end - start > 5000) throw new Error(`Rango inválido: ${part}`);
+    for (let tube = start; tube <= end; tube += 1) tubes.add(tube);
+  });
+  return [...tubes].sort((a, b) => a - b);
+};
 
 function Picker({
   value,
@@ -77,7 +89,7 @@ export default function LaboratorySampleIntakePanel({ uid }: { uid: string }) {
     [clients, setClients] = useState<LaboratoryManagementRecord[]>([]),
     [accesses, setAccesses] = useState<LaboratoryManagementRecord[]>([]);
   const [lines, setLines] = useState<Line[]>([
-      { id: makeId(), analysisId: "", query: "", quantity: 1, manual: false },
+      { id: makeId(), analysisId: "", query: "", quantity: 1, manual: false, ranges: "1" },
     ]),
     [totalSamples, setTotalSamples] = useState(1),
     [vetName, setVetName] = useState(""),
@@ -137,7 +149,7 @@ export default function LaboratorySampleIntakePanel({ uid }: { uid: string }) {
     const next = Math.max(1, value || 1);
     setTotalSamples(next);
     setLines((cur) =>
-      cur.map((x) => (x.manual ? x : { ...x, quantity: next })),
+      cur.map((x) => (x.manual ? x : { ...x, quantity: next, ranges: `1-${next}` })),
     );
   }
   function chooseQuick(id: string) {
@@ -150,6 +162,7 @@ export default function LaboratorySampleIntakePanel({ uid }: { uid: string }) {
           query: String(item.name),
           quantity: totalSamples,
           manual: false,
+          ranges: `1-${totalSamples}`,
         },
       ]);
   }
@@ -178,6 +191,36 @@ export default function LaboratorySampleIntakePanel({ uid }: { uid: string }) {
       setMessage("Completá veterinario, productor y todos los análisis.");
       return;
     }
+    let tubeRows: Array<Record<string, unknown>>;
+    try {
+      const configured = detail.map((line) => {
+        const tubes = parseTubeRanges(line.ranges);
+        if (tubes.length !== line.quantity) throw new Error(`${line.item?.name}: indicá ${line.quantity} tubos; el rango contiene ${tubes.length}.`);
+        return { line, tubes };
+      });
+      const allTubes = [...new Set(configured.flatMap((entry) => entry.tubes))].sort((a, b) => a - b);
+      if (allTubes.length !== totalSamples) throw new Error(`Los rangos abarcan ${allTubes.length} tubos distintos, pero el ingreso indica ${totalSamples} muestras.`);
+      tubeRows = allTubes.map((tube) => ({
+        tube,
+        identification: "",
+        category: "",
+        assignments: configured.filter((entry) => entry.tubes.includes(tube)).map(({ line }) => ({
+          analysisId: line.item?.id || "",
+          analysisName: line.item?.name || "",
+          result: "",
+          confirmatoryTechnique: "",
+          confirmatoryResult: "",
+          antigen: "",
+          brand: "",
+          lot: "",
+          expiration: "",
+          stamp: "",
+        })),
+      }));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Revisá los rangos de tubos.");
+      return;
+    }
     setSaving(true);
     const f = Object.fromEntries(new FormData(form).entries()),
       stamp = new Date().toISOString();
@@ -198,10 +241,12 @@ export default function LaboratorySampleIntakePanel({ uid }: { uid: string }) {
           quantity: x.quantity,
           unitPrice: x.item?.price,
           subtotal: x.subtotal,
+          ranges: x.ranges,
         })),
       ),
       estimatedTotal: total,
       observations: f.observations,
+      tubeRows: JSON.stringify(tubeRows),
       status: "Recibida",
       createdAt: stamp,
       updatedAt: stamp,
@@ -210,7 +255,7 @@ export default function LaboratorySampleIntakePanel({ uid }: { uid: string }) {
       await saveLaboratoryRecord(uid, "samples", record);
       setSamples((cur) => [record, ...cur]);
       setLines([
-        { id: makeId(), analysisId: "", query: "", quantity: 1, manual: false },
+        { id: makeId(), analysisId: "", query: "", quantity: 1, manual: false, ranges: "1" },
       ]);
       setTotalSamples(1);
       setVetName("");
@@ -389,6 +434,14 @@ export default function LaboratorySampleIntakePanel({ uid }: { uid: string }) {
                   Precio unitario
                   <input value={money(item?.price)} readOnly />
                 </label>
+                <label>
+                  Tubos asignados
+                  <input
+                    value={line.ranges}
+                    onChange={(e) => setLines((cur) => cur.map((x) => x.id === line.id ? { ...x, ranges: e.target.value } : x))}
+                    placeholder="Ej. 1-500, 700-763"
+                  />
+                </label>
                 <button
                   type="button"
                   onClick={() =>
@@ -415,6 +468,7 @@ export default function LaboratorySampleIntakePanel({ uid }: { uid: string }) {
                   query: "",
                   quantity: totalSamples,
                   manual: false,
+                  ranges: `1-${totalSamples}`,
                 },
               ])
             }
