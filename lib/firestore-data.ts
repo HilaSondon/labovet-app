@@ -108,9 +108,20 @@ export type StoredStockItem = {
   expiration?: string;
 };
 export type StoredStockCategory = { id: string; name: string };
+type VeterinaryData = {
+  producers: StoredProducer[];
+  patients: StoredPatient[];
+  stockItems: StoredStockItem[];
+  stockCategories: StoredStockCategory[];
+};
 
 const userCollection = (uid: string, name: string) =>
   collection(db, "users", uid, name);
+const CACHE_TTL = 5 * 60 * 1000;
+const cacheKey = (uid: string) => `labovet-veterinary-data-${uid}`;
+const clearVeterinaryCache = (uid: string) => {
+  if (typeof window !== "undefined") sessionStorage.removeItem(cacheKey(uid));
+};
 const clean = <T extends Record<string, unknown>>(value: T) =>
   Object.fromEntries(
     Object.entries(value).filter(([, item]) => item !== undefined),
@@ -120,6 +131,14 @@ const stableWorkId = (producerId: number, work: StoredWork) =>
   `${producerId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 export async function loadVeterinaryData(uid: string) {
+  if (typeof window !== "undefined") {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(cacheKey(uid)) || "null") as
+        | { savedAt: number; data: VeterinaryData }
+        | null;
+      if (cached && Date.now() - cached.savedAt < CACHE_TTL) return cached.data;
+    } catch { sessionStorage.removeItem(cacheKey(uid)); }
+  }
   const [
     producerSnap,
     workSnap,
@@ -225,10 +244,15 @@ export async function loadVeterinaryData(uid: string) {
   const stockCategories = stockCategorySnap.docs.map(
     (item) => ({ ...item.data(), id: item.id }) as StoredStockCategory,
   );
-  return { producers, patients, stockItems, stockCategories };
+  const data = { producers, patients, stockItems, stockCategories };
+  if (typeof window !== "undefined") {
+    try { sessionStorage.setItem(cacheKey(uid), JSON.stringify({ savedAt: Date.now(), data })); } catch { /* La carga sigue aunque el navegador no admita más caché. */ }
+  }
+  return data;
 }
 
 export async function saveProducerData(uid: string, producer: StoredProducer) {
+  clearVeterinaryCache(uid);
   const { works: _, ...data } = producer;
   await setDoc(
     doc(userCollection(uid, "producers"), String(producer.id)),
@@ -261,6 +285,7 @@ async function runBatches(
 }
 
 export async function deleteProducerData(uid: string, producerId: number) {
+  clearVeterinaryCache(uid);
   const [works, animals] = await Promise.all([
     getDocs(
       query(
@@ -290,6 +315,7 @@ export async function deleteEstablishmentData(
   producer: StoredProducer,
   establishmentId: string,
 ) {
+  clearVeterinaryCache(uid);
   const establishments = (producer.establishments || []).filter(
     (item) => item.id !== establishmentId,
   );
@@ -341,6 +367,7 @@ export async function saveWorkMetadata(
   producerId: number,
   work: StoredWork,
 ) {
+  clearVeterinaryCache(uid);
   const id = stableWorkId(producerId, work);
   work.id = id;
   const { records: _, ...metadata } = work;
@@ -373,6 +400,7 @@ export async function saveWorkData(
 }
 
 export async function savePatientData(uid: string, patient: StoredPatient) {
+  clearVeterinaryCache(uid);
   const { events: _, ...data } = patient;
   await setDoc(
     doc(userCollection(uid, "patients"), String(patient.id)),
@@ -385,6 +413,7 @@ export async function savePatientEvent(
   patientId: number,
   event: StoredPatientEvent,
 ) {
+  clearVeterinaryCache(uid);
   const id =
     event.id ||
     `${patientId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -395,6 +424,7 @@ export async function savePatientEvent(
   );
 }
 export async function deletePatientData(uid: string, patientId: number) {
+  clearVeterinaryCache(uid);
   const events = await getDocs(
     query(
       userCollection(uid, "patientEvents"),
@@ -408,10 +438,12 @@ export async function deletePatientData(uid: string, patientId: number) {
 }
 
 export async function saveStockItem(uid: string, item: StoredStockItem) {
+  clearVeterinaryCache(uid);
   await setDoc(doc(userCollection(uid, "stockItems"), item.id), clean(item));
 }
 
 export async function deleteStockItem(uid: string, itemId: string) {
+  clearVeterinaryCache(uid);
   await deleteDoc(doc(userCollection(uid, "stockItems"), itemId));
 }
 
@@ -419,6 +451,7 @@ export async function saveStockCategory(
   uid: string,
   category: StoredStockCategory,
 ) {
+  clearVeterinaryCache(uid);
   await setDoc(
     doc(userCollection(uid, "stockCategories"), category.id),
     category,
