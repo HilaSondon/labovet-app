@@ -44,4 +44,9 @@ next-env.d.ts
 /outputs/
 /work/
 /tmp/
+/.firebase-emulator-data/
+/.tools/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
 /.codex-sheet-work/

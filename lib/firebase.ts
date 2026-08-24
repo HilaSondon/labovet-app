@@ -1,6 +1,6 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore/lite";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore/lite";
 
 const firebaseConfig =
   typeof window === "undefined"
@@ -24,3 +24,21 @@ export const firebaseApp = getApps().length
   : initializeApp(firebaseConfig);
 export const auth = getAuth(firebaseApp);
 export const db = getFirestore(firebaseApp);
+
+const useEmulators =
+  typeof window !== "undefined" &&
+  process.env.NODE_ENV === "development" &&
+  process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS !== "false";
+
+if (useEmulators) {
+  const marker = globalThis as typeof globalThis & {
+    __labovetFirebaseEmulatorsConnected?: boolean;
+  };
+  if (!marker.__labovetFirebaseEmulatorsConnected) {
+    connectAuthEmulator(auth, "http://127.0.0.1:9099", {
+      disableWarnings: true,
+    });
+    connectFirestoreEmulator(db, "127.0.0.1", 8080);
+    marker.__labovetFirebaseEmulatorsConnected = true;
+  }
+}
