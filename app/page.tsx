@@ -26,6 +26,7 @@ import {
 import AdminUsersPanel from "../components/AdminUsersPanel";
 import AdminSigatmCatalog from "../components/AdminSigatmCatalog";
 import LaboratoryGreCertPanel from "../components/LaboratoryGreCertPanel";
+import LaboratoryManagementPanel from "../components/LaboratoryManagementPanel";
 import {
   activeCodeMap,
   DEFAULT_SIGATM_CATALOG,
@@ -401,7 +402,20 @@ type ViewKey =
   | "lab-protocols"
   | "lab-veterinarians"
   | "lab-statistics"
-  | "lab-settings";
+  | "lab-settings"
+  | "lab-dashboard"
+  | "lab-samples"
+  | "lab-clients"
+  | "lab-prices"
+  | "lab-quality"
+  | "lab-quality-manual"
+  | "lab-procedures"
+  | "lab-records"
+  | "lab-reagents"
+  | "lab-equipment"
+  | "lab-audits"
+  | "lab-nonconformities"
+  | "lab-history";
 const LARGE_MENU: [ViewKey, string][] = [
   ["productores", "Productores"],
   ["agenda-rural", "Agenda rural"],
@@ -623,7 +637,7 @@ export default function Home() {
   const canAccessView = (view: ViewKey) => {
     if (!userAccess) return false;
     if (view === "planes" || view === "estadisticas") return true;
-    if (["laboratory", "lab-protocols", "lab-veterinarians", "lab-statistics", "lab-settings"].includes(view))
+    if (["laboratory", "lab-dashboard", "lab-samples", "lab-protocols", "lab-veterinarians", "lab-clients", "lab-prices", "lab-statistics", "lab-settings", "lab-quality", "lab-quality-manual", "lab-procedures", "lab-records", "lab-reagents", "lab-equipment", "lab-audits", "lab-nonconformities", "lab-history"].includes(view))
       return userAccess.permissions.laboratory;
     if (view === "admin" || view === "admin-sigatm")
       return userAccess.role === "admin";
@@ -645,9 +659,9 @@ export default function Home() {
       userAccess.permissions.stock ||
       userAccess.permissions.laboratory;
     if (userAccess.role === "laboratory") {
-      const laboratoryViews: ViewKey[] = ["laboratory", "lab-protocols", "lab-veterinarians", "lab-statistics", "lab-settings"];
+      const laboratoryViews: ViewKey[] = ["lab-dashboard", "lab-samples", "lab-protocols", "laboratory", "lab-veterinarians", "lab-clients", "lab-prices", "lab-statistics", "lab-settings", "lab-quality", "lab-quality-manual", "lab-procedures", "lab-records", "lab-reagents", "lab-equipment", "lab-audits", "lab-nonconformities", "lab-history"];
       if (!userAccess.permissions.laboratory) setActiveView("planes");
-      else if (!laboratoryViews.includes(activeView)) setActiveView("laboratory");
+      else if (!laboratoryViews.includes(activeView)) setActiveView("lab-dashboard");
       return;
     }
     if (!hasAnyModule) setActiveView("planes");
@@ -904,17 +918,27 @@ export default function Home() {
           >
             <span>⌂</span> Inicio
           </button>}
-          {userAccess.permissions.laboratory && <button
-            className={activeView === "laboratory" ? "active" : ""}
-            onClick={() => navigateTo("laboratory")}
-          >
-            <span>⚗</span> Cargar resultados
-          </button>}
           {userAccess.permissions.laboratory && <>
+            <button className={activeView === "lab-dashboard" ? "active" : ""} onClick={() => navigateTo("lab-dashboard")}><span>⌂</span> Panel general</button>
+            <button className={activeView === "lab-samples" ? "active" : ""} onClick={() => navigateTo("lab-samples")}><span>＋</span> Ingreso de muestras</button>
             <button className={activeView === "lab-protocols" ? "active" : ""} onClick={() => navigateTo("lab-protocols")}><span>▤</span> Protocolos</button>
-            <button className={activeView === "lab-veterinarians" ? "active" : ""} onClick={() => navigateTo("lab-veterinarians")}><span>♙</span> Veterinarios</button>
-            <button className={activeView === "lab-statistics" ? "active" : ""} onClick={() => navigateTo("lab-statistics")}><span>▥</span> Estadísticas</button>
+            <button className={activeView === "laboratory" ? "active" : ""} onClick={() => navigateTo("laboratory")}><span>⚗</span> Cargar resultados</button>
+            <p>GESTIÓN</p>
             <button className={activeView === "lab-settings" ? "active" : ""} onClick={() => navigateTo("lab-settings")}><span>⚙</span> Mis datos</button>
+            <button className={activeView === "lab-veterinarians" ? "active" : ""} onClick={() => navigateTo("lab-veterinarians")}><span>♙</span> Veterinarios</button>
+            <button className={activeView === "lab-clients" ? "active" : ""} onClick={() => navigateTo("lab-clients")}><span>♧</span> Clientes / Productores</button>
+            <button className={activeView === "lab-prices" ? "active" : ""} onClick={() => navigateTo("lab-prices")}><span>▦</span> Lista de precios</button>
+            <button className={activeView === "lab-statistics" ? "active" : ""} onClick={() => navigateTo("lab-statistics")}><span>▥</span> Estadísticas</button>
+            <p>CALIDAD</p>
+            <button className={activeView === "lab-quality" ? "active" : ""} onClick={() => navigateTo("lab-quality")}><span>◈</span> Dashboard calidad</button>
+            <button className={activeView === "lab-quality-manual" ? "active" : ""} onClick={() => navigateTo("lab-quality-manual")}><span>▣</span> Manual de calidad</button>
+            <button className={activeView === "lab-procedures" ? "active" : ""} onClick={() => navigateTo("lab-procedures")}><span>☷</span> Procedimientos POE</button>
+            <button className={activeView === "lab-records" ? "active" : ""} onClick={() => navigateTo("lab-records")}><span>▧</span> Registros</button>
+            <button className={activeView === "lab-reagents" ? "active" : ""} onClick={() => navigateTo("lab-reagents")}><span>⚗</span> Reactivos</button>
+            <button className={activeView === "lab-equipment" ? "active" : ""} onClick={() => navigateTo("lab-equipment")}><span>▨</span> Equipamiento</button>
+            <button className={activeView === "lab-audits" ? "active" : ""} onClick={() => navigateTo("lab-audits")}><span>✓</span> Auditorías</button>
+            <button className={activeView === "lab-nonconformities" ? "active" : ""} onClick={() => navigateTo("lab-nonconformities")}><span>!</span> No conformidades</button>
+            <button className={activeView === "lab-history" ? "active" : ""} onClick={() => navigateTo("lab-history")}><span>↻</span> Historial de cambios</button>
           </>}
           {userAccess.permissions.largeAnimals && <>
           <button
@@ -1634,7 +1658,7 @@ function AuthScreen() {
 }
 
 const VIEW_CONTENT: Record<
-  Exclude<ViewKey, "sigatm" | "planes" | "stock" | "admin" | "admin-sigatm" | "laboratory" | "lab-protocols" | "lab-veterinarians" | "lab-statistics" | "lab-settings">,
+  Exclude<ViewKey, "sigatm" | "planes" | "stock" | "admin" | "admin-sigatm" | "laboratory" | "lab-dashboard" | "lab-samples" | "lab-protocols" | "lab-veterinarians" | "lab-clients" | "lab-prices" | "lab-statistics" | "lab-settings" | "lab-quality" | "lab-quality-manual" | "lab-procedures" | "lab-records" | "lab-reagents" | "lab-equipment" | "lab-audits" | "lab-nonconformities" | "lab-history">,
   {
     eyebrow: string;
     title: string;
@@ -3091,6 +3115,19 @@ function ModuleView({
       />
     );
   if (view === "laboratory") return <LaboratoryGreCertPanel uid={uid} />;
+  if (view === "lab-dashboard") return <LaboratoryManagementPanel uid={uid} section="dashboard" />;
+  if (view === "lab-samples") return <LaboratoryManagementPanel uid={uid} section="samples" />;
+  if (view === "lab-clients") return <LaboratoryManagementPanel uid={uid} section="clients" />;
+  if (view === "lab-prices") return <LaboratoryManagementPanel uid={uid} section="prices" />;
+  if (view === "lab-quality") return <LaboratoryManagementPanel uid={uid} section="quality" />;
+  if (view === "lab-quality-manual") return <LaboratoryManagementPanel uid={uid} section="qualityManual" />;
+  if (view === "lab-procedures") return <LaboratoryManagementPanel uid={uid} section="procedures" />;
+  if (view === "lab-records") return <LaboratoryManagementPanel uid={uid} section="records" />;
+  if (view === "lab-reagents") return <LaboratoryManagementPanel uid={uid} section="reagents" />;
+  if (view === "lab-equipment") return <LaboratoryManagementPanel uid={uid} section="equipment" />;
+  if (view === "lab-audits") return <LaboratoryManagementPanel uid={uid} section="audits" />;
+  if (view === "lab-nonconformities") return <LaboratoryManagementPanel uid={uid} section="nonconformities" />;
+  if (view === "lab-history") return <LaboratoryManagementPanel uid={uid} section="history" />;
   if (view === "lab-protocols") return <LaboratoryGreCertPanel uid={uid} section="protocols" />;
   if (view === "lab-veterinarians") return <LaboratoryGreCertPanel uid={uid} section="veterinarians" />;
   if (view === "lab-statistics") return <LaboratoryGreCertPanel uid={uid} section="statistics" />;
