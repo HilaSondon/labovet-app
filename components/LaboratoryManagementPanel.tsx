@@ -157,6 +157,7 @@ const DEFINITIONS: Partial<Record<LaboratoryModule, Definition>> = {
         options: ["Borrador", "Vigente", "Obsoleto"],
       },
       { key: "content", label: "Contenido / alcance", type: "textarea" },
+      { key: "notes", label: "Observaciones y cambios", type: "textarea" },
     ],
   },
   procedures: {
@@ -178,6 +179,7 @@ const DEFINITIONS: Partial<Record<LaboratoryModule, Definition>> = {
         options: ["Borrador", "Vigente", "En revisión", "Obsoleto"],
       },
       { key: "description", label: "Descripción", type: "textarea" },
+      { key: "sourceSheet", label: "Hoja de origen" },
     ],
   },
   records: {
@@ -509,6 +511,23 @@ export default function LaboratoryManagementPanel({
     }
   }
   const canImport = ["clients", "veterinarians"].includes(module);
+  const canLoadQualityStructure = ["qualityManual", "procedures"].includes(module);
+  async function loadQualityStructure() {
+    if (!module || !canLoadQualityStructure) return;
+    setImporting(true);
+    setMessage("");
+    try {
+      const file = module === "qualityManual"
+        ? "/imports/laboratory-quality-manual.json"
+        : "/imports/laboratory-procedures.json";
+      const source = await fetch(file).then((response) => response.json()) as LaboratoryManagementRecord[];
+      await saveLaboratoryRecords(uid, module, source);
+      setItems(source);
+      setMessage(`${source.length} registros de la estructura real quedaron cargados.`);
+    } catch {
+      setMessage("No pudimos cargar la estructura inicial. Intentá nuevamente.");
+    } finally { setImporting(false); }
+  }
   const sampleOptions = (field: Field) =>
     field.key === "client"
       ? sampleCatalogs.clients.map((item) => String(item.name))
@@ -524,6 +543,11 @@ export default function LaboratoryManagementPanel({
           <p>{definition.description}</p>
         </div>
         <div className="lab-header-actions">
+          {canLoadQualityStructure && (
+            <button onClick={loadQualityStructure} disabled={importing}>
+              {importing ? "Cargando…" : items.length ? "Restablecer estructura real" : "Cargar estructura real"}
+            </button>
+          )}
           {canImport && (
             <>
               <a

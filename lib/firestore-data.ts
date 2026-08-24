@@ -117,7 +117,8 @@ type VeterinaryData = {
 
 const userCollection = (uid: string, name: string) =>
   collection(db, "users", uid, name);
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 30 * 60 * 1000;
+const veterinaryLoads = new Map<string, Promise<Awaited<ReturnType<typeof loadVeterinaryDataUncached>>>>();
 const cacheKey = (uid: string) => `labovet-veterinary-data-${uid}`;
 const clearVeterinaryCache = (uid: string) => {
   if (typeof window !== "undefined") sessionStorage.removeItem(cacheKey(uid));
@@ -130,7 +131,7 @@ const stableWorkId = (producerId: number, work: StoredWork) =>
   work.id ||
   `${producerId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-export async function loadVeterinaryData(uid: string) {
+async function loadVeterinaryDataUncached(uid: string) {
   if (typeof window !== "undefined") {
     try {
       const cached = JSON.parse(sessionStorage.getItem(cacheKey(uid)) || "null") as
@@ -249,6 +250,22 @@ export async function loadVeterinaryData(uid: string) {
     try { sessionStorage.setItem(cacheKey(uid), JSON.stringify({ savedAt: Date.now(), data })); } catch { /* La carga sigue aunque el navegador no admita más caché. */ }
   }
   return data;
+}
+
+export async function loadVeterinaryData(uid: string) {
+  if (typeof window !== "undefined") {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(cacheKey(uid)) || "null") as
+        | { savedAt: number; data: VeterinaryData }
+        | null;
+      if (cached && Date.now() - cached.savedAt < CACHE_TTL) return cached.data;
+    } catch { sessionStorage.removeItem(cacheKey(uid)); }
+  }
+  const pending = veterinaryLoads.get(uid);
+  if (pending) return pending;
+  const request = loadVeterinaryDataUncached(uid).finally(() => veterinaryLoads.delete(uid));
+  veterinaryLoads.set(uid, request);
+  return request;
 }
 
 export async function saveProducerData(uid: string, producer: StoredProducer) {

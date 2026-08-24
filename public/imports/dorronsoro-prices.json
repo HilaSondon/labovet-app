@@ -1,13 +1,123 @@
 [
-{"id":"base-brucelosis","code":"BRUCELOSIS","name":"BRUCELOSIS","technique":"BPA / FPA","category":"Bacteriología","description":"","price":2500,"kind":"Análisis individual","status":"Activo","active":true},
-{"id":"base-tricho-cultivo","code":"TRICHO-CULTIVO","name":"TRICHO - CULTIVO","technique":"Cultivo","category":"Parasitología","description":"","price":3400,"kind":"Análisis individual","status":"Activo","active":true},
-{"id":"base-tricho-pcr","code":"TRICHO-PCR","name":"TRICHO - PCR","technique":"PCR","category":"Parasitología","description":"","price":9000,"kind":"Análisis individual","status":"Activo","active":true},
-{"id":"base-campy-ifd","code":"CAMPY-IFD","name":"CAMPY - IFD","technique":"IFD","category":"Bacteriología","description":"","price":3400,"kind":"Análisis individual","status":"Activo","active":true},
-{"id":"base-campy-pcr","code":"CAMPY-PCR","name":"CAMPY - PCR","technique":"PCR","category":"Bacteriología","description":"","price":9000,"kind":"Análisis individual","status":"Activo","active":true},
-{"id":"base-leucosis-idga","code":"LEUCOSIS-IDGA","name":"LEUCOSIS - IDGA","technique":"IDGA","category":"Virología","description":"","price":3000,"kind":"Análisis individual","status":"Activo","active":true},
-{"id":"base-leptospira","code":"LEPTOSPIRA","name":"LEPTOSPIRA","technique":"MAT","category":"Bacteriología","description":"","price":4800,"kind":"Análisis individual","status":"Activo","active":true},
-{"id":"base-anemia-idga","code":"ANEMIA-IDGA","name":"ANEMIA - IDGA","technique":"IDGA","category":"Virología","description":"","price":8000,"kind":"Análisis individual","status":"Activo","active":true},
-{"id":"base-triquinosis","code":"TRIQUINOSIS","name":"TRIQUINOSIS","technique":"Digestión artificial","category":"Parasitología","description":"","price":5500,"kind":"Análisis individual","status":"Activo","active":true},
-{"id":"base-brucella-ovis","code":"BRUCELLA-OVIS","name":"BRUCELLA OVIS","technique":"IDGA","category":"Bacteriología","description":"","price":4200,"kind":"Análisis individual","status":"Activo","active":true},
-{"id":"base-aujeszky","code":"AUJESZKY","name":"AUJESZKY","technique":"ELISA de bloqueo","category":"Virología","description":"","price":5000,"kind":"Análisis individual","status":"Activo","active":true}
+  {
+    "id": "real-1",
+    "name": "BRUCELOSIS",
+    "category": "Bovinos",
+    "technique": "BPA",
+    "description": "",
+    "price": 3500,
+    "status": "Activo",
+    "sourceRow": 4,
+    "sourceName": "Brucelosis -BPA -incluye pruebas complementarias - FPA - DIAGNOSTICO EN 24 HS"
+  },
+  {
+    "id": "real-2",
+    "name": "TRICHO - CULTIVO",
+    "category": "Reproducción bovina",
+    "technique": "Cultivo",
+    "description": "",
+    "price": 17000,
+    "status": "Activo",
+    "sourceRow": 48,
+    "sourceName": "Trichomonas por cultivo (incluye confirmación de positivos por PCR)"
+  },
+  {
+    "id": "real-3",
+    "name": "TRICHO - PCR",
+    "category": "Reproducción bovina",
+    "technique": "PCR",
+    "description": "",
+    "price": 25000,
+    "status": "Activo",
+    "sourceRow": 50,
+    "sourceName": "PCR Trichomona Foetus"
+  },
+  {
+    "id": "real-4",
+    "name": "CAMPY - IFD",
+    "category": "Reproducción bovina",
+    "technique": "IFD",
+    "description": "",
+    "price": 17000,
+    "status": "Activo",
+    "sourceRow": 49,
+    "sourceName": "Campylobacteriosis por IFD (incluye confirmación de positivos por PCR)"
+  },
+  {
+    "id": "real-5",
+    "name": "CAMPY - PCR",
+    "category": "Reproducción bovina",
+    "technique": "PCR",
+    "description": "",
+    "price": 25000,
+    "status": "Activo",
+    "sourceRow": 51,
+    "sourceName": "PCR Campylobacteriosis"
+  },
+  {
+    "id": "real-6",
+    "name": "LEUCOSIS - IDGA",
+    "category": "Bovinos",
+    "technique": "IDGA",
+    "description": "",
+    "price": 14000,
+    "status": "Activo",
+    "sourceRow": 93,
+    "sourceName": "Inmunodifusión en Agar Gel (AGID) Hasta 10 muestras"
+  },
+  {
+    "id": "real-7",
+    "name": "LEPTOSPIRA",
+    "category": "Bovinos",
+    "technique": "Microaglutinación",
+    "description": "",
+    "price": 15000,
+    "status": "Activo",
+    "sourceRow": 21,
+    "sourceName": "Leptospirosis (MAT)"
+  },
+  {
+    "id": "real-8",
+    "name": "ANEMIA - IDGA",
+    "category": "Equinos",
+    "technique": "IDGA",
+    "description": "",
+    "price": 12400,
+    "status": "Activo",
+    "sourceRow": 31,
+    "sourceName": "Anemia Infecciosa Equina (Test de Coggins) .Hasta 10 muestras"
+  },
+  {
+    "id": "real-9",
+    "name": "TRIQUINOSIS",
+    "category": "Porcinos",
+    "technique": "Digestión artificial",
+    "description": "",
+    "price": 0,
+    "status": "Activo",
+    "sourceRow": "",
+    "sourceName": "Revisar precio"
+  },
+  {
+    "id": "real-10",
+    "name": "BRUCELLA OVIS",
+    "category": "Ovinos",
+    "technique": "ELISA",
+    "description": "",
+    "price": 19800,
+    "status": "Activo",
+    "sourceRow": 20,
+    "sourceName": "Brucella ovis (ELISA)"
+  },
+  {
+    "id": "real-11",
+    "name": "AUJESZKY",
+    "category": "Porcinos",
+    "technique": "ELISA",
+    "description": "",
+    "price": 12000,
+    "status": "Activo",
+    "sourceRow": 28,
+    "sourceName": "Aujezky (ELISA) – consultar por stock"
+  }
 ]
