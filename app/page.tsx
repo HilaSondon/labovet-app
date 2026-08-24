@@ -592,10 +592,15 @@ export default function Home() {
     }
     let active = true;
     setDataLoading(true);
-    Promise.all([
-      loadVeterinaryData(authUser.uid),
-      getDoc(doc(db, "users", authUser.uid)),
-      getDoc(doc(db, "systemConfig", "sigatm")).catch(() => null),
+    Promise.race([
+      Promise.all([
+        loadVeterinaryData(authUser.uid),
+        getDoc(doc(db, "users", authUser.uid)),
+        getDoc(doc(db, "systemConfig", "sigatm")).catch(() => null),
+      ]),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Tiempo de espera agotado")), 15000),
+      ),
     ])
       .then(([data, profile, catalogSnapshot]) => {
         if (!active) return;
@@ -705,6 +710,20 @@ export default function Home() {
       </div>
     );
   if (!authUser) return <AuthScreen />;
+  if (!dataLoading && !userAccess && dataError)
+    return (
+      <div className="auth-loading auth-load-error">
+        <span className="brand-mark">L</span>
+        <h2>No pudimos cargar tu cuenta</h2>
+        <p>{dataError}</p>
+        <div>
+          <button className="primary" onClick={() => setDataReload((value) => value + 1)}>
+            Reintentar
+          </button>
+          <button onClick={() => signOut(auth)}>Cerrar sesión</button>
+        </div>
+      </div>
+    );
   if (dataLoading || !userAccess)
     return (
       <div className="auth-loading">
