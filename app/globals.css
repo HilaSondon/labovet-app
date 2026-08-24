@@ -4335,3 +4335,48 @@ button {
 .laboratory-message button { margin-left:auto; }
 @media (max-width:1100px) { .lab-dashboard-grid,.lab-quality-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:700px) { .lab-dashboard-grid,.lab-quality-grid { grid-template-columns:1fr; }.lab-management-toolbar { align-items:stretch; flex-direction:column; }.laboratory-record-grid { grid-template-columns:1fr; }.laboratory-record-grid label.wide { grid-column:auto; }.price-component-picker { grid-column:auto; }.price-component-picker > div { grid-template-columns:1fr; }.lab-history-list article { grid-template-columns:1fr; gap:4px; }.lab-dashboard-welcome > div { grid-template-columns:auto 1fr; } }
+
+/* Laboratory prices */
+.lab-price-actions,.lab-price-actions>div,.lab-price-table-heading,.lab-intake-title,.lab-requested-analyses>div:first-child,.lab-quick-section>div:first-child { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.lab-price-actions { margin:4px 0 15px; }
+.lab-price-actions h2 { margin:0; }
+.lab-price-actions>div { flex-wrap:wrap; justify-content:flex-end; }
+.lab-price-filters { display:grid; grid-template-columns:1.25fr 1.25fr 1fr 1fr; gap:14px; padding:20px; }
+.lab-price-filters label,.lab-intake-grid label,.lab-analysis-line label,.bulk-price-form label { display:flex; flex-direction:column; gap:7px; font-weight:700; }
+.lab-price-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:16px 0; }
+.lab-price-stats article { padding:20px; display:flex; flex-direction:column; gap:9px; }
+.lab-price-stats strong { font:700 28px Georgia,serif; color:#123746; }
+.lab-import-empty { padding:28px; text-align:center; margin-bottom:16px; }
+.lab-price-table-panel { overflow:hidden; }
+.lab-price-table-heading { padding:20px; border-bottom:1px solid #d5e1e3; }
+.lab-price-table-heading h2,.lab-price-table-heading p { margin:0 0 4px; }
+.lab-price-table { overflow:auto; }
+.lab-price-row { display:grid; grid-template-columns:36px minmax(190px,1.4fr) 110px 150px minmax(220px,1.5fr) 105px 105px 125px; min-width:1100px; align-items:center; border-bottom:1px solid #dce5e7; }
+.lab-price-row>span,.lab-price-row>b,.lab-price-row>strong { padding:13px 10px; min-width:0; }
+.lab-price-row.head { background:#f1f5f4; color:#617780; font-size:11px; font-weight:800; text-transform:uppercase; }
+.lab-price-row b { display:flex; flex-direction:column; gap:4px; }
+.lab-price-row b small { color:#b06e0a; }
+.lab-price-row input[type=checkbox] { width:17px; height:17px; }
+.lab-status { display:inline-flex; border-radius:99px; padding:6px 10px; font-style:normal; font-weight:700; font-size:11px; background:#e1f5ea; color:#087343; }
+.lab-status.en-revisión { background:#fff0cf; color:#9b6500; }.lab-status.inactivo { background:#eef1f2; color:#66777d; }
+.combo-modal { width:min(960px,calc(100vw - 28px)); }
+.combo-price-summary { grid-column:1/-1; display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:16px; border-radius:12px; background:#eef5f4; }
+.combo-price-summary>span { display:flex; flex-direction:column; gap:5px; }.combo-price-summary strong { font-size:19px; color:#123746; }
+.bulk-price-form { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:20px 0; }
+.bulk-preview { grid-column:1/-1; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.bulk-preview span { padding:14px; border-radius:10px; background:#eef5f4; display:flex; flex-direction:column; gap:6px; }.bulk-preview strong { font-size:19px; }
+
+/* Laboratory sample intake */
+.lab-quick-section { margin-bottom:16px; }.lab-quick-section h2 { margin:0; }.lab-quick-section>div:first-child span { color:#6b7e87; }
+.lab-quick-grid { display:flex; gap:10px; overflow:auto; padding:12px 0 2px; }
+.lab-quick-grid button { flex:0 0 150px; min-height:64px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:5px; text-align:left; border-radius:14px; }
+.lab-quick-grid button.selected { border-color:#148d78; background:#e8f5f2; }.lab-quick-grid small { color:#6c7e86; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.lab-intake-form { padding:22px; }.lab-intake-title { margin-bottom:18px; }.lab-intake-title h2 { margin:0; }.lab-intake-title span { color:#697d85; }
+.lab-intake-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }.lab-intake-grid label.wide { grid-column:1/-1; }
+.lab-requested-analyses { border-top:1px solid #d3e0e1; margin-top:22px; padding-top:20px; }.lab-requested-analyses h2 { margin:0; }.lab-requested-analyses>div:first-child span { color:#6c7f87; }
+.lab-analysis-line { display:grid; grid-template-columns:minmax(320px,1fr) 120px 135px 45px; gap:10px; align-items:end; margin-top:13px; }.lab-analysis-line>button { height:42px; }
+.lab-requested-analyses>button { margin-top:12px; }
+.lab-intake-summary { margin-top:15px; padding:15px; border-radius:14px; background:#edf3f2; }.lab-intake-summary>div { display:flex; justify-content:space-between; }.lab-intake-summary section { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px; }.lab-intake-summary article { background:#fff; border:1px solid #d8e3e4; border-radius:11px; padding:12px; display:flex; flex-direction:column; gap:6px; }.lab-intake-summary article.total { background:#e3f3f0; border-color:#148d78; }.lab-intake-summary strong { font-size:17px; }
+.lab-observations { display:flex; flex-direction:column; gap:7px; font-weight:700; margin-top:22px; }.lab-observations textarea { min-height:85px; }.lab-intake-form>footer { display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #d7e2e4; margin-top:18px; padding-top:16px; }
+@media(max-width:1100px){.lab-price-filters{grid-template-columns:1fr 1fr}.lab-price-stats{grid-template-columns:1fr 1fr}.lab-intake-grid{grid-template-columns:1fr 1fr}.lab-analysis-line{grid-template-columns:minmax(260px,1fr) 100px 120px 42px}.lab-intake-summary section{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.lab-price-actions{align-items:flex-start;flex-direction:column}.lab-price-actions>div{justify-content:flex-start}.lab-price-filters,.lab-price-stats,.lab-intake-grid,.combo-price-summary,.bulk-price-form,.bulk-preview{grid-template-columns:1fr}.lab-intake-grid label.wide,.combo-price-summary,.bulk-preview{grid-column:auto}.lab-analysis-line{grid-template-columns:1fr 90px}.lab-analysis-line label:first-child{grid-column:1/-1}.lab-intake-summary section{grid-template-columns:1fr}.lab-intake-title,.lab-requested-analyses>div:first-child,.lab-quick-section>div:first-child{align-items:flex-start;flex-direction:column}}

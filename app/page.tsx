@@ -27,6 +27,8 @@ import AdminUsersPanel from "../components/AdminUsersPanel";
 import AdminSigatmCatalog from "../components/AdminSigatmCatalog";
 import LaboratoryGreCertPanel from "../components/LaboratoryGreCertPanel";
 import LaboratoryManagementPanel from "../components/LaboratoryManagementPanel";
+import LaboratoryPricePanel from "../components/LaboratoryPricePanel";
+import LaboratorySampleIntakePanel from "../components/LaboratorySampleIntakePanel";
 import {
   activeCodeMap,
   DEFAULT_SIGATM_CATALOG,
@@ -3116,9 +3118,9 @@ function ModuleView({
     );
   if (view === "laboratory") return <LaboratoryGreCertPanel uid={uid} />;
   if (view === "lab-dashboard") return <LaboratoryManagementPanel uid={uid} section="dashboard" />;
-  if (view === "lab-samples") return <LaboratoryManagementPanel uid={uid} section="samples" />;
+  if (view === "lab-samples") return <LaboratorySampleIntakePanel uid={uid} />;
   if (view === "lab-clients") return <LaboratoryManagementPanel uid={uid} section="clients" />;
-  if (view === "lab-prices") return <LaboratoryManagementPanel uid={uid} section="prices" />;
+  if (view === "lab-prices") return <LaboratoryPricePanel uid={uid} />;
   if (view === "lab-quality") return <LaboratoryManagementPanel uid={uid} section="quality" />;
   if (view === "lab-quality-manual") return <LaboratoryManagementPanel uid={uid} section="qualityManual" />;
   if (view === "lab-procedures") return <LaboratoryManagementPanel uid={uid} section="procedures" />;
