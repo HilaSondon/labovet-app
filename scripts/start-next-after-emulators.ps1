@@ -9,5 +9,8 @@ do {
 } until ($firestore -and $auth)
 
 Set-Location -LiteralPath $root
+Write-Host "Preparando usuarios locales..."
+& npm run emulators:seed
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & npm run dev
 exit $LASTEXITCODE
