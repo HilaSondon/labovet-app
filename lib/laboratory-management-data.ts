@@ -3,7 +3,7 @@ import { db } from "./firebase";
 
 export type LaboratoryModule =
   | "samples" | "veterinarians" | "clients" | "prices" | "qualityManual" | "procedures"
-  | "records" | "reagents" | "equipment" | "audits" | "nonconformities";
+  | "records" | "reagents" | "equipment" | "audits" | "nonconformities" | "priceSettings" | "quickAccess";
 
 export type LaboratoryManagementRecord = {
   id: string;

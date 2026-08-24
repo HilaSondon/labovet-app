@@ -4352,6 +4352,7 @@ button {
 .lab-price-table-heading h2,.lab-price-table-heading p { margin:0 0 4px; }
 .lab-price-table { overflow:auto; }
 .lab-price-row { display:grid; grid-template-columns:36px minmax(190px,1.4fr) 110px 150px minmax(220px,1.5fr) 105px 105px 125px; min-width:1100px; align-items:center; border-bottom:1px solid #dce5e7; }
+.lab-price-row.with-preview{grid-template-columns:36px minmax(190px,1.4fr) 110px 150px minmax(190px,1.2fr) 105px 115px 105px 125px;min-width:1200px}.price-preview{color:#087762;background:#edf8f5}.lab-bulk-inline-panel{margin:18px 0;padding:20px}.lab-bulk-inline-panel>.modal-card{box-shadow:none;max-width:none;padding:0}
 .lab-price-row>span,.lab-price-row>b,.lab-price-row>strong { padding:13px 10px; min-width:0; }
 .lab-price-row.head { background:#f1f5f4; color:#617780; font-size:11px; font-weight:800; text-transform:uppercase; }
 .lab-price-row b { display:flex; flex-direction:column; gap:4px; }
@@ -4373,6 +4374,9 @@ button {
 .lab-quick-grid button.selected { border-color:#148d78; background:#e8f5f2; }.lab-quick-grid small { color:#6c7e86; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .lab-intake-form { padding:22px; }.lab-intake-title { margin-bottom:18px; }.lab-intake-title h2 { margin:0; }.lab-intake-title span { color:#697d85; }
 .lab-intake-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }.lab-intake-grid label.wide { grid-column:1/-1; }
+.lab-intake-grid.four{grid-template-columns:1.25fr .7fr .65fr .8fr}.lab-intake-grid,.lab-analysis-line{font-weight:500}.lab-intake-grid label,.lab-analysis-line label{font-weight:600}
+.lab-search-picker{position:relative}.lab-search-picker>input{width:100%}.lab-search-results{position:absolute;z-index:30;top:calc(100% + 5px);left:0;right:0;max-height:290px;overflow:auto;background:#fff;border:1px solid #b9d0d3;border-radius:12px;padding:6px;box-shadow:0 16px 35px rgba(15,48,61,.16)}.lab-search-results button{display:flex;width:100%;flex-direction:column;align-items:flex-start;gap:3px;padding:11px 12px;border:0;background:#fff;text-align:left}.lab-search-results button:hover{background:#edf7f4}.lab-search-results span{font-weight:700;color:#123746}.lab-search-results small{color:#71858d}.lab-search-results p{padding:12px;color:#71858d}
+.lab-quick-card{position:relative;display:flex}.lab-quick-card>button:first-child{height:100%}.lab-quick-card .remove{position:absolute;right:5px;top:4px;border:0;padding:2px 5px;color:#8b5555;background:transparent}.lab-quick-grid>button,.lab-quick-card>button:first-child{border:1px solid #c8dadd;border-radius:14px;background:#fff;padding:12px 16px;text-align:left;min-width:150px}.lab-quick-grid>button:hover,.lab-quick-card>button:first-child:hover{border-color:#148d78;background:#eef8f5}
 .lab-requested-analyses { border-top:1px solid #d3e0e1; margin-top:22px; padding-top:20px; }.lab-requested-analyses h2 { margin:0; }.lab-requested-analyses>div:first-child span { color:#6c7f87; }
 .lab-analysis-line { display:grid; grid-template-columns:minmax(320px,1fr) 120px 135px 45px; gap:10px; align-items:end; margin-top:13px; }.lab-analysis-line>button { height:42px; }
 .lab-requested-analyses>button { margin-top:12px; }

@@ -1,47 +1,480 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { LaboratoryManagementRecord, loadLaboratoryModule, saveLaboratoryRecord } from "../lib/laboratory-management-data";
+import {
+  LaboratoryManagementRecord,
+  deleteLaboratoryRecord,
+  loadLaboratoryModule,
+  saveLaboratoryRecord,
+} from "../lib/laboratory-management-data";
 
-type AnalysisLine = { id: string; analysisId: string; analysisQuery: string; quantity: number };
-const lineId = () => Math.random().toString(36).slice(2, 8);
-const money = (value: unknown) => `$ ${Number(value || 0).toLocaleString("es-AR")}`;
+type Line = {
+  id: string;
+  analysisId: string;
+  query: string;
+  quantity: number;
+  manual: boolean;
+};
+const makeId = () => Math.random().toString(36).slice(2, 8);
 const today = () => new Date().toISOString().slice(0, 10);
-const QUICK_SPECS = [
-  { label: "BPA", code: "BPA" }, { label: "TRICHO + CAMPY", words: ["trichomon", "campylobacter"] },
-  { label: "BPA + T/C", words: ["brucelosis", "trichomon", "campylobacter"] }, { label: "T/C + PCR", words: ["trichomon", "campylobacter", "pcr"] },
-  { label: "AIE", code: "AIE" }, { label: "LEUCOSIS", code: "LEUCOSIS" }, { label: "PAL", code: "FAS" },
-];
+const money = (v: unknown) => `$ ${Number(v || 0).toLocaleString("es-AR")}`;
+
+function Picker({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string, id: string) => void;
+  options: { id: string; label: string; detail: string }[];
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const found = options
+    .filter((x) =>
+      `${x.label} ${x.detail}`.toLowerCase().includes(value.toLowerCase()),
+    )
+    .slice(0, 20);
+  return (
+    <div className="lab-search-picker">
+      <input
+        value={value}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => {
+          onChange(e.target.value, "");
+          setOpen(true);
+        }}
+        placeholder={placeholder}
+      />
+      {open && value && (
+        <div className="lab-search-results">
+          {found.map((x) => (
+            <button
+              type="button"
+              key={x.id}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(x.label, x.id);
+                setOpen(false);
+              }}
+            >
+              <span>{x.label}</span>
+              <small>{x.detail}</small>
+            </button>
+          ))}
+          {!found.length && <p>Sin coincidencias</p>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function LaboratorySampleIntakePanel({ uid }: { uid: string }) {
-  const [samples, setSamples] = useState<LaboratoryManagementRecord[]>([]);
-  const [prices, setPrices] = useState<LaboratoryManagementRecord[]>([]);
-  const [vets, setVets] = useState<LaboratoryManagementRecord[]>([]);
-  const [clients, setClients] = useState<LaboratoryManagementRecord[]>([]);
-  const [lines, setLines] = useState<AnalysisLine[]>([{ id: lineId(), analysisId: "", analysisQuery: "", quantity: 1 }]);
-  const [clientName, setClientName] = useState("");
-  const [vetName, setVetName] = useState("");
-  const [message, setMessage] = useState("");
-  const [saving, setSaving] = useState(false);
-  useEffect(() => { Promise.all([loadLaboratoryModule(uid, "samples"), loadLaboratoryModule(uid, "prices"), loadLaboratoryModule(uid, "veterinarians"), loadLaboratoryModule(uid, "clients")]).then(([sampleRows, priceRows, vetRows, clientRows]) => { setSamples(sampleRows); setPrices(priceRows.filter((item) => item.status === "Activo")); setVets(vetRows); setClients(clientRows); }); }, [uid]);
+  const [samples, setSamples] = useState<LaboratoryManagementRecord[]>([]),
+    [prices, setPrices] = useState<LaboratoryManagementRecord[]>([]),
+    [vets, setVets] = useState<LaboratoryManagementRecord[]>([]),
+    [clients, setClients] = useState<LaboratoryManagementRecord[]>([]),
+    [accesses, setAccesses] = useState<LaboratoryManagementRecord[]>([]);
+  const [lines, setLines] = useState<Line[]>([
+      { id: makeId(), analysisId: "", query: "", quantity: 1, manual: false },
+    ]),
+    [totalSamples, setTotalSamples] = useState(1),
+    [vetName, setVetName] = useState(""),
+    [clientName, setClientName] = useState(""),
+    [message, setMessage] = useState(""),
+    [saving, setSaving] = useState(false),
+    [accessOpen, setAccessOpen] = useState(false),
+    [accessQuery, setAccessQuery] = useState("");
+  const load = () =>
+    Promise.all([
+      loadLaboratoryModule(uid, "samples"),
+      loadLaboratoryModule(uid, "prices"),
+      loadLaboratoryModule(uid, "veterinarians"),
+      loadLaboratoryModule(uid, "clients"),
+      loadLaboratoryModule(uid, "quickAccess"),
+    ]).then(([a, b, c, d, e]) => {
+      setSamples(a);
+      setPrices(b.filter((x) => x.status === "Activo"));
+      setVets(c);
+      setClients(d);
+      setAccesses(e);
+    });
+  useEffect(() => {
+    load();
+  }, [uid]);
   const protocol = `LAB-${new Date().getFullYear()}-${String(samples.length + 1).padStart(5, "0")}`;
-  const quick = useMemo(() => QUICK_SPECS.map((spec) => ({ label: spec.label, item: prices.find((item) => spec.code ? String(item.code).toUpperCase() === spec.code : spec.words?.every((word) => `${item.name} ${item.code}`.toLowerCase().includes(word))) })).filter((entry) => entry.item), [prices]);
-  const detail = lines.map((line) => ({ ...line, item: prices.find((item) => item.id === line.analysisId), subtotal: Number(prices.find((item) => item.id === line.analysisId)?.price || 0) * Number(line.quantity || 0) }));
-  const totalSamples = lines.reduce((total, line) => total + Number(line.quantity || 0), 0);
-  const total = detail.reduce((sum, line) => sum + line.subtotal, 0);
-  const selectedClient = clients.find((item) => String(item.name).toLowerCase() === clientName.toLowerCase() || String(item.renspa || "").toLowerCase() === clientName.toLowerCase());
-  function selectQuick(itemId: string) { const item = prices.find((price) => price.id === itemId); setLines([{ id: lineId(), analysisId: itemId, analysisQuery: String(item?.name || ""), quantity: 1 }]); }
-  function updateLine(id: string, patch: Partial<AnalysisLine>) { setLines((current) => current.map((line) => line.id === id ? { ...line, ...patch } : line)); }
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (!vetName || !clientName || detail.some((line) => !line.item)) { setMessage("Completá veterinario, productor/cliente y todos los análisis."); return; }
-    setSaving(true); const form = Object.fromEntries(new FormData(event.currentTarget).entries()); const stamp = new Date().toISOString();
-    const record = { id: `sample-${Date.now()}`, protocol, date: form.date || today(), veterinarian: vetName, client: selectedClient?.name || clientName, species: form.species, renspa: selectedClient?.renspa || (/^\d{2}\.\d{3}/.test(clientName) ? clientName : ""), establishment: form.establishment, locality: form.locality, sampleType: form.sampleType, quantity: totalSamples, analyses: JSON.stringify(detail.map((line) => ({ id: line.item?.id, name: line.item?.name, quantity: line.quantity, unitPrice: line.item?.price, subtotal: line.subtotal }))), estimatedTotal: total, observations: form.observations, condition: "Aceptada", status: "Recibida", createdAt: stamp, updatedAt: stamp } as LaboratoryManagementRecord;
-    await saveLaboratoryRecord(uid, "samples", record); setSamples((current) => [record, ...current]); setLines([{ id: lineId(), analysisId: "", analysisQuery: "", quantity: 1 }]); setVetName(""); setClientName(""); event.currentTarget.reset(); setMessage(`${protocol} guardado correctamente con ${totalSamples} muestras.`); setSaving(false);
+  const detail = lines.map((line) => {
+    const item = prices.find((x) => x.id === line.analysisId);
+    return {
+      ...line,
+      item,
+      subtotal: Number(item?.price || 0) * line.quantity,
+    };
+  });
+  const total = detail.reduce((s, x) => s + x.subtotal, 0);
+  const client = clients.find(
+    (x) =>
+      String(x.name).toLowerCase() === clientName.toLowerCase() ||
+      String(x.renspa || "").toLowerCase() === clientName.toLowerCase(),
+  );
+  const priceOptions = prices.map((x) => ({
+    id: x.id,
+    label: String(x.name),
+    detail: `${x.technique || ""} · ${money(x.price)}`,
+  }));
+  const vetOptions = vets.map((x) => ({
+    id: x.id,
+    label: String(x.name),
+    detail: [x.cuit, x.locality].filter(Boolean).join(" · "),
+  }));
+  const clientOptions = clients.map((x) => ({
+    id: x.id,
+    label: String(x.name),
+    detail: [x.renspa, x.establishment].filter(Boolean).join(" · "),
+  }));
+  function changeTotal(value: number) {
+    const next = Math.max(1, value || 1);
+    setTotalSamples(next);
+    setLines((cur) =>
+      cur.map((x) => (x.manual ? x : { ...x, quantity: next })),
+    );
   }
-  return <><header className="topbar module-topbar laboratory-management-header"><div><span className="eyebrow">OPERACIÓN</span><h1>Ingreso de muestras</h1><p>Recepción rápida vinculada con veterinarios, productores y lista de precios.</p></div></header>{message && <div className="laboratory-message success">{message}<button onClick={() => setMessage("")}>×</button></div>}
-    <section className="lab-quick-section"><div><h2>Accesos rápidos</h2><span>Diagnósticos o combinaciones usadas diariamente</span></div><div className="lab-quick-grid">{quick.map(({ label, item }, index) => <button className={index === 0 ? "selected" : ""} key={label} onClick={() => selectQuick(item!.id)}><b>{label}</b><small>{String(item!.name)}</small></button>)}<button onClick={() => setMessage("Los accesos se generan desde las combinaciones activas de la Lista de precios.")}><b>＋ Crear acceso</b><small>Nueva combinación</small></button></div></section>
-    <form className="panel lab-intake-form" onSubmit={submit}><div className="lab-intake-title"><h2>Nuevo ingreso</h2><span>Protocolo automático: #{protocol}</span></div><div className="lab-intake-grid"><label>Veterinario<input list="lab-vets" value={vetName} onChange={(event) => setVetName(event.target.value)} placeholder="Escribí para buscar veterinario" required /><datalist id="lab-vets">{vets.map((item) => <option key={item.id} value={String(item.name)} />)}</datalist></label><label>Especie<select name="species" defaultValue="Bovino"><option>Bovino</option><option>Equino</option><option>Ovino</option><option>Porcino</option><option>Canino</option><option>Felino</option><option>Otra</option></select></label><label>Cantidad total de muestras<input value={totalSamples} readOnly /></label><label className="wide">RENSPA / Cliente / Productor<input list="lab-clients" value={clientName} onChange={(event) => setClientName(event.target.value)} placeholder="Escribí RENSPA o nombre del productor" required /><datalist id="lab-clients">{clients.flatMap((item) => [<option key={`${item.id}-name`} value={String(item.name)}>{String(item.renspa || "")}</option>, ...(item.renspa ? [<option key={`${item.id}-renspa`} value={String(item.renspa)}>{String(item.name)}</option>] : [])])}</datalist></label><label>Productor<input value={String(selectedClient?.name || "")} readOnly placeholder="Se completa con la búsqueda" /></label><label>Establecimiento<input name="establishment" placeholder="Nombre del establecimiento" /></label><label>Localidad<input name="locality" placeholder="Localidad" /></label><label>Fecha de ingreso<input name="date" type="date" defaultValue={today()} /></label><label>Tipo de muestra<input name="sampleType" placeholder="Sangre, suero, raspaje…" /></label></div>
-      <section className="lab-requested-analyses"><div><h2>Análisis solicitados</h2><span>Vinculados con lista de precios</span></div>{lines.map((line) => { const item = prices.find((price) => price.id === line.analysisId); return <div className="lab-analysis-line" key={line.id}><label>Análisis<input list="lab-analysis-list" value={line.analysisQuery} onChange={(event) => updateLine(line.id, { analysisQuery: event.target.value, analysisId: prices.find((price) => String(price.name).toLowerCase() === event.target.value.toLowerCase())?.id || "" })} placeholder="Escribí para buscar análisis" required /></label><label>Cantidad<input type="number" min="1" value={line.quantity} onChange={(event) => updateLine(line.id, { quantity: Number(event.target.value) })} /></label><label>Precio unitario<input value={money(item?.price)} readOnly /></label><button type="button" onClick={() => setLines((current) => current.length === 1 ? current : current.filter((row) => row.id !== line.id))}>×</button></div>; })}<datalist id="lab-analysis-list">{prices.map((price) => <option key={price.id} value={String(price.name)}>{money(price.price)}</option>)}</datalist><button type="button" onClick={() => setLines((current) => [...current, { id: lineId(), analysisId: "", analysisQuery: "", quantity: 1 }])}>＋ Agregar análisis</button>
-        <div className="lab-intake-summary"><div><b>Resumen estimado</b><small>Calculado según lista de precios vigente</small></div><section>{detail.filter((line) => line.item).map((line) => <article key={line.id}><span>{String(line.item?.name)} × {line.quantity}</span><strong>{money(line.subtotal)}</strong></article>)}<article><span>Total muestras</span><strong>{totalSamples}</strong></article><article className="total"><span>Total estimado</span><strong>{money(total)}</strong></article></section></div>
-      </section><label className="lab-observations">Observaciones internas<textarea name="observations" placeholder="Muestras refrigeradas, derivar PCR, revisar identificación, etc." /></label><footer><button type="reset">Cancelar</button><button className="primary" disabled={saving}>{saving ? "Guardando…" : "Guardar ingreso"}</button></footer></form></>;
+  function chooseQuick(id: string) {
+    const item = prices.find((x) => x.id === id);
+    if (item)
+      setLines([
+        {
+          id: makeId(),
+          analysisId: id,
+          query: String(item.name),
+          quantity: totalSamples,
+          manual: false,
+        },
+      ]);
+  }
+  async function addAccess() {
+    const item = prices.find(
+      (x) => x.id === priceOptions.find((o) => o.label === accessQuery)?.id,
+    );
+    if (!item) return;
+    const stamp = new Date().toISOString();
+    await saveLaboratoryRecord(uid, "quickAccess", {
+      id: `access-${item.id}`,
+      analysisId: item.id,
+      name: item.name,
+      technique: item.technique || "",
+      createdAt: stamp,
+      updatedAt: stamp,
+    });
+    setAccessOpen(false);
+    setAccessQuery("");
+    load();
+  }
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!vetName || !clientName || detail.some((x) => !x.item)) {
+      setMessage("Completá veterinario, productor y todos los análisis.");
+      return;
+    }
+    setSaving(true);
+    const f = Object.fromEntries(new FormData(e.currentTarget).entries()),
+      stamp = new Date().toISOString();
+    const record = {
+      id: `sample-${Date.now()}`,
+      protocol,
+      date: f.date || today(),
+      veterinarian: vetName,
+      client: client?.name || clientName,
+      species: f.species,
+      renspa: client?.renspa || "",
+      establishment: f.establishment || client?.establishment || "",
+      quantity: totalSamples,
+      analyses: JSON.stringify(
+        detail.map((x) => ({
+          id: x.item?.id,
+          name: x.item?.name,
+          quantity: x.quantity,
+          unitPrice: x.item?.price,
+          subtotal: x.subtotal,
+        })),
+      ),
+      estimatedTotal: total,
+      observations: f.observations,
+      status: "Recibida",
+      createdAt: stamp,
+      updatedAt: stamp,
+    } as LaboratoryManagementRecord;
+    await saveLaboratoryRecord(uid, "samples", record);
+    setSamples((cur) => [record, ...cur]);
+    setLines([
+      { id: makeId(), analysisId: "", query: "", quantity: 1, manual: false },
+    ]);
+    setTotalSamples(1);
+    setVetName("");
+    setClientName("");
+    e.currentTarget.reset();
+    setMessage(`${protocol} guardado con ${totalSamples} muestras.`);
+    setSaving(false);
+  }
+  return (
+    <>
+      <header className="topbar module-topbar laboratory-management-header">
+        <div>
+          <span className="eyebrow">OPERACIÓN</span>
+          <h1>Ingreso de muestras</h1>
+          <p>
+            Recepción rápida vinculada con veterinarios, productores y precios.
+          </p>
+        </div>
+      </header>
+      {message && (
+        <div className="laboratory-message success">
+          {message}
+          <button onClick={() => setMessage("")}>×</button>
+        </div>
+      )}
+      <section className="lab-quick-section">
+        <div>
+          <h2>Accesos rápidos</h2>
+          <span>Configurá solamente los que usás todos los días</span>
+        </div>
+        <div className="lab-quick-grid">
+          {accesses.map((a) => (
+            <div className="lab-quick-card" key={a.id}>
+              <button onClick={() => chooseQuick(String(a.analysisId))}>
+                <b>{String(a.name)}</b>
+                <small>{String(a.technique || "")}</small>
+              </button>
+              <button
+                className="remove"
+                onClick={async () => {
+                  await deleteLaboratoryRecord(uid, "quickAccess", a.id);
+                  load();
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <button onClick={() => setAccessOpen(true)}>
+            <b>＋ Crear acceso</b>
+            <small>Elegir de la lista de precios</small>
+          </button>
+        </div>
+      </section>
+      <form className="panel lab-intake-form" onSubmit={submit}>
+        <div className="lab-intake-title">
+          <h2>Nuevo ingreso</h2>
+          <span>Protocolo automático: #{protocol}</span>
+        </div>
+        <div className="lab-intake-grid four">
+          <label>
+            Veterinario
+            <Picker
+              value={vetName}
+              onChange={(v) => setVetName(v)}
+              options={vetOptions}
+              placeholder="Escribí para buscar veterinario"
+            />
+          </label>
+          <label>
+            Especie
+            <select name="species" defaultValue="Bovino">
+              <option>Bovino</option>
+              <option>Equino</option>
+              <option>Ovino</option>
+              <option>Porcino</option>
+              <option>Canino</option>
+              <option>Felino</option>
+              <option>Otra</option>
+            </select>
+          </label>
+          <label>
+            Cantidad total de muestras
+            <input
+              type="number"
+              min="1"
+              value={totalSamples}
+              onChange={(e) => changeTotal(Number(e.target.value))}
+            />
+          </label>
+          <label>
+            Fecha de ingreso
+            <input name="date" type="date" defaultValue={today()} />
+          </label>
+          <label className="wide">
+            RENSPA / Cliente / Productor
+            <Picker
+              value={clientName}
+              onChange={(v) => setClientName(v)}
+              options={clientOptions}
+              placeholder="Escribí RENSPA o nombre del productor"
+            />
+          </label>
+          <label>
+            Productor
+            <input
+              value={String(client?.name || "")}
+              readOnly
+              placeholder="Se completa al seleccionar"
+            />
+          </label>
+          <label>
+            Establecimiento
+            <input
+              name="establishment"
+              defaultValue={String(client?.establishment || "")}
+              placeholder="Nombre del establecimiento"
+            />
+          </label>
+        </div>
+        <section className="lab-requested-analyses">
+          <div>
+            <h2>Análisis solicitados</h2>
+            <span>Vinculados con lista de precios</span>
+          </div>
+          {lines.map((line) => {
+            const item = prices.find((x) => x.id === line.analysisId);
+            return (
+              <div className="lab-analysis-line" key={line.id}>
+                <label>
+                  Análisis
+                  <Picker
+                    value={line.query}
+                    options={priceOptions}
+                    placeholder="Escribí para buscar análisis"
+                    onChange={(v, id) =>
+                      setLines((cur) =>
+                        cur.map((x) =>
+                          x.id === line.id
+                            ? { ...x, query: v, analysisId: id }
+                            : x,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  Cantidad
+                  <input
+                    type="number"
+                    min="1"
+                    value={line.quantity}
+                    onChange={(e) =>
+                      setLines((cur) =>
+                        cur.map((x) =>
+                          x.id === line.id
+                            ? {
+                                ...x,
+                                quantity: Number(e.target.value),
+                                manual: true,
+                              }
+                            : x,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  Precio unitario
+                  <input value={money(item?.price)} readOnly />
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLines((cur) =>
+                      cur.length === 1
+                        ? cur
+                        : cur.filter((x) => x.id !== line.id),
+                    )
+                  }
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() =>
+              setLines((cur) => [
+                ...cur,
+                {
+                  id: makeId(),
+                  analysisId: "",
+                  query: "",
+                  quantity: totalSamples,
+                  manual: false,
+                },
+              ])
+            }
+          >
+            ＋ Agregar análisis
+          </button>
+          <div className="lab-intake-summary">
+            <div>
+              <b>Resumen estimado</b>
+              <small>Según la lista vigente</small>
+            </div>
+            <section>
+              {detail
+                .filter((x) => x.item)
+                .map((x) => (
+                  <article key={x.id}>
+                    <span>
+                      {String(x.item?.name)} × {x.quantity}
+                    </span>
+                    <strong>{money(x.subtotal)}</strong>
+                  </article>
+                ))}
+              <article>
+                <span>Total de muestras</span>
+                <strong>{totalSamples}</strong>
+              </article>
+              <article className="total">
+                <span>Total estimado</span>
+                <strong>{money(total)}</strong>
+              </article>
+            </section>
+          </div>
+        </section>
+        <label className="lab-observations">
+          Observaciones internas
+          <textarea name="observations" />
+        </label>
+        <footer>
+          <button type="reset">Cancelar</button>
+          <button className="primary" disabled={saving}>
+            {saving ? "Guardando…" : "Guardar ingreso"}
+          </button>
+        </footer>
+      </form>
+      {accessOpen && (
+        <div className="modal-backdrop">
+          <section className="modal-card laboratory-record-modal">
+            <div className="modal-heading">
+              <div>
+                <span className="eyebrow">ACCESO RÁPIDO</span>
+                <h2>Elegir análisis</h2>
+              </div>
+              <button onClick={() => setAccessOpen(false)}>×</button>
+            </div>
+            <Picker
+              value={accessQuery}
+              onChange={(v) => setAccessQuery(v)}
+              options={priceOptions}
+              placeholder="Buscar por nombre…"
+            />
+            <footer>
+              <button onClick={() => setAccessOpen(false)}>Cancelar</button>
+              <button className="primary" onClick={addAccess}>
+                Crear acceso
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
+    </>
+  );
 }
