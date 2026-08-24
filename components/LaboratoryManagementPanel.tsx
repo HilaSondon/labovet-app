@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   deleteLaboratoryRecord, LaboratoryManagementRecord, LaboratoryModule,
-  loadLaboratoryModule, saveLaboratoryRecord,
+  loadLaboratoryModule, saveLaboratoryRecord, saveLaboratoryRecords,
 } from "../lib/laboratory-management-data";
 import { loadLaboratoryData } from "../lib/laboratory-data";
 
@@ -19,13 +19,17 @@ const DEFINITIONS: Record<LaboratoryModule, Definition> = {
     { key: "condition", label: "Condición de recepción", type: "select", options: ["Aceptada", "Aceptada con observaciones", "Rechazada"] },
     { key: "observations", label: "Observaciones", type: "textarea" },
   ]},
+  veterinarians: { title: "Veterinarios", eyebrow: "GESTIÓN", description: "Padrón único de profesionales, sin nombres repetidos ni variantes.", singular: "veterinario", columns: ["name", "cuit", "registration", "phone", "email"], fields: [
+    { key: "name", label: "Nombre y apellido", required: true }, { key: "cuit", label: "CUIT" }, { key: "registration", label: "Matrícula" }, { key: "phone", label: "Teléfono / WhatsApp" }, { key: "email", label: "Correo electrónico" },
+  ]},
   clients: { title: "Clientes / Productores", eyebrow: "GESTIÓN", description: "Padrón de productores y clientes del laboratorio.", singular: "cliente", columns: ["name", "cuit", "renspa", "phone", "email"], fields: [
     { key: "name", label: "Razón social / nombre", required: true }, { key: "cuit", label: "CUIT", required: true }, { key: "renspa", label: "RENSPA" },
     { key: "address", label: "Dirección" }, { key: "phone", label: "Teléfono / WhatsApp" }, { key: "email", label: "Correo electrónico" },
   ]},
-  prices: { title: "Lista de precios", eyebrow: "GESTIÓN", description: "Análisis, técnicas y valores vigentes. Sin facturación.", singular: "análisis", columns: ["code", "name", "technique", "species", "price", "validFrom"], fields: [
-    { key: "code", label: "Código" }, { key: "name", label: "Análisis", required: true }, { key: "technique", label: "Técnica" }, { key: "species", label: "Especie" },
-    { key: "price", label: "Precio", type: "number", required: true }, { key: "validFrom", label: "Vigente desde", type: "date" },
+  prices: { title: "Lista de precios", eyebrow: "GESTIÓN", description: "Análisis individuales y combinaciones creadas únicamente desde el catálogo maestro.", singular: "análisis", columns: ["code", "name", "kind", "category", "components", "price"], fields: [
+    { key: "kind", label: "Tipo", type: "select", options: ["Análisis individual", "Combinación"], required: true }, { key: "code", label: "Código" }, { key: "name", label: "Nombre estandarizado", required: true },
+    { key: "category", label: "Categoría" }, { key: "technique", label: "Técnica" }, { key: "species", label: "Especie" }, { key: "components", label: "Análisis incluidos" },
+    { key: "price", label: "Precio", type: "number" }, { key: "validFrom", label: "Vigente desde", type: "date" }, { key: "status", label: "Estado", type: "select", options: ["Activo", "En revisión", "Inactivo"] },
   ]},
   qualityManual: { title: "Manual de calidad", eyebrow: "CALIDAD", description: "Controlá capítulos, versiones, responsables y vigencia del manual.", singular: "capítulo", columns: ["code", "name", "version", "responsible", "status"], fields: [
     { key: "code", label: "Código", required: true }, { key: "name", label: "Capítulo / documento", required: true }, { key: "version", label: "Versión" },
@@ -57,7 +61,7 @@ const DEFINITIONS: Record<LaboratoryModule, Definition> = {
   ]},
 };
 
-const LABELS: Record<string, string> = { protocol: "Protocolo", date: "Fecha", client: "Cliente / productor", veterinarian: "Veterinario", sampleType: "Muestra", quantity: "Cantidad", status: "Estado", name: "Nombre", cuit: "CUIT", renspa: "RENSPA", phone: "Teléfono", email: "Email", code: "Código", technique: "Técnica", species: "Especie", price: "Precio", validFrom: "Vigencia", version: "Versión", responsible: "Responsable", reviewDate: "Revisión", area: "Área", retention: "Conservación", brand: "Marca", lot: "Lote", openedAt: "Apertura", expiresAt: "Vencimiento", stock: "Stock", location: "Ubicación", nextCalibration: "Calibración", type: "Tipo", auditor: "Auditor", scope: "Alcance", description: "Descripción", dueDate: "Fecha objetivo" };
+const LABELS: Record<string, string> = { protocol: "Protocolo", date: "Fecha", client: "Cliente / productor", veterinarian: "Veterinario", sampleType: "Muestra", quantity: "Cantidad", status: "Estado", name: "Nombre", cuit: "CUIT", registration: "Matrícula", renspa: "RENSPA", phone: "Teléfono", email: "Email", code: "Código", kind: "Tipo", category: "Categoría", components: "Componentes", technique: "Técnica", species: "Especie", price: "Precio", validFrom: "Vigencia", version: "Versión", responsible: "Responsable", reviewDate: "Revisión", area: "Área", retention: "Conservación", brand: "Marca", lot: "Lote", openedAt: "Apertura", expiresAt: "Vencimiento", stock: "Stock", location: "Ubicación", nextCalibration: "Calibración", type: "Tipo", auditor: "Auditor", scope: "Alcance", description: "Descripción", dueDate: "Fecha objetivo" };
 const today = () => new Date().toISOString().slice(0, 10);
 const id = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -69,28 +73,47 @@ export default function LaboratoryManagementPanel({ uid, section }: { uid: strin
   const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [priceKind, setPriceKind] = useState("Análisis individual");
+  const [selectedComponents, setSelectedComponents] = useState<string[]>([]);
+  const [sampleCatalogs, setSampleCatalogs] = useState<{ clients: LaboratoryManagementRecord[]; veterinarians: LaboratoryManagementRecord[]; prices: LaboratoryManagementRecord[] }>({ clients: [], veterinarians: [], prices: [] });
   useEffect(() => { if (!module) return; setLoading(true); loadLaboratoryModule(uid, module).then(setItems).finally(() => setLoading(false)); }, [uid, module]);
+  useEffect(() => { if (module !== "samples") return; Promise.all([loadLaboratoryModule(uid, "clients"), loadLaboratoryModule(uid, "veterinarians"), loadLaboratoryModule(uid, "prices")]).then(([clients, veterinarians, prices]) => setSampleCatalogs({ clients, veterinarians, prices })); }, [uid, module]);
 
   if (section === "dashboard") return <LaboratoryDashboard uid={uid} />;
   if (section === "quality") return <QualityDashboard uid={uid} />;
   if (section === "history") return <LaboratoryHistory uid={uid} />;
   if (!module) return null;
   const definition = DEFINITIONS[module];
-  const visible = items.filter((item) => Object.values(item).some((value) => String(value).toLowerCase().includes(search.toLowerCase())));
-  const openForm = (item?: LaboratoryManagementRecord) => { setEditing(item || null); setFormOpen(true); setMessage(""); };
+  const filtered = items.filter((item) => Object.values(item).some((value) => String(value).toLowerCase().includes(search.toLowerCase())));
+  const visible = filtered.slice(0, 200);
+  const openForm = (item?: LaboratoryManagementRecord) => { setEditing(item || null); setPriceKind(String(item?.kind || "Análisis individual")); setSelectedComponents(String(item?.components || "").split("|").map((value) => value.trim()).filter(Boolean)); setFormOpen(true); setMessage(""); };
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget).entries()); const now = new Date().toISOString();
-    const record = { ...(editing || {}), ...values, id: editing?.id || id(), createdAt: editing?.createdAt || now, updatedAt: now } as LaboratoryManagementRecord;
+    if (module === "prices" && priceKind === "Combinación" && selectedComponents.length < 2) { setMessage("Elegí al menos dos análisis individuales para crear una combinación."); return; }
+    const record = { ...(editing || {}), ...values, ...(module === "prices" ? { kind: priceKind, components: priceKind === "Combinación" ? selectedComponents.join(" | ") : "" } : {}), id: editing?.id || id(), createdAt: editing?.createdAt || now, updatedAt: now } as LaboratoryManagementRecord;
     if (module === "samples" && !record.protocol) record.protocol = `LAB-${new Date().getFullYear()}-${String(items.length + 1).padStart(5, "0")}`;
     if (module === "samples") record.status = record.condition === "Rechazada" ? "Rechazada" : "Recibida";
     await saveLaboratoryRecord(uid, module!, record); setItems((current) => [record, ...current.filter((item) => item.id !== record.id)]); setFormOpen(false); setMessage(`${definition.singular} guardado correctamente.`);
   }
   async function remove(item: LaboratoryManagementRecord) { await deleteLaboratoryRecord(uid, module!, item.id); setItems((current) => current.filter((row) => row.id !== item.id)); }
-  return <><header className="topbar module-topbar laboratory-management-header"><div><span className="eyebrow">{definition.eyebrow}</span><h1>{definition.title}</h1><p>{definition.description}</p></div><button className="primary" onClick={() => openForm()}>＋ Nuevo {definition.singular}</button></header>
+  async function importRealData() {
+    if (!module || !["prices", "clients", "veterinarians"].includes(module)) return;
+    setImporting(true); setMessage("");
+    try {
+      const file = module === "prices" ? "dorronsoro-prices.json" : module === "clients" ? "dorronsoro-clients.json" : "dorronsoro-veterinarians.json";
+      const source = await fetch(`/imports/${file}`).then((response) => { if (!response.ok) throw new Error("No se pudo leer el catálogo"); return response.json(); }) as LaboratoryManagementRecord[];
+      const now = new Date().toISOString(); const normalized = source.map((item) => ({ ...item, createdAt: String(item.createdAt || now), updatedAt: now }));
+      await saveLaboratoryRecords(uid, module, normalized); setItems(await loadLaboratoryModule(uid, module)); setMessage(`${normalized.length} registros reales importados y listos para editar.`);
+    } catch { setMessage("No pudimos completar la importación. Intentá nuevamente."); } finally { setImporting(false); }
+  }
+  const canImport = ["prices", "clients", "veterinarians"].includes(module);
+  const sampleOptions = (field: Field) => field.key === "client" ? sampleCatalogs.clients.map((item) => String(item.name)) : field.key === "veterinarian" ? sampleCatalogs.veterinarians.map((item) => String(item.name)) : [];
+  return <><header className="topbar module-topbar laboratory-management-header"><div><span className="eyebrow">{definition.eyebrow}</span><h1>{definition.title}</h1><p>{definition.description}</p></div><div className="lab-header-actions">{canImport && <button onClick={importRealData} disabled={importing}>{importing ? "Importando…" : "Importar datos Dorronsoro"}</button>}<button className="primary" onClick={() => openForm()}>＋ Nuevo {definition.singular}</button></div></header>
     {message && <div className="laboratory-message success">{message}<button onClick={() => setMessage("")}>×</button></div>}
     <section className="panel lab-management-list"><div className="lab-management-toolbar"><div><h2>{items.length} {items.length === 1 ? definition.singular : `${definition.singular}s`}</h2><p>La información queda guardada en la cuenta del laboratorio.</p></div><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar en el listado…" /></div>
-      <div className="lab-management-table"><div className="lab-management-row head">{definition.columns.map((column) => <span key={column}>{LABELS[column] || column}</span>)}<span>Acciones</span></div>{loading ? <div className="laboratory-empty-filter">Cargando…</div> : visible.map((item) => <article className="lab-management-row" key={item.id}>{definition.columns.map((column) => <span key={column}>{String(item[column] || "—")}</span>)}<span className="lab-row-actions"><button onClick={() => openForm(item)}>Editar</button><button className="danger" onClick={() => remove(item)}>Eliminar</button></span></article>)}{!loading && !visible.length && <div className="laboratory-empty-filter">Todavía no hay información cargada.</div>}</div>
-    </section>{formOpen && <div className="modal-backdrop"><form className="modal-card laboratory-record-modal" onSubmit={submit}><div className="modal-heading"><div><span className="eyebrow">{editing ? "EDITAR" : "NUEVO"}</span><h2>{definition.singular}</h2></div><button type="button" onClick={() => setFormOpen(false)}>×</button></div><div className="laboratory-record-grid">{definition.fields.map((field) => <label key={field.key} className={field.type === "textarea" ? "wide" : ""}>{field.label}{field.type === "select" ? <select name={field.key} defaultValue={String(editing?.[field.key] || field.options?.[0] || "")} required={field.required}>{field.options?.map((option) => <option key={option}>{option}</option>)}</select> : field.type === "textarea" ? <textarea name={field.key} defaultValue={String(editing?.[field.key] || "")} required={field.required} /> : <input name={field.key} type={field.type || "text"} defaultValue={String(editing?.[field.key] || (field.type === "date" && field.key === "date" ? today() : ""))} required={field.required} />}</label>)}</div><footer><button type="button" onClick={() => setFormOpen(false)}>Cancelar</button><button className="primary">Guardar</button></footer></form></div>}</>;
+      <div className="lab-management-table"><div className="lab-management-row head">{definition.columns.map((column) => <span key={column}>{LABELS[column] || column}</span>)}<span>Acciones</span></div>{loading ? <div className="laboratory-empty-filter">Cargando…</div> : visible.map((item) => <article className="lab-management-row" key={item.id}>{definition.columns.map((column) => <span key={column}>{column === "price" ? (item[column] ? `$ ${Number(item[column]).toLocaleString("es-AR")}` : "Precio pendiente") : String(item[column] || "—")}</span>)}<span className="lab-row-actions"><button onClick={() => openForm(item)}>Editar</button><button className="danger" onClick={() => remove(item)}>Eliminar</button></span></article>)}{!loading && !visible.length && <div className="laboratory-empty-filter">Todavía no hay información cargada.</div>}{filtered.length > visible.length && <div className="laboratory-empty-filter">Mostrando los primeros {visible.length} de {filtered.length}. Usá el buscador para encontrar el registro exacto.</div>}</div>
+    </section>{formOpen && <div className="modal-backdrop"><form className="modal-card laboratory-record-modal" onSubmit={submit}><div className="modal-heading"><div><span className="eyebrow">{editing ? "EDITAR" : "NUEVO"}</span><h2>{definition.singular}</h2></div><button type="button" onClick={() => setFormOpen(false)}>×</button></div><div className="laboratory-record-grid">{definition.fields.map((field) => field.key === "kind" ? <label key={field.key}>{field.label}<select name={field.key} value={priceKind} onChange={(event) => { setPriceKind(event.target.value); if (event.target.value !== "Combinación") setSelectedComponents([]); }}>{field.options?.map((option) => <option key={option}>{option}</option>)}</select></label> : field.key === "components" ? priceKind === "Combinación" && <fieldset className="price-component-picker" key={field.key}><legend>Análisis individuales incluidos</legend><p>La combinación conserva su precio propio, incluso si tiene descuento.</p><div>{items.filter((item) => item.kind !== "Combinación" && item.id !== editing?.id).map((item) => { const name = String(item.name); return <label key={item.id}><input type="checkbox" checked={selectedComponents.includes(name)} onChange={() => setSelectedComponents((current) => current.includes(name) ? current.filter((value) => value !== name) : [...current, name])} />{name}</label>; })}</div></fieldset> : module === "samples" && field.key === "analysis" ? <label key={field.key}>{field.label}<select name={field.key} defaultValue={String(editing?.[field.key] || "")} required><option value="">Elegir…</option>{sampleCatalogs.prices.filter((item) => item.status === "Activo").map((item) => <option key={item.id} value={String(item.name)}>{String(item.name)} · {item.price ? `$ ${Number(item.price).toLocaleString("es-AR")}` : "precio pendiente"}</option>)}</select><small>{sampleCatalogs.prices.filter((item) => item.status === "Activo").length ? `${sampleCatalogs.prices.filter((item) => item.status === "Activo").length} opciones activas` : "Primero importá y activá la lista de precios"}</small></label> : module === "samples" && ["client", "veterinarian"].includes(field.key) ? <label key={field.key}>{field.label}<select name={field.key} defaultValue={String(editing?.[field.key] || "")} required={field.required}><option value="">Elegir…</option>{sampleOptions(field).map((option) => <option key={option}>{option}</option>)}</select><small>{sampleOptions(field).length ? `${sampleOptions(field).length} opciones del catálogo` : "Primero cargá este catálogo en Gestión"}</small></label> : <label key={field.key} className={field.type === "textarea" ? "wide" : ""}>{field.label}{field.type === "select" ? <select name={field.key} defaultValue={String(editing?.[field.key] || field.options?.[0] || "")} required={field.required}>{field.options?.map((option) => <option key={option}>{option}</option>)}</select> : field.type === "textarea" ? <textarea name={field.key} defaultValue={String(editing?.[field.key] || "")} required={field.required} /> : <input name={field.key} type={field.type || "text"} defaultValue={String(editing?.[field.key] || (field.type === "date" && field.key === "date" ? today() : ""))} required={field.required} />}</label>)}</div><footer><button type="button" onClick={() => setFormOpen(false)}>Cancelar</button><button className="primary">Guardar</button></footer></form></div>}</>;
 }
 
 function LaboratoryDashboard({ uid }: { uid: string }) {

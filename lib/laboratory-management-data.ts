@@ -2,7 +2,7 @@ import { collection, deleteDoc, doc, getDocs, setDoc } from "firebase/firestore/
 import { db } from "./firebase";
 
 export type LaboratoryModule =
-  | "samples" | "clients" | "prices" | "qualityManual" | "procedures"
+  | "samples" | "veterinarians" | "clients" | "prices" | "qualityManual" | "procedures"
   | "records" | "reagents" | "equipment" | "audits" | "nonconformities";
 
 export type LaboratoryManagementRecord = {
@@ -12,8 +12,8 @@ export type LaboratoryManagementRecord = {
   [key: string]: string | number | boolean;
 };
 
-const moduleCollection = (uid: string, module: LaboratoryModule) =>
-  collection(db, "users", uid, `lab-${module}`);
+const collectionName = (module: LaboratoryModule) => module === "veterinarians" ? "labVeterinarians" : `lab-${module}`;
+const moduleCollection = (uid: string, module: LaboratoryModule) => collection(db, "users", uid, collectionName(module));
 
 export async function loadLaboratoryModule(uid: string, module: LaboratoryModule) {
   const snapshot = await getDocs(moduleCollection(uid, module));
@@ -24,6 +24,12 @@ export async function loadLaboratoryModule(uid: string, module: LaboratoryModule
 
 export async function saveLaboratoryRecord(uid: string, module: LaboratoryModule, record: LaboratoryManagementRecord) {
   await setDoc(doc(moduleCollection(uid, module), record.id), record);
+}
+
+export async function saveLaboratoryRecords(uid: string, module: LaboratoryModule, records: LaboratoryManagementRecord[]) {
+  for (let start = 0; start < records.length; start += 100) {
+    await Promise.all(records.slice(start, start + 100).map((record) => saveLaboratoryRecord(uid, module, record)));
+  }
 }
 
 export async function deleteLaboratoryRecord(uid: string, module: LaboratoryModule, id: string) {

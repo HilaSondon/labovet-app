@@ -3129,7 +3129,7 @@ function ModuleView({
   if (view === "lab-nonconformities") return <LaboratoryManagementPanel uid={uid} section="nonconformities" />;
   if (view === "lab-history") return <LaboratoryManagementPanel uid={uid} section="history" />;
   if (view === "lab-protocols") return <LaboratoryGreCertPanel uid={uid} section="protocols" />;
-  if (view === "lab-veterinarians") return <LaboratoryGreCertPanel uid={uid} section="veterinarians" />;
+  if (view === "lab-veterinarians") return <LaboratoryManagementPanel uid={uid} section="veterinarians" />;
   if (view === "lab-statistics") return <LaboratoryGreCertPanel uid={uid} section="statistics" />;
   if (view === "lab-settings") return <LaboratoryGreCertPanel uid={uid} section="settings" />;
   if (view === "admin") return <AdminUsersPanel currentUid={uid} />;
