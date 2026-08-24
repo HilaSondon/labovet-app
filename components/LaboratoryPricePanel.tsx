@@ -22,16 +22,40 @@ const cleanKey = (value: unknown) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]/gi, "")
     .toLowerCase();
-const CATEGORY_OPTIONS = ["Bacteriología", "Parasitología", "Virología"];
+const CATEGORY_OPTIONS = [
+  "Serología",
+  "Bacteriología",
+  "Virología",
+  "Parasitología",
+  "Biología molecular",
+  "Reproducción bovina",
+  "Hematología",
+  "Bioquímica clínica",
+  "Histopatología",
+  "Inmunología",
+  "Toxicología",
+  "Bromatología",
+];
 const TECHNIQUE_OPTIONS = [
-  "BPA / FPA",
+  "BPA",
+  "FPA",
+  "SAT",
+  "2-Mercaptoetanol",
   "Cultivo",
+  "Cultivo bacteriológico",
   "PCR",
+  "qPCR",
   "IFD",
+  "IFI",
   "IDGA",
   "MAT",
   "Digestión artificial",
+  "ELISA indirecto",
   "ELISA de bloqueo",
+  "Aglutinación",
+  "Coproparasitológico",
+  "Histopatología",
+  "Observación directa",
 ];
 
 export default function LaboratoryPricePanel({ uid }: { uid: string }) {
@@ -62,6 +86,8 @@ export default function LaboratoryPricePanel({ uid }: { uid: string }) {
   const [confirmItem, setConfirmItem] = useState<{ action: "duplicate" | "delete"; item: LaboratoryManagementRecord } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<LaboratoryManagementRecord[]>([]);
+  const [editPercent, setEditPercent] = useState(0);
+  const [editAdjustment, setEditAdjustment] = useState<"increase" | "decrease">("increase");
 
   async function reload() {
     setLoading(true);
@@ -173,6 +199,10 @@ export default function LaboratoryPricePanel({ uid }: { uid: string }) {
       new FormData(event.currentTarget).entries(),
     );
     const timestamp = now();
+    if (editItem && editPercent > 0) {
+      const factor = editAdjustment === "increase" ? 1 + editPercent / 100 : 1 - editPercent / 100;
+      values.price = String(Math.max(0, Math.round(Number(editItem.price || 0) * factor)));
+    }
     const item = {
       ...(editItem || {}),
       ...values,
@@ -360,6 +390,7 @@ export default function LaboratoryPricePanel({ uid }: { uid: string }) {
             className="primary"
             onClick={() => {
               setEditItem(null);
+              setEditPercent(0);
               setFormMode("analysis");
             }}
           >
@@ -543,6 +574,8 @@ export default function LaboratoryPricePanel({ uid }: { uid: string }) {
                     title="Editar"
                     onClick={() => {
                       setEditItem(item);
+                      setEditPercent(0);
+                      setEditAdjustment("increase");
                       if (item.kind === "Combinación") {
                         setComboParts(
                           String(item.componentIds || "")
@@ -632,6 +665,27 @@ export default function LaboratoryPricePanel({ uid }: { uid: string }) {
                   <option>Inactivo</option>
                 </select>
               </label>
+              {editItem && (
+                <section className="wide lab-edit-price-adjustment">
+                  <div>
+                    <label>
+                      Ajuste del precio
+                      <select value={editAdjustment} onChange={(event) => setEditAdjustment(event.target.value as "increase" | "decrease")}>
+                        <option value="increase">Aumentar</option>
+                        <option value="decrease">Descontar</option>
+                      </select>
+                    </label>
+                    <label>
+                      Porcentaje
+                      <input type="number" min="0" max="100" step="0.1" value={editPercent || ""} onChange={(event) => setEditPercent(Number(event.target.value))} placeholder="0" />
+                    </label>
+                  </div>
+                  <p>
+                    Precio actual: <b>{money(editItem.price)}</b>
+                    {editPercent > 0 && <> · Precio final: <strong>{money(Math.max(0, Math.round(Number(editItem.price || 0) * (editAdjustment === "increase" ? 1 + editPercent / 100 : 1 - editPercent / 100))))}</strong></>}
+                  </p>
+                </section>
+              )}
               <label className="wide">
                 Descripción
                 <textarea

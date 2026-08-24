@@ -4372,6 +4372,8 @@ button {
 .lab-quick-grid { display:flex; gap:10px; overflow:auto; padding:12px 0 2px; }
 .lab-quick-grid button { flex:0 0 150px; min-height:64px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:5px; text-align:left; border-radius:14px; }
 .lab-quick-grid button.selected { border-color:#148d78; background:#e8f5f2; }.lab-quick-grid small { color:#6c7e86; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.lab-quick-card>button.selected{border-color:#148d78;background:#e8f5f2;box-shadow:0 0 0 2px rgba(20,141,120,.12)}
+.lab-edit-price-adjustment{border:1px solid #b9d8d2;background:#f1f8f6;border-radius:12px;padding:14px}.lab-edit-price-adjustment>div{display:grid;grid-template-columns:1fr 1fr;gap:12px}.lab-edit-price-adjustment p{margin:10px 0 0;color:#526b73}.lab-edit-price-adjustment strong{color:#007762}
 .lab-intake-form { padding:22px; }.lab-intake-title { margin-bottom:18px; }.lab-intake-title h2 { margin:0; }.lab-intake-title span { color:#697d85; }
 .lab-intake-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }.lab-intake-grid label.wide { grid-column:1/-1; }
 .lab-intake-grid.four{grid-template-columns:1.25fr .7fr .65fr .8fr}.lab-intake-grid,.lab-analysis-line{font-weight:500}.lab-intake-grid label,.lab-analysis-line label{font-weight:600}

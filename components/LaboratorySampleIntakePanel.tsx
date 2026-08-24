@@ -173,12 +173,13 @@ export default function LaboratorySampleIntakePanel({ uid }: { uid: string }) {
   }
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
     if (!vetName || !clientName || detail.some((x) => !x.item)) {
       setMessage("Completá veterinario, productor y todos los análisis.");
       return;
     }
     setSaving(true);
-    const f = Object.fromEntries(new FormData(e.currentTarget).entries()),
+    const f = Object.fromEntries(new FormData(form).entries()),
       stamp = new Date().toISOString();
     const record = {
       id: `sample-${Date.now()}`,
@@ -205,17 +206,22 @@ export default function LaboratorySampleIntakePanel({ uid }: { uid: string }) {
       createdAt: stamp,
       updatedAt: stamp,
     } as LaboratoryManagementRecord;
-    await saveLaboratoryRecord(uid, "samples", record);
-    setSamples((cur) => [record, ...cur]);
-    setLines([
-      { id: makeId(), analysisId: "", query: "", quantity: 1, manual: false },
-    ]);
-    setTotalSamples(1);
-    setVetName("");
-    setClientName("");
-    e.currentTarget.reset();
-    setMessage(`${protocol} guardado con ${totalSamples} muestras.`);
-    setSaving(false);
+    try {
+      await saveLaboratoryRecord(uid, "samples", record);
+      setSamples((cur) => [record, ...cur]);
+      setLines([
+        { id: makeId(), analysisId: "", query: "", quantity: 1, manual: false },
+      ]);
+      setTotalSamples(1);
+      setVetName("");
+      setClientName("");
+      form.reset();
+      setMessage(`${protocol} guardado con ${totalSamples} muestras.`);
+    } catch {
+      setMessage("No pudimos guardar el ingreso. Los datos permanecen en pantalla para que puedas reintentar.");
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <>
@@ -242,7 +248,10 @@ export default function LaboratorySampleIntakePanel({ uid }: { uid: string }) {
         <div className="lab-quick-grid">
           {accesses.map((a) => (
             <div className="lab-quick-card" key={a.id}>
-              <button onClick={() => chooseQuick(String(a.analysisId))}>
+              <button
+                className={lines.length === 1 && lines[0]?.analysisId === String(a.analysisId) ? "selected" : ""}
+                onClick={() => chooseQuick(String(a.analysisId))}
+              >
                 <b>{String(a.name)}</b>
                 <small>{String(a.technique || "")}</small>
               </button>

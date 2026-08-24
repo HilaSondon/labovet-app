@@ -12,6 +12,10 @@ import {
   saveLaboratoryProfile,
   saveLaboratoryVeterinarians,
 } from "../lib/laboratory-data";
+import {
+  LaboratoryManagementRecord,
+  loadLaboratoryModule,
+} from "../lib/laboratory-management-data";
 
 export type LaboratorySection = "load" | "protocols" | "veterinarians" | "statistics" | "settings";
 type GrecertSubsample = { identificacion?: unknown; identificacionInternaDeLaboratorio?: unknown; codigoTipoIdentificacion?: unknown; codigoDeEdad?: unknown; codigoDeCategoria?: unknown };
@@ -61,6 +65,7 @@ export default function LaboratoryGreCertPanel({ uid, section = "load" }: { uid:
   const [search, setSearch] = useState("");
   const [resultFilter, setResultFilter] = useState<"all" | "21" | "62">("all");
   const [protocols, setProtocols] = useState<LaboratoryProtocol[]>([]);
+  const [sampleIntakes, setSampleIntakes] = useState<LaboratoryManagementRecord[]>([]);
   const [veterinarians, setVeterinarians] = useState<LaboratoryVeterinarian[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -70,7 +75,7 @@ export default function LaboratoryGreCertPanel({ uid, section = "load" }: { uid:
 
   useEffect(() => {
     let active = true;
-    loadLaboratoryData(uid).then((data) => { if (active) { setProtocols(data.protocols); setVeterinarians(data.veterinarians); setProfile(data.profile); } })
+    Promise.all([loadLaboratoryData(uid), loadLaboratoryModule(uid, "samples")]).then(([data, intakes]) => { if (active) { setProtocols(data.protocols); setVeterinarians(data.veterinarians); setProfile(data.profile); setSampleIntakes(intakes); } })
       .catch((caught) => { console.error(caught); if (active) setError("No pudimos cargar los datos del laboratorio."); })
       .finally(() => active && setLoadingData(false));
     return () => { active = false; };
@@ -205,7 +210,7 @@ export default function LaboratoryGreCertPanel({ uid, section = "load" }: { uid:
     setProfile(nextProfile);
   };
 
-  if (section === "protocols") return <Protocols protocols={protocols} loading={loadingData} search={protocolSearch} setSearch={setProtocolSearch} />;
+  if (section === "protocols") return <Protocols protocols={protocols} sampleIntakes={sampleIntakes} loading={loadingData} search={protocolSearch} setSearch={setProtocolSearch} />;
   if (section === "veterinarians") return <Veterinarians veterinarians={veterinarians} inputRef={vetInputRef} onFile={importVeterinarians} onAdd={addVeterinarian} feedback={feedback} error={error} />;
   if (section === "statistics") return <Statistics protocols={protocols} loading={loadingData} />;
   if (section === "settings") return <LaboratorySettings profile={profile} onSave={updateProfile} />;
@@ -233,9 +238,16 @@ export default function LaboratoryGreCertPanel({ uid, section = "load" }: { uid:
   </>;
 }
 
-function Protocols({ protocols, loading, search, setSearch }: { protocols: LaboratoryProtocol[]; loading: boolean; search: string; setSearch: (value: string) => void }) {
+function Protocols({ protocols, sampleIntakes, loading, search, setSearch }: { protocols: LaboratoryProtocol[]; sampleIntakes: LaboratoryManagementRecord[]; loading: boolean; search: string; setSearch: (value: string) => void }) {
   const visible = protocols.filter((item) => `${item.reportNumber} ${item.actNumber} ${item.veterinarianName} ${item.renspa} ${item.assayName}`.toLowerCase().includes(search.toLowerCase()));
-  return <><header className="topbar module-topbar"><div><span className="eyebrow">LABORATORIO</span><h1>Protocolos</h1><p>Historial de informes guardados y resultados procesados.</p></div></header><section className="panel laboratory-list-panel"><div className="laboratory-list-toolbar"><div><h2>{protocols.length} protocolos guardados</h2><p>Buscá por informe, acta, veterinario, RENSPA o análisis.</p></div><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar protocolo…" /></div><div className="laboratory-protocol-list-head"><span>Fecha</span><span>Informe / Acta</span><span>Veterinario</span><span>RENSPA</span><span>Análisis</span><span>Muestras</span><span>Resultados</span></div>{loading ? <div className="laboratory-empty-filter">Cargando protocolos…</div> : visible.map((item) => <article className="laboratory-protocol-row" key={item.id}><time>{item.date || "—"}</time><b>Informe {item.reportNumber}<small>Acta {item.actNumber}</small></b><span>{item.veterinarianName}<small>{item.veterinarianCuit}</small></span><span>{item.renspa}</span><span>{item.assayName}</span><strong>{item.sampleCount}</strong><span><em>{item.positiveCount} positivos</em><small>{item.suspiciousCount} sospechosos</small></span></article>)}{!loading && !visible.length && <div className="laboratory-empty-filter">No hay protocolos que coincidan.</div>}</section></>;
+  const intakeVisible = sampleIntakes.filter((item) => `${item.protocol} ${item.veterinarian} ${item.client} ${item.renspa} ${item.establishment} ${item.analyses}`.toLowerCase().includes(search.toLowerCase()));
+  const analysisNames = (item: LaboratoryManagementRecord) => {
+    try {
+      const values = JSON.parse(String(item.analyses || "[]")) as Array<{ name?: string }>;
+      return values.map((value) => value.name).filter(Boolean).join(" · ") || "Sin análisis";
+    } catch { return "Sin análisis"; }
+  };
+  return <><header className="topbar module-topbar"><div><span className="eyebrow">LABORATORIO</span><h1>Protocolos</h1><p>Ingresos recibidos y protocolos GRECERT procesados, reunidos en un solo lugar.</p></div></header><section className="panel laboratory-list-panel"><div className="laboratory-list-toolbar"><div><h2>{sampleIntakes.length + protocols.length} protocolos guardados</h2><p>Buscá por protocolo, veterinario, productor, RENSPA o análisis.</p></div><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar protocolo…" /></div><div className="laboratory-protocol-list-head"><span>Fecha</span><span>Protocolo</span><span>Veterinario</span><span>Productor / RENSPA</span><span>Análisis</span><span>Muestras</span><span>Estado</span></div>{loading ? <div className="laboratory-empty-filter">Cargando protocolos…</div> : intakeVisible.map((item) => <article className="laboratory-protocol-row intake" key={item.id}><time>{String(item.date || "—")}</time><b>{String(item.protocol || "Sin número")}<small>Ingreso de muestras</small></b><span>{String(item.veterinarian || "—")}</span><span>{String(item.client || "—")}<small>{String(item.renspa || item.establishment || "")}</small></span><span>{analysisNames(item)}</span><strong>{String(item.quantity || 0)}</strong><span><em>{String(item.status || "Recibida")}</em><small>Pendiente de resultados</small></span></article>)}{visible.map((item) => <article className="laboratory-protocol-row" key={item.id}><time>{item.date || "—"}</time><b>Informe {item.reportNumber}<small>Acta {item.actNumber}</small></b><span>{item.veterinarianName}<small>{item.veterinarianCuit}</small></span><span>{item.renspa}</span><span>{item.assayName}</span><strong>{item.sampleCount}</strong><span><em>{item.positiveCount} positivos</em><small>{item.suspiciousCount} sospechosos</small></span></article>)}{!loading && !intakeVisible.length && !visible.length && <div className="laboratory-empty-filter">No hay protocolos que coincidan.</div>}</section></>;
 }
 
 function Veterinarians({ veterinarians, inputRef, onFile, onAdd, feedback, error }: { veterinarians: LaboratoryVeterinarian[]; inputRef: React.RefObject<HTMLInputElement | null>; onFile: (file?: File) => void; onAdd: (name: string, cuit: string) => Promise<void>; feedback: string; error: string }) {
