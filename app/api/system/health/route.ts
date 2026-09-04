@@ -13,6 +13,7 @@ export async function GET() {
       const parsed = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
       credential = parsed.project_id === "labovet-e70a2" && parsed.private_key ? "valid-format" : "wrong-project";
     } catch { credential = encoded ? "invalid-format" : "missing"; }
-    return NextResponse.json({ firebase: "error", credential, mercadoPago: Boolean(process.env.MERCADOPAGO_ACCESS_TOKEN), plan: Boolean(process.env.MERCADOPAGO_PLAN_ID) }, { status: 503 });
+    const code = typeof error === "object" && error && "code" in error ? String(error.code) : "unknown";
+    return NextResponse.json({ firebase: "error", credential, code, mercadoPago: Boolean(process.env.MERCADOPAGO_ACCESS_TOKEN), plan: Boolean(process.env.MERCADOPAGO_PLAN_ID) }, { status: 503 });
   }
 }
