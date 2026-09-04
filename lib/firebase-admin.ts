@@ -1,6 +1,6 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { initializeFirestore, type Firestore } from "firebase-admin/firestore";
 
 function serviceAccount() {
   const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
@@ -10,4 +10,5 @@ function serviceAccount() {
 
 function adminApp() { return getApps()[0] || initializeApp({ credential: cert(serviceAccount()) }); }
 export const getAdminAuth = () => getAuth(adminApp());
-export const getAdminDb = () => getFirestore(adminApp());
+let firestore: Firestore | undefined;
+export const getAdminDb = () => firestore || (firestore = initializeFirestore(adminApp(), { preferRest: true }));
