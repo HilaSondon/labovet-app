@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getAdminDb } from "../../../../lib/firebase-admin";
 import { mercadoPago, validWebhookSignature } from "../../../../lib/mercadopago";
 
 type MpSubscription = { id: string; status: string; external_reference?: string; next_payment_date?: string; payer_id?: number };
@@ -12,6 +11,7 @@ export async function POST(request: Request) {
   const type = String(body?.type || url.searchParams.get("type") || "");
   if (!dataId || !validWebhookSignature(request, dataId)) return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
   try {
+    const { getAdminDb } = await import("../../../../lib/firebase-admin");
     if (type === "subscription_preapproval") {
       const subscription = await mercadoPago(`/preapproval/${encodeURIComponent(dataId)}`) as MpSubscription;
       const uid = subscription.external_reference;

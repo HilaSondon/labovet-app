@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getAdminDb } from "../../../../lib/firebase-admin";
 import { mercadoPago } from "../../../../lib/mercadopago";
 import { authenticatedUser } from "../../../../lib/server-auth";
 
 export async function POST(request: Request) {
   try {
     const identity = await authenticatedUser(request);
+    const { getAdminDb } = await import("../../../../lib/firebase-admin");
     const uid = identity.uid;
     if (!identity.email_verified) return NextResponse.json({ error: "Verificá tu correo antes de continuar" }, { status: 403 });
     const user = await getAdminDb().collection("users").doc(uid).get();
