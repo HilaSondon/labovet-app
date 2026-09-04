@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const { getAdminDb } = await import("../../../../lib/firebase-admin");
+    const { getAdminAuth, getAdminDb } = await import("../../../../lib/firebase-admin");
+    await getAdminAuth().listUsers(1);
     await getAdminDb().collection("users").limit(1).get();
     const { mercadoPago } = await import("../../../../lib/mercadopago");
     const planId = process.env.MERCADOPAGO_PLAN_ID;
