@@ -1,3 +1,6 @@
+import Image from "next/image";
+
 export default function Brand({ compact = false }: { compact?: boolean }) {
-  return <span className={`vetconver-wordmark${compact ? " compact" : ""}`} aria-label="VetConver"><span>Vet</span><strong>Conver</strong></span>;
+  const size = compact ? 54 : 92;
+  return <Image className={`vetconver-logo${compact ? " compact" : ""}`} src="/vetconver-logo.png" alt="VetConver, generador de planillas SIGATM" width={size} height={size} priority />;
 }

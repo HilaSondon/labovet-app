@@ -306,17 +306,15 @@
   color: var(--green-dark);
   text-decoration: none;
 }
-.vetconver-wordmark {
-  display: inline-flex;
-  color: #102b49;
-  font: 800 38px/1 Arial, sans-serif;
-  letter-spacing: -0.06em;
+.vetconver-logo {
+  display: block;
+  width: 78px;
+  height: 78px;
+  object-fit: contain;
 }
-.vetconver-wordmark strong {
-  color: var(--green);
-}
-.vetconver-wordmark.compact {
-  font-size: 29px;
+.vetconver-logo.compact {
+  width: 54px;
+  height: 54px;
 }
 .vetconver-brand > em {
   padding-left: 16px;
@@ -331,9 +329,9 @@
   align-items: center;
   gap: 14px;
 }
-.module-brand img {
-  width: 155px;
-  height: auto;
+.module-brand .vetconver-logo {
+  width: 54px;
+  height: 54px;
 }
 .module-brand > div {
   display: flex;
@@ -343,9 +341,6 @@
 }
 .module-brand strong {
   font-size: 14px;
-}
-.module-brand .vetconver-wordmark strong {
-  font-size: inherit;
 }
 .module-brand small {
   color: var(--muted);
@@ -728,19 +723,13 @@
   align-items: center;
   gap: 14px;
 }
-.footer-brand img {
-  width: 145px;
-  height: auto;
-  padding: 7px;
-  border-radius: 7px;
-  background: white;
+.footer-brand .vetconver-logo {
+  width: 64px;
+  height: 64px;
 }
 .footer-brand span {
   font-size: 13px;
   font-weight: 900;
-}
-.footer-brand .vetconver-wordmark span {
-  font-size: inherit;
 }
 .home-footer p {
   color: #c4d9d1;
@@ -836,8 +825,9 @@
   .home-nav {
     flex-direction: column;
   }
-  .module-brand img {
-    width: 120px;
+  .module-brand .vetconver-logo {
+    width: 48px;
+    height: 48px;
   }
   .module-brand > div {
     display: none;
