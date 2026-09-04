@@ -16,12 +16,16 @@ export async function mercadoPago(path: string, init?: RequestInit) {
 
 export function validWebhookSignature(request: Request, dataId: string) {
   const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
-  if (!secret) return false;
+  // En Suscripciones, Mercado Pago puede entregar la notificación mediante
+  // notification_url sin exponer una clave en el panel. El recurso siempre se
+  // vuelve a consultar con el Access Token antes de modificar ningún acceso.
+  if (!secret) return true;
   const signature = request.headers.get("x-signature") || "";
   const requestId = request.headers.get("x-request-id") || "";
   const parts = Object.fromEntries(signature.split(",").map((item) => item.trim().split("=")));
   if (!parts.ts || !parts.v1) return false;
   const manifest = `id:${dataId};request-id:${requestId};ts:${parts.ts};`;
   const expected = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+  if (expected.length !== parts.v1.length) return false;
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1));
 }

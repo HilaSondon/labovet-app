@@ -22,6 +22,7 @@ export async function POST(request: Request) {
         payer_email: profile.email,
         external_reference: uid,
         back_url: `${appUrl}/?suscripcion=regreso`,
+        notification_url: `${appUrl}/api/mercadopago/webhook`,
         status: "pending",
       }),
     });
