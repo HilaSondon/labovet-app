@@ -4,7 +4,11 @@ export async function GET() {
   try {
     const { getAdminDb } = await import("../../../../lib/firebase-admin");
     await getAdminDb().collection("users").limit(1).get();
-    return NextResponse.json({ firebase: "connected", mercadoPago: Boolean(process.env.MERCADOPAGO_ACCESS_TOKEN), plan: Boolean(process.env.MERCADOPAGO_PLAN_ID) });
+    const { mercadoPago } = await import("../../../../lib/mercadopago");
+    const planId = process.env.MERCADOPAGO_PLAN_ID;
+    if (!planId) throw new Error("Plan no configurado");
+    const plan = await mercadoPago(`/preapproval_plan/${encodeURIComponent(planId)}`) as { status?: string };
+    return NextResponse.json({ firebase: "connected", mercadoPago: "connected", plan: plan.status || "available" });
   } catch (error) {
     console.error("Health check failed", error);
     const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 || "";
