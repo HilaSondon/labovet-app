@@ -109,6 +109,8 @@ export default function AdminUsersPanel({ currentUid }: { currentUid: string }) 
   };
 
   useEffect(() => {
+    // La carga inicial sincroniza este panel con Firebase.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadUsers();
   }, []);
 

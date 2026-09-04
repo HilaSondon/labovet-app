@@ -14,7 +14,7 @@
     "build": "next build",
     "start": "next start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
-    "lint": "eslint . --ignore-pattern .next"
+    "lint": "eslint app components lib tests scripts --ignore-pattern public --ignore-pattern .next --ignore-pattern dist"
   },
   "dependencies": {
     "firebase": "^12.16.0",

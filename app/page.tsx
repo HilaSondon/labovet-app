@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -61,7 +62,7 @@ export default function Home() {
   return (
     <main className="workspace">
       <header className="workspace-bar">
-        <div className="workspace-brand"><img src="/labovet-logo.png" alt="LabOVet" /><span>Planillas SIGATM</span></div>
+        <div className="workspace-brand"><Image src="/labovet-logo.png" alt="LabOVet" width={145} height={46} /><span>Planillas SIGATM</span></div>
         <nav>
           <button className={view === "sigatm" ? "active" : ""} onClick={() => setView("sigatm")}>Planillas SIGATM</button>
           {isAdmin && <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>Usuarios</button>}
@@ -76,7 +77,7 @@ export default function Home() {
 }
 
 function LoadingScreen() {
-  return <main className="loading-screen"><img src="/labovet-logo.png" alt="LabOVet" /><span>Cargando…</span></main>;
+  return <main className="loading-screen"><Image src="/labovet-logo.png" alt="LabOVet" width={230} height={73} priority /><span>Cargando…</span></main>;
 }
 
 function PublicHome() {
@@ -84,7 +85,7 @@ function PublicHome() {
   return (
     <main className="public-site">
       <header className="public-nav">
-        <a href="#inicio" className="public-logo"><img src="/labovet-logo.png" alt="LabOVet Gestión Administrativa Veterinaria" /><span>Planillas SIGATM</span></a>
+        <a href="#inicio" className="public-logo"><Image src="/labovet-logo.png" alt="LabOVet Gestión Administrativa Veterinaria" width={210} height={66} priority /><span>Planillas SIGATM</span></a>
         <nav><a href="#como-funciona">Cómo funciona</a><a href="#rubros">Rubros</a><a href="#servicio">Servicio administrativo</a></nav>
         <div><button className="nav-login" onClick={() => setAuthMode("login")}>Ingresar</button><button className="nav-register" onClick={() => setAuthMode("register")}>Registrarse</button></div>
       </header>
@@ -102,7 +103,7 @@ function PublicHome() {
 
       <section className="service" id="servicio"><span className="service-tag">SERVICIO ADMINISTRATIVO COMPLETO</span><div className="service-grid"><div><h2>¿Preferís no ocuparte de la carga? Lo hacemos por vos.</h2><p>Nos enviás por WhatsApp las fotos de los protocolos y generamos correctamente el acta completa en SIGATM, habitualmente en menos de 24 horas.</p><a href="https://wa.me/5492244429316" target="_blank" rel="noreferrer">Consultar por WhatsApp <span>→</span></a></div><div className="service-promises"><article><b>Sin clave fiscal</b><p>No solicitamos tu contraseña ni acceso a tu cuenta.</p></article><article><b>Sin pedir tu CUIT</b><p>Realizamos el trámite con nuestro propio CUIT.</p></article><article><b>Confidencialidad y responsabilidad</b><p>Tu información se utiliza únicamente para gestionar el acta.</p></article></div></div></section>
 
-      <section className="final-cta"><img src="/labovet-logo.png" alt="LabOVet" /><h2>Menos tiempo preparando planillas.<br />Más tiempo ejerciendo.</h2><button onClick={() => setAuthMode("register")}>Crear mi cuenta</button></section>
+      <section className="final-cta"><Image src="/labovet-logo.png" alt="LabOVet" width={210} height={66} /><h2>Menos tiempo preparando planillas.<br />Más tiempo ejerciendo.</h2><button onClick={() => setAuthMode("register")}>Crear mi cuenta</button></section>
       <footer className="public-footer"><span>© {new Date().getFullYear()} LabOVet</span><b>Planillas SIGATM para veterinarios</b><a href="tel:2244429316">2244-429316</a></footer>
       {authMode && <AuthModal mode={authMode} onMode={setAuthMode} onClose={() => setAuthMode(null)} />}
     </main>
@@ -135,15 +136,15 @@ function AuthModal({ mode, onMode, onClose }: { mode: AuthMode; onMode: (mode: A
       setLoading(false);
     }
   }
-  return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><button className="modal-close" onClick={onClose} aria-label="Cerrar">×</button><img src="/labovet-logo.png" alt="LabOVet" /><div className="modal-tabs"><button className={mode === "login" ? "active" : ""} onClick={() => onMode("login")}>Iniciar sesión</button><button className={mode === "register" ? "active" : ""} onClick={() => onMode("register")}>Registrarse</button></div><h2 id="auth-title">{mode === "login" ? "Bienvenido" : "Creá tu cuenta"}</h2><p>{mode === "login" ? "Ingresá para preparar tus planillas." : "Registro exclusivo para profesionales veterinarios."}</p><form onSubmit={submit}>{mode === "register" && <label>Nombre y apellido<input name="name" autoComplete="name" required /></label>}<label>Correo electrónico<input name="email" type="email" autoComplete="email" required /></label><label>Contraseña<input name="password" type="password" minLength={6} autoComplete={mode === "register" ? "new-password" : "current-password"} required /></label>{error && <div className="auth-error">{error}</div>}<button className="submit-auth" disabled={loading}>{loading ? "Procesando…" : mode === "login" ? "Ingresar" : "Crear cuenta"}<span>→</span></button></form></section></div>;
+  return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><button className="modal-close" onClick={onClose} aria-label="Cerrar">×</button><Image src="/labovet-logo.png" alt="LabOVet" width={180} height={57} /><div className="modal-tabs"><button className={mode === "login" ? "active" : ""} onClick={() => onMode("login")}>Iniciar sesión</button><button className={mode === "register" ? "active" : ""} onClick={() => onMode("register")}>Registrarse</button></div><h2 id="auth-title">{mode === "login" ? "Bienvenido" : "Creá tu cuenta"}</h2><p>{mode === "login" ? "Ingresá para preparar tus planillas." : "Registro exclusivo para profesionales veterinarios."}</p><form onSubmit={submit}>{mode === "register" && <label>Nombre y apellido<input name="name" autoComplete="name" required /></label>}<label>Correo electrónico<input name="email" type="email" autoComplete="email" required /></label><label>Contraseña<input name="password" type="password" minLength={6} autoComplete={mode === "register" ? "new-password" : "current-password"} required /></label>{error && <div className="auth-error">{error}</div>}<button className="submit-auth" disabled={loading}>{loading ? "Procesando…" : mode === "login" ? "Ingresar" : "Crear cuenta"}<span>→</span></button></form></section></div>;
 }
 
 function AccessStatus({ profile, onExit }: { profile: Profile; onExit: () => void }) {
   const labels = { pending: "Cuenta pendiente de activación", expired: "Suscripción vencida", suspended: "Acceso suspendido" };
   const status = profile.subscriptionStatus || "pending";
-  return <main className="access-status"><img src="/labovet-logo.png" alt="LabOVet" /><span>ACCESO A PLANILLAS SIGATM</span><h1>{labels[status as keyof typeof labels] || "Acceso no disponible"}</h1><p>Tu registro está guardado. Comunicate con LabOVet para habilitar el acceso o consultar el estado de tu cuenta.</p><a href="https://wa.me/5492244429316" target="_blank" rel="noreferrer">Consultar por WhatsApp</a><button onClick={onExit}>Cerrar sesión</button></main>;
+  return <main className="access-status"><Image src="/labovet-logo.png" alt="LabOVet" width={230} height={73} /><span>ACCESO A PLANILLAS SIGATM</span><h1>{labels[status as keyof typeof labels] || "Acceso no disponible"}</h1><p>Tu registro está guardado. Comunicate con LabOVet para habilitar el acceso o consultar el estado de tu cuenta.</p><a href="https://wa.me/5492244429316" target="_blank" rel="noreferrer">Consultar por WhatsApp</a><button onClick={onExit}>Cerrar sesión</button></main>;
 }
 
 function ArchivedAccount({ onExit }: { onExit: () => void }) {
-  return <main className="access-status"><img src="/labovet-logo.png" alt="LabOVet" /><span>CUENTA CONSERVADA</span><h1>El módulo para laboratorios no está disponible.</h1><p>La información anterior permanece guardada, pero esta etapa de LabOVet está destinada exclusivamente a profesionales veterinarios.</p><button onClick={onExit}>Cerrar sesión</button></main>;
+  return <main className="access-status"><Image src="/labovet-logo.png" alt="LabOVet" width={230} height={73} /><span>CUENTA CONSERVADA</span><h1>El módulo para laboratorios no está disponible.</h1><p>La información anterior permanece guardada, pero esta etapa de LabOVet está destinada exclusivamente a profesionales veterinarios.</p><button onClick={onExit}>Cerrar sesión</button></main>;
 }
