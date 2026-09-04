@@ -9,4 +9,4 @@ La integración deja las credenciales exclusivamente en el servidor. Nunca uses 
 5. Crear una cuenta de servicio de Firebase con acceso mínimo a Authentication y Firestore, convertir el JSON completo a Base64 y guardarlo como `FIREBASE_SERVICE_ACCOUNT_BASE64` en Vercel.
 6. Volver a desplegar y probar con una cuenta nueva y un medio de pago de prueba antes de activar producción.
 
-El plan se crea con frecuencia mensual en ARS y 30 días de prueba. El webhook es la fuente de verdad: `authorized` habilita prueba, un pago aprobado activa, `paused` suspende y `cancelled` vence.
+El plan se crea por $25.000 ARS mensuales y 7 días de prueba. El webhook es la fuente de verdad: `authorized` habilita prueba, un pago aprobado activa, `paused` suspende y `cancelled` vence.
