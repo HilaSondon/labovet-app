@@ -23,6 +23,7 @@ test("conserva veterinarios y administración, sin registrar laboratorios", asyn
   assert.match(page, /role: "veterinarian"/);
   assert.match(page, /<AdminUsersPanel/);
   assert.match(page, /subscriptionStatus: "pending"/);
+  assert.match(page, /El módulo para laboratorios no está disponible/);
   assert.doesNotMatch(page, /role: "laboratory"/);
   assert.doesNotMatch(page, /LaboratoryManagementPanel/);
 });

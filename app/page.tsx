@@ -50,6 +50,10 @@ export default function Home() {
   const isAdmin = profile.role === "admin";
   const enabled = isAdmin || !profile.subscriptionStatus || ["active", "trial"].includes(profile.subscriptionStatus);
 
+  if (profile.role === "laboratory") {
+    return <ArchivedAccount onExit={() => signOut(auth)} />;
+  }
+
   if (!enabled) {
     return <AccessStatus profile={profile} onExit={() => signOut(auth)} />;
   }
@@ -138,4 +142,8 @@ function AccessStatus({ profile, onExit }: { profile: Profile; onExit: () => voi
   const labels = { pending: "Cuenta pendiente de activación", expired: "Suscripción vencida", suspended: "Acceso suspendido" };
   const status = profile.subscriptionStatus || "pending";
   return <main className="access-status"><img src="/labovet-logo.png" alt="LabOVet" /><span>ACCESO A PLANILLAS SIGATM</span><h1>{labels[status as keyof typeof labels] || "Acceso no disponible"}</h1><p>Tu registro está guardado. Comunicate con LabOVet para habilitar el acceso o consultar el estado de tu cuenta.</p><a href="https://wa.me/5492244429316" target="_blank" rel="noreferrer">Consultar por WhatsApp</a><button onClick={onExit}>Cerrar sesión</button></main>;
+}
+
+function ArchivedAccount({ onExit }: { onExit: () => void }) {
+  return <main className="access-status"><img src="/labovet-logo.png" alt="LabOVet" /><span>CUENTA CONSERVADA</span><h1>El módulo para laboratorios no está disponible.</h1><p>La información anterior permanece guardada, pero esta etapa de LabOVet está destinada exclusivamente a profesionales veterinarios.</p><button onClick={onExit}>Cerrar sesión</button></main>;
 }

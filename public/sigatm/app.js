@@ -48,4 +48,6 @@ $("loginForm").addEventListener("submit",e=>{e.preventDefault();showApp();toast(
 $("registerForm").addEventListener("submit",e=>{e.preventDefault();showApp();toast("Cuenta de demostración creada.")});
 $("homeButton").addEventListener("click",showHome);
 setMode("anemia");render();
-if(new URLSearchParams(window.location.search).get("embedded")==="1")showApp();
+const embeddedOnline=new URLSearchParams(window.location.search).get("embedded")==="1"&&window.parent!==window;
+if(embeddedOnline)showApp();
+else if(/^https?:$/.test(window.location.protocol))window.location.replace("/");
