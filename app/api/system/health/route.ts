@@ -14,6 +14,7 @@ export async function GET() {
       credential = parsed.project_id === "labovet-e70a2" && parsed.private_key ? "valid-format" : "wrong-project";
     } catch { credential = encoded ? "invalid-format" : "missing"; }
     const code = typeof error === "object" && error && "code" in error ? String(error.code) : "unknown";
-    return NextResponse.json({ firebase: "error", credential, code, mercadoPago: Boolean(process.env.MERCADOPAGO_ACCESS_TOKEN), plan: Boolean(process.env.MERCADOPAGO_PLAN_ID) }, { status: 503 });
+    const message = error instanceof Error ? error.message.replace(/[\r\n]+/g, " ").slice(0, 180) : "Error desconocido";
+    return NextResponse.json({ firebase: "error", credential, code, message, mercadoPago: Boolean(process.env.MERCADOPAGO_ACCESS_TOKEN), plan: Boolean(process.env.MERCADOPAGO_PLAN_ID) }, { status: 503 });
   }
 }
