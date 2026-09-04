@@ -1,0 +1,3 @@
+.access-status .primary-status { padding: 13px 18px; border-radius: 9px; background: var(--green); color: white; font-weight: 900; }
+.access-status small { margin-top: 14px; color: var(--muted); }
+.status-message { margin: 10px 0; color: var(--green); font-size: 14px; }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import {
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
@@ -13,6 +14,7 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore/lite";
 import { auth, db } from "../lib/firebase";
 import AdminUsersPanel from "../components/AdminUsersPanel";
+import { AccountAccess, useSingleSession } from "../components/AccountAccess";
 
 type Profile = {
   name?: string;
@@ -44,6 +46,8 @@ export default function Home() {
     setLoading(false);
   }), []);
 
+  const sessionAllowed = useSingleSession(user, Boolean(user && profile && profile.role !== "admin" && (!profile.subscriptionStatus || ["active", "trial"].includes(profile.subscriptionStatus))));
+
   if (loading) return <LoadingScreen />;
   if (!user) return <PublicHome />;
   if (!profile) return <LoadingScreen />;
@@ -56,8 +60,10 @@ export default function Home() {
   }
 
   if (!enabled) {
-    return <AccessStatus profile={profile} onExit={() => signOut(auth)} />;
+    return <AccountAccess user={user} status={profile.subscriptionStatus || "pending"} onExit={() => signOut(auth)} />;
   }
+  if (sessionAllowed === null) return <LoadingScreen />;
+  if (!sessionAllowed) return <main className="access-status"><span>SEGURIDAD DE LA CUENTA</span><h1>Esta sesión ya no está activa</h1><p>LabOVet permite hasta dos dispositivos registrados y un uso simultáneo. Si ingresaste desde otro equipo, esta sesión se cerró automáticamente.</p><a href="https://wa.me/5492244429316" target="_blank" rel="noreferrer">Administrar dispositivos</a><button onClick={() => signOut(auth)}>Cerrar sesión</button></main>;
 
   return (
     <main className="workspace">
@@ -126,6 +132,7 @@ function AuthModal({ mode, onMode, onClose }: { mode: AuthMode; onMode: (mode: A
         const credential = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(credential.user, { displayName: name });
         await setDoc(doc(db, "users", credential.user.uid), { name, email, role: "veterinarian", plan: "unassigned", subscriptionStatus: "pending", createdAt: serverTimestamp() });
+        await sendEmailVerification(credential.user);
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -137,12 +144,6 @@ function AuthModal({ mode, onMode, onClose }: { mode: AuthMode; onMode: (mode: A
     }
   }
   return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><button className="modal-close" onClick={onClose} aria-label="Cerrar">×</button><Image src="/labovet-logo.png" alt="LabOVet" width={180} height={57} /><div className="modal-tabs"><button className={mode === "login" ? "active" : ""} onClick={() => onMode("login")}>Iniciar sesión</button><button className={mode === "register" ? "active" : ""} onClick={() => onMode("register")}>Registrarse</button></div><h2 id="auth-title">{mode === "login" ? "Bienvenido" : "Creá tu cuenta"}</h2><p>{mode === "login" ? "Ingresá para preparar tus planillas." : "Registro exclusivo para profesionales veterinarios."}</p><form onSubmit={submit}>{mode === "register" && <label>Nombre y apellido<input name="name" autoComplete="name" required /></label>}<label>Correo electrónico<input name="email" type="email" autoComplete="email" required /></label><label>Contraseña<input name="password" type="password" minLength={6} autoComplete={mode === "register" ? "new-password" : "current-password"} required /></label>{error && <div className="auth-error">{error}</div>}<button className="submit-auth" disabled={loading}>{loading ? "Procesando…" : mode === "login" ? "Ingresar" : "Crear cuenta"}<span>→</span></button></form></section></div>;
-}
-
-function AccessStatus({ profile, onExit }: { profile: Profile; onExit: () => void }) {
-  const labels = { pending: "Cuenta pendiente de activación", expired: "Suscripción vencida", suspended: "Acceso suspendido" };
-  const status = profile.subscriptionStatus || "pending";
-  return <main className="access-status"><Image src="/labovet-logo.png" alt="LabOVet" width={230} height={73} /><span>ACCESO A PLANILLAS SIGATM</span><h1>{labels[status as keyof typeof labels] || "Acceso no disponible"}</h1><p>Tu registro está guardado. Comunicate con LabOVet para habilitar el acceso o consultar el estado de tu cuenta.</p><a href="https://wa.me/5492244429316" target="_blank" rel="noreferrer">Consultar por WhatsApp</a><button onClick={onExit}>Cerrar sesión</button></main>;
 }
 
 function ArchivedAccount({ onExit }: { onExit: () => void }) {
