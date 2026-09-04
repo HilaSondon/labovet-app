@@ -58,7 +58,7 @@ export const PLAN_DEFINITIONS: Record<
     },
   },
   large_animals: {
-    name: "Grandes animales",
+    name: "Planillas SIGATM",
     permissions: {
       smallAnimals: true,
       largeAnimals: true,

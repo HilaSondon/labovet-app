@@ -42,52 +42,22 @@ async function ensureAccount({ email, displayName, role, plan }) {
   return account;
 }
 
-async function copyCollection(sourceUid, targetUid, collectionName) {
-  const response = await request(`${firestoreBase}/users/${sourceUid}/${collectionName}?pageSize=1000`, {
-    headers: { Authorization: "Bearer owner" },
-  });
-  const documents = response.documents || [];
-  for (let start = 0; start < documents.length; start += 50) {
-    await Promise.all(documents.slice(start, start + 50).map((document) => {
-      const id = document.name.split("/").pop();
-      return request(`${firestoreBase}/users/${targetUid}/${collectionName}/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer owner" },
-        body: JSON.stringify({ fields: document.fields || {} }),
-      });
-    }));
-  }
-  return documents.length;
-}
-
 try {
-  const admin = await ensureAccount({
+  await ensureAccount({
     email: "admin@labovet.local",
     displayName: "Administrador local",
     role: "admin",
     plan: "large_animals",
   });
-  const laboratory = await ensureAccount({
-    email: "laboratorio@labovet.local",
-    displayName: "Laboratorio local",
-    role: "laboratory",
-    plan: "laboratory",
+  await ensureAccount({
+    email: "veterinario@labovet.local",
+    displayName: "Veterinario local",
+    role: "veterinarian",
+    plan: "large_animals",
   });
 
-  const laboratoryCollections = [
-    "lab-samples", "labVeterinarians", "lab-clients", "lab-prices",
-    "lab-qualityManual", "lab-procedures", "lab-records", "lab-reagents",
-    "lab-equipment", "lab-audits", "lab-nonconformities", "lab-priceSettings",
-    "lab-quickAccess", "labProtocols", "labSettings",
-  ];
-  let copied = 0;
-  for (const collectionName of laboratoryCollections) {
-    copied += await copyCollection(admin.localId, laboratory.localId, collectionName);
-  }
-
   console.log(`Administrador local: admin@labovet.local / ${password}`);
-  console.log(`Laboratorio local: laboratorio@labovet.local / ${password}`);
-  console.log(`${copied} registros de laboratorio sincronizados con la vista exclusiva.`);
+  console.log(`Veterinario local: veterinario@labovet.local / ${password}`);
 } catch (error) {
   console.error("No se pudo preparar el emulador:", error.message);
   process.exitCode = 1;

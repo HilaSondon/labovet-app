@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#123c35" />
+    <meta name="description" content="LabOVet Planillas SIGATM transforma listados veterinarios en archivos listos para cargar en SIGATM." />
+    <title>LabOVet | Planillas SIGATM</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="visual-overrides.css" />
+  </head>
+  <body>
+    <main id="homeView" class="home-view">
+      <nav class="home-nav">
+        <a class="labovet-brand" href="#" aria-label="LabOVet, inicio"><img src="assets/brand/labovet-logo.png" alt="LabOVet Gestión Administrativa Veterinaria"><span>Planillas SIGATM</span></a>
+        <div><button class="home-link" data-auth-tab="login">Iniciar sesión</button><button class="home-nav-cta" data-auth-tab="register">Registrarse</button></div>
+      </nav>
+      <section class="home-hero">
+        <div class="home-copy">
+          <span class="home-kicker">PLANILLAS LISTAS PARA SIGATM</span>
+          <h1>De Excel a SIGATM en segundos.</h1>
+          <p>Transformá listados de Excel, mensajes de WhatsApp o datos escritos a mano en una planilla compatible con SIGATM, sin acomodar columnas ni memorizar códigos.</p>
+          <div class="home-benefits"><span>✓ Sin armar columnas</span><span>✓ Validación antes de descargar</span><span>✓ Tus datos quedan en tu computadora</span></div>
+        </div>
+        <aside class="auth-card">
+          <div class="auth-tabs"><button class="selected" data-auth-tab="login">Iniciar sesión</button><button data-auth-tab="register">Registrarse</button></div>
+          <form id="loginForm" class="auth-form">
+            <h2>Bienvenido</h2><p>Ingresá para preparar una planilla.</p>
+            <label>Correo electrónico<input type="email" placeholder="nombre@correo.com" required></label>
+            <label>Contraseña<input type="password" placeholder="Tu contraseña" required></label>
+            <button type="submit">Ingresar <span>→</span></button>
+          </form>
+          <form id="registerForm" class="auth-form" hidden>
+            <h2>Creá tu cuenta</h2><p>Empezá a preparar planillas para SIGATM.</p>
+            <label>Nombre y apellido<input type="text" placeholder="Tu nombre" required></label>
+            <label>Correo electrónico<input type="email" placeholder="nombre@correo.com" required></label>
+            <label>Contraseña<input type="password" placeholder="Elegí una contraseña" minlength="6" required></label>
+            <button type="submit">Crear cuenta <span>→</span></button>
+          </form>
+          <small class="auth-note">Vista local: el acceso es demostrativo y no envía información.</small>
+        </aside>
+      </section>
+      <section class="home-how">
+        <div class="home-section-title"><span>CÓMO FUNCIONA</span><h2>Una carga simple, aunque los datos lleguen desordenados.</h2><p>Elegís el tipo de trabajo y el sistema configura los valores más habituales. Después pegás la información, corregís únicamente lo que la validación marque y descargás el archivo con los encabezados y códigos requeridos.</p></div>
+        <div class="home-steps"><article><b>1</b><h3>Pegá o escribí</h3><p>Copiá columnas de Excel, pegá el detalle recibido por WhatsApp o cargá unas pocas muestras manualmente.</p></article><article><b>2</b><h3>Revisá antes de cargar</h3><p>Aplicá categorías, edades o estados a todo el lote y detectá identificaciones faltantes, repetidas o inválidas.</p></article><article><b>3</b><h3>Descargá y subí</h3><p>Poné el nombre que quieras al archivo, descargalo y seguí el instructivo visual para incorporarlo a SIGATM.</p></article></div>
+      </section>
+
+      <section class="scope-section">
+        <div class="scope-copy"><span class="home-kicker">RUBROS CONTEMPLADOS</span><h2>Preparado para el trabajo veterinario habitual.</h2><p>El sistema adapta automáticamente especie, identificación, categoría y edad según el análisis seleccionado. También permite modificar cada dato cuando el caso lo requiere.</p></div>
+        <div class="scope-grid">
+          <article><span>🐴</span><div><b>Equinos</b><p>Anemia infecciosa equina, con libreta, pasaporte, ficha, certificado o chip.</p></div></article>
+          <article><span>🐄</span><div><b>Bovinos</b><p>Brucelosis y leucosis bovina. Reconoce también VC, VQ, VAQ y T.</p></div></article>
+          <article><span>🐑</span><div><b>Ovinos</b><p>Brucella ovis, con los valores habituales listos para revisar.</p></div></article>
+          <article><span>🐖</span><div><b>Porcinos</b><p>Aujeszky y triquina.</p></div></article>
+          <article><span>🐔</span><div><b>Aves</b><p>Categorías avícolas e identificación opcional cuando corresponda.</p></div></article>
+        </div>
+      </section>
+
+      <section class="support-section">
+        <div class="support-mark">↻</div><div><span>ACOMPAÑAMIENTO</span><h2>La herramienta evoluciona junto con SIGATM.</h2><p>Nos mantenemos en constante asesoramiento sobre los cambios que pueda incorporar el sistema SIGATM, para actualizar el estandarizador y ayudarte frente a cualquier duda de carga.</p></div>
+        <div class="contact-box"><small>LÍNEA DIRECTA PARA CONSULTAS</small><a href="tel:2244429316">2244-429316</a><span>Correo de consultas: próximamente</span></div>
+      </section>
+
+      <section class="admin-service">
+        <div class="admin-badge">SERVICIO ADMINISTRATIVO COMPLETO</div>
+        <div class="admin-grid"><div><h2>¿Preferís no ocuparte de la carga? Lo hacemos por vos.</h2><p>Nos enviás por WhatsApp las fotos de los protocolos y generamos correctamente el acta completa en SIGATM, habitualmente en menos de 24 horas.</p><a href="https://wa.me/5492244429316" target="_blank" rel="noopener">Consultar por WhatsApp <span>→</span></a></div><div class="admin-promises"><article><b>Sin clave fiscal</b><p>No solicitamos tu contraseña ni acceso a tu cuenta.</p></article><article><b>Sin pedir tu CUIT</b><p>Realizamos el trámite con nuestro propio CUIT.</p></article><article><b>Confidencialidad y responsabilidad</b><p>Tu información se utiliza únicamente para gestionar el acta.</p></article></div></div>
+      </section>
+
+      <footer class="home-footer"><div class="footer-brand"><img src="assets/brand/labovet-logo.png" alt="LabOVet"><span>Planillas SIGATM</span></div><p>Autogestión simple o gestión administrativa completa.</p><a href="tel:2244429316">2244-429316</a></footer>
+    </main>
+
+    <main id="appView" class="shell" hidden>
+      <header class="topbar">
+        <div class="module-brand"><img src="assets/brand/labovet-logo.png" alt="LabOVet"><div><strong>Planillas SIGATM</strong><small>Herramienta local</small></div></div>
+        <div class="top-actions"><button id="homeButton" class="home-button">Inicio</button><button id="manualButton" class="manual-button">Cómo cargar en SIGATM</button><div class="privacy"><i></i> Los datos no salen de esta computadora</div></div>
+      </header>
+
+      <section id="manualPanel" class="manual-panel" hidden>
+        <div class="manual-title"><div><span class="eyebrow">GUÍA PASO A PASO</span><h2>Cómo cargar el archivo en SIGATM</h2><p>Recorrido para Actas DNSA. Los nombres de algunas opciones cambian según el programa sanitario.</p></div><button id="manualClose" aria-label="Cerrar manual">×</button></div>
+        <nav class="manual-index" aria-label="Pasos del manual">
+          <button data-guide="0" class="selected">1. Nueva acta</button><button data-guide="1">2. Lugar</button><button data-guide="2">3. Muestras</button><button data-guide="3">4. Ensayos</button><button data-guide="4">5. Finalizar</button>
+        </nav>
+        <div class="guide-slides">
+          <article class="guide-slide selected" data-slide="0"><div class="guide-copy"><span>PASO 1</span><h3>Creá una nueva Acta DNSA</h3><ol><li>Ingresá a SIGATM y abrí <b>Actas DNSA</b>.</li><li>Tocá el botón azul <b>+ Nueva Acta</b>.</li><li>En <b>Área</b>, elegí el programa correspondiente al análisis.</li><li>Seleccioná el <b>Motivo</b> y <b>Submotivo</b>.</li><li>Completá <b>Fecha Toma de Muestra</b>. Los campos Usuario GDE y Documento GDE pueden quedar vacíos.</li></ol><div class="guide-tip">El número de acta y la fecha de alta se asignan automáticamente.</div></div><figure><img src="assets/manual/01-datos-acta-redactado.png" alt="Datos generales de una nueva acta en SIGATM con los datos personales ocultos"><figcaption>Primera sección de una nueva Acta DNSA.</figcaption></figure></article>
+          <article class="guide-slide" data-slide="1"><div class="guide-copy"><span>PASO 2</span><h3>Indicá dónde tomaste las muestras</h3><ol><li>En <b>Lugar de toma de muestras</b>, elegí normalmente <b>Unidad productiva</b>.</li><li>Escribí el RENSPA y tocá la <b>lupa azul</b>.</li><li>Si no conocés el RENSPA, usá el segundo botón azul para buscar el establecimiento.</li><li>Completá “Otro lugar” solamente si el origen es distinto del sitio donde se tomó la muestra.</li></ol><div class="guide-tip">Verificá titular y establecimiento antes de continuar.</div></div><figure><img src="assets/manual/02-lugar-muestra.png" alt="Lugar de toma de muestra y búsqueda por RENSPA"><figcaption>Buscá la unidad productiva con la lupa.</figcaption></figure></article>
+          <article class="guide-slide" data-slide="2"><div class="guide-copy"><span>PASO 3</span><h3>Elegí especie, matriz y subí el Excel</h3><ol><li>Tocá <b>Seleccionar Especie</b>, buscá la especie y confirmala.</li><li>Elegí la <b>Matriz</b>; para los sangrados suele ser <b>Suero</b>.</li><li>Marcá <b>Muestras y submuestras</b>.</li><li>En “Subir archivo de muestras”, tocá <b>Buscar</b> y elegí el Excel generado por esta herramienta.</li><li>Después tocá <b>Agregar muestras</b> y revisá la grilla.</li></ol><div class="guide-warning">No cambies los encabezados del Excel. Si aparecen errores en rojo, volvé a esta herramienta y corregí la fila indicada.</div></div><figure><img src="assets/manual/03-muestras.png" alt="Carga masiva del archivo de muestras en SIGATM"><figcaption>El botón Buscar carga la planilla; Agregar Muestra permite sumar una fila manual.</figcaption></figure></article>
+          <article class="guide-slide" data-slide="3"><div class="guide-copy"><span>PASO 4</span><h3>Asigná el ensayo solicitado</h3><ol><li>En <b>Grupo de análisis</b>, elegí el diagnóstico correspondiente.</li><li>Marcá la técnica solicitada por el laboratorio o por el programa.</li><li>Podés elegir más de una técnica cuando corresponda.</li><li>Tocá el botón azul <b>Asignar</b>.</li></ol><div class="guide-tip" id="modeGuideTip">Para Brucelosis bovina, el grupo habitual es Diagnóstico de Brucelosis. Confirmá la técnica con el laboratorio.</div></div><figure><img src="assets/manual/04-ensayos.png" alt="Selección y asignación de ensayos en SIGATM"><figcaption>La captura muestra un ejemplo de técnicas para brucelosis.</figcaption></figure></article>
+          <article class="guide-slide" data-slide="4"><div class="guide-copy"><span>PASO 5</span><h3>Elegí el laboratorio y finalizá</h3><ol><li>En <b>Laboratorio Destino</b>, seleccioná el laboratorio que recibirá las muestras.</li><li>Usá <b>Grabar borrador</b> si todavía necesitás revisar o completar información.</li><li>Tocá <b>Finalizar</b> solamente cuando todo esté correcto.</li><li>Imprimí el talón y envialo junto con las muestras cuando corresponda.</li></ol><div class="guide-warning"><b>Finalizar</b> envía el acta al laboratorio. Para corregirla después puede ser necesario rectificarla o rehacerla.</div></div><figure><img src="assets/manual/05-finalizar.png" alt="Botones para guardar o finalizar el acta"><figcaption>Grabar borrador conserva la edición; Finalizar envía el acta.</figcaption></figure></article>
+        </div>
+        <div class="guide-footer"><button id="guidePrev" class="secondary">← Anterior</button><span id="guideProgress">Paso 1 de 5</span><button id="guideNext" class="primary">Siguiente →</button><button id="guideClose" class="secondary">Cerrar</button></div>
+      </section>
+
+      <section class="intro">
+        <div><span class="eyebrow">NUEVA PLANILLA</span><h1>Pegá, revisá y descargá.</h1><p>Copiá columnas o filas desde Excel. El sistema reconoce la estructura y prepara el archivo para SIGATM.</p></div>
+        <div class="step"><b id="rowCount">0</b><span>animales cargados</span></div>
+      </section>
+
+      <section class="mode-panel">
+        <div class="mode-copy"><span>1</span><div><h2>Elegí el tipo de trabajo</h2><p>Esto configura los valores más habituales. Después podés cambiarlos.</p></div></div>
+        <div class="mode-tabs" role="tablist">
+          <button class="selected" data-mode="anemia"><span>🐴</span><b>Anemia equina</b><small>Identificación variable</small></button>
+          <button data-mode="brucelosis"><span>🐄</span><b>Brucelosis bovina</b><small>Caravana · bovinos</small></button>
+          <button data-mode="leucosis"><span>🐄</span><b>Leucosis bovina</b><small>Caravana · bovinos</small></button>
+          <button data-mode="brucella-ovis"><span>🐑</span><b>Brucella ovis</b><small>Caravana · ovinos</small></button>
+          <button data-mode="aujeszky"><span>🐖</span><b>Aujeszky</b><small>Caravana · porcinos</small></button>
+          <button data-mode="triquina"><span>🐖</span><b>Triquina</b><small>Caravana · porcinos</small></button>
+          <button data-mode="aves"><span>🐔</span><b>Aves</b><small>Identificación opcional</small></button>
+        </div>
+      </section>
+
+      <section class="paste-panel">
+        <div class="section-heading"><div class="number">2</div><div><h2>Pegá los datos</h2><p id="pasteHelp">Podés pegar 3 columnas: tipo de identificación, número y categoría.</p></div><button id="sampleButton" class="text-button">Ver ejemplo</button></div>
+        <textarea id="pasteArea" spellcheck="false" placeholder="Pegá desde Excel o escribí una por renglón. Ejemplo: 032105465213 YEGUA"></textarea>
+        <div class="paste-footer"><span>También podés escribir: identificación + espacio + categoría.</span><div><button id="clearButton" class="secondary">Limpiar</button><button id="processButton" class="primary">Procesar datos <span>→</span></button></div></div>
+      </section>
+
+      <section class="defaults-panel">
+        <div class="section-heading"><div class="number">3</div><div><h2>Valores generales</h2><p>Cada cambio se aplica a todas las filas cargadas.</p></div></div>
+        <div class="defaults-grid">
+          <label>Especie<select id="species"></select></label>
+          <label>Estado del animal<select id="animalState"></select></label>
+          <label>Tipo de identificación<select id="idType"></select></label>
+          <label>Categoría<select id="category"></select></label>
+          <label>Edad<select id="age"></select></label>
+          <label>Numeración de tubos<select id="tubeMode"><option value="auto">Automática: 1, 2, 3…</option><option value="keep">Conservar si fue pegada</option></select></label>
+        </div>
+      </section>
+
+      <section class="preview-panel">
+        <div class="preview-heading"><div><span class="eyebrow">VISTA PREVIA</span><h2>Animales a exportar</h2></div><div class="summary"><span id="validCount">0 correctos</span><span id="errorCount" class="error-count">0 para revisar</span></div></div>
+        <div id="validationPanel" class="validation-panel"><div data-check="rows"><i>○</i><span><b>Muestras</b><small>Agregá al menos una</small></span></div><div data-check="ids"><i>○</i><span><b>Identificaciones</b><small>Sin datos faltantes</small></span></div><div data-check="duplicates"><i>○</i><span><b>Duplicados</b><small>Sin repetidos</small></span></div><div data-check="codes"><i>○</i><span><b>Códigos SIGATM</b><small>Categoría y edad válidas</small></span></div></div>
+        <div class="table-wrap">
+          <table><thead><tr><th>#</th><th>Tubo</th><th>Estado</th><th>Tipo identificación</th><th>Identificador</th><th>Categoría</th><th>Edad</th><th></th></tr></thead><tbody id="rowsBody"></tbody></table>
+          <div id="emptyState" class="empty-state"><span>⌘V</span><b>Todavía no hay animales cargados</b><p>Pegá los datos arriba para verlos acá.</p></div>
+        </div>
+        <button id="addRowButton" class="add-row">＋ Agregar una muestra a mano</button>
+      </section>
+
+      <footer class="actions"><div><b id="readyTitle">Esperando datos</b><span id="readyText">La descarga se habilitará cuando no haya errores.</span></div><button id="downloadButton" class="download" disabled>Descargar Excel SIGATM <span>↓</span></button></footer>
+    </main>
+    <div id="toast" class="toast" aria-live="polite"></div>
+    <script src="vendor/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
