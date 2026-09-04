@@ -52,7 +52,11 @@ const normalizeStatus = (value: unknown): SubscriptionStatus =>
     ? (value as SubscriptionStatus)
     : "pending";
 
-export default function AdminUsersPanel({ currentUid }: { currentUid: string }) {
+export default function AdminUsersPanel({
+  currentUid,
+}: {
+  currentUid: string;
+}) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -127,7 +131,9 @@ export default function AdminUsersPanel({ currentUid }: { currentUid: string }) 
 
   const updateLocal = (
     uid: string,
-    changes: Partial<Pick<AdminUser, "plan" | "subscriptionStatus" | "subscriptionEndsAt">>,
+    changes: Partial<
+      Pick<AdminUser, "plan" | "subscriptionStatus" | "subscriptionEndsAt">
+    >,
   ) =>
     setUsers((current) =>
       current.map((user) =>
@@ -149,7 +155,9 @@ export default function AdminUsersPanel({ currentUid }: { currentUid: string }) 
       setFeedback(`Acceso actualizado para ${user.name}.`);
     } catch (error) {
       console.error("No pudimos actualizar el acceso", error);
-      setFeedback("No pudimos guardar el cambio. Revisá los permisos de administrador.");
+      setFeedback(
+        "No pudimos guardar el cambio. Revisá los permisos de administrador.",
+      );
     } finally {
       setSaving("");
     }
@@ -225,45 +233,164 @@ export default function AdminUsersPanel({ currentUid }: { currentUid: string }) 
       </header>
 
       <section className="module-stats admin-user-stats">
-        <article className="panel stat-card"><span>Usuarios registrados</span><strong>{users.length}</strong><small>cuentas creadas</small></article>
-        <article className="panel stat-card"><span>Accesos activos</span><strong>{activeUsers}</strong><small>activos o en prueba</small></article>
-        <article className={`panel stat-card ${pendingUsers ? "attention" : ""}`}><span>Pendientes</span><strong>{pendingUsers}</strong><small>requieren asignación</small></article>
-        <article className="panel stat-card"><span>Servicio administrativo</span><strong>{managedUsers}</strong><small>gestionados por LabOVet</small></article>
+        <article className="panel stat-card">
+          <span>Usuarios registrados</span>
+          <strong>{users.length}</strong>
+          <small>cuentas creadas</small>
+        </article>
+        <article className="panel stat-card">
+          <span>Accesos activos</span>
+          <strong>{activeUsers}</strong>
+          <small>activos o en prueba</small>
+        </article>
+        <article
+          className={`panel stat-card ${pendingUsers ? "attention" : ""}`}
+        >
+          <span>Pendientes</span>
+          <strong>{pendingUsers}</strong>
+          <small>requieren asignación</small>
+        </article>
+        <article className="panel stat-card">
+          <span>Servicio administrativo</span>
+          <strong>{managedUsers}</strong>
+          <small>gestionados por VetConver</small>
+        </article>
       </section>
 
-      {feedback && <div className="stock-notice"><span>{feedback}</span><button type="button" onClick={() => setFeedback("")}>×</button></div>}
+      {feedback && (
+        <div className="stock-notice">
+          <span>{feedback}</span>
+          <button type="button" onClick={() => setFeedback("")}>
+            ×
+          </button>
+        </div>
+      )}
 
       <section className="panel admin-users-panel">
         <div className="admin-users-toolbar">
-          <div><h2>Listado de usuarios</h2><p>Los cambios se aplican en el próximo inicio de sesión o actualización del usuario.</p></div>
           <div>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar nombre o correo..." />
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <h2>Listado de usuarios</h2>
+            <p>
+              Los cambios se aplican en el próximo inicio de sesión o
+              actualización del usuario.
+            </p>
+          </div>
+          <div>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar nombre o correo..."
+            />
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
               <option value="">Todos los estados</option>
-              {statuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
+              {statuses.map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
-        <div className="admin-users-head"><span>Usuario</span><span>Plan</span><span>Estado</span><span>Vencimiento</span><span>Acción</span></div>
+        <div className="admin-users-head">
+          <span>Usuario</span>
+          <span>Plan</span>
+          <span>Estado</span>
+          <span>Vencimiento</span>
+          <span>Acción</span>
+        </div>
         {loading ? (
           <div className="admin-users-empty">Cargando usuarios…</div>
         ) : visibleUsers.length ? (
           visibleUsers.map((user) => (
             <article className="admin-user-row" key={user.uid}>
-              <div><b>{user.name}</b><small>{user.email}{user.role === "admin" ? " · Administrador" : user.role === "laboratory" ? " · Laboratorio" : " · Veterinario"}</small>{user.request?.status === "pending" && <em>Solicitó: {PLAN_DEFINITIONS[user.request.plan].name}</em>}</div>
-              <select value={plans.includes(user.plan) ? user.plan : "unassigned"} onChange={(event) => updateLocal(user.uid, { plan: event.target.value as PlanId })}>
-                {plans.map((plan) => <option key={plan} value={plan}>{PLAN_DEFINITIONS[plan].name}</option>)}
+              <div>
+                <b>{user.name}</b>
+                <small>
+                  {user.email}
+                  {user.role === "admin"
+                    ? " · Administrador"
+                    : user.role === "laboratory"
+                      ? " · Laboratorio"
+                      : " · Veterinario"}
+                </small>
+                {user.request?.status === "pending" && (
+                  <em>Solicitó: {PLAN_DEFINITIONS[user.request.plan].name}</em>
+                )}
+              </div>
+              <select
+                value={plans.includes(user.plan) ? user.plan : "unassigned"}
+                onChange={(event) =>
+                  updateLocal(user.uid, { plan: event.target.value as PlanId })
+                }
+              >
+                {plans.map((plan) => (
+                  <option key={plan} value={plan}>
+                    {PLAN_DEFINITIONS[plan].name}
+                  </option>
+                ))}
               </select>
-              <select className={`subscription-${user.subscriptionStatus}`} value={user.subscriptionStatus} onChange={(event) => updateLocal(user.uid, { subscriptionStatus: event.target.value as SubscriptionStatus })}>
-                {statuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
+              <select
+                className={`subscription-${user.subscriptionStatus}`}
+                value={user.subscriptionStatus}
+                onChange={(event) =>
+                  updateLocal(user.uid, {
+                    subscriptionStatus: event.target
+                      .value as SubscriptionStatus,
+                  })
+                }
+              >
+                {statuses.map((status) => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
               </select>
-              <input className="admin-expiration-input" value={user.subscriptionEndsAt} onChange={(event) => updateLocal(user.uid, { subscriptionEndsAt: event.target.value })} placeholder="DD/MM/AAAA" />
-              {user.request?.status === "pending" ? <div className="request-actions"><button type="button" onClick={() => reviewRequest(user, true)} disabled={saving === user.uid}>Aprobar</button><button type="button" onClick={() => reviewRequest(user, false)} disabled={saving === user.uid}>Rechazar</button></div> : <button type="button" onClick={() => saveAccess(user)} disabled={saving === user.uid}>{saving === user.uid ? "Guardando…" : "Guardar"}</button>}
+              <input
+                className="admin-expiration-input"
+                value={user.subscriptionEndsAt}
+                onChange={(event) =>
+                  updateLocal(user.uid, {
+                    subscriptionEndsAt: event.target.value,
+                  })
+                }
+                placeholder="DD/MM/AAAA"
+              />
+              {user.request?.status === "pending" ? (
+                <div className="request-actions">
+                  <button
+                    type="button"
+                    onClick={() => reviewRequest(user, true)}
+                    disabled={saving === user.uid}
+                  >
+                    Aprobar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => reviewRequest(user, false)}
+                    disabled={saving === user.uid}
+                  >
+                    Rechazar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => saveAccess(user)}
+                  disabled={saving === user.uid}
+                >
+                  {saving === user.uid ? "Guardando…" : "Guardar"}
+                </button>
+              )}
             </article>
           ))
         ) : (
-          <div className="admin-users-empty">No encontramos usuarios con esos filtros.</div>
+          <div className="admin-users-empty">
+            No encontramos usuarios con esos filtros.
+          </div>
         )}
       </section>
     </>

@@ -1,15 +1,15 @@
-# LabOVet - Planillas SIGATM
+# VetConver - Planillas SIGATM
 
 Aplicación web para veterinarios que transforma datos de Excel, WhatsApp o carga manual en planillas compatibles con SIGATM.
 
 ## Alcance actual
 
-- Home comercial de LabOVet.
+- Home comercial de VetConver.
 - Registro e ingreso exclusivo para veterinarios mediante Firebase Authentication.
 - Activación y suspensión de cuentas desde el panel administrador.
 - Estandarizador SIGATM con validación previa.
 - Instructivo visual de carga.
-- Servicio administrativo completo de LabOVet.
+- Servicio administrativo completo de VetConver.
 
 La versión integral anterior se conserva en la rama `codex/archive-pre-sigatm`.
 

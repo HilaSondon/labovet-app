@@ -9,7 +9,7 @@ test("la versión pública comunica el producto actual", async () => {
     readFile(new URL("app/page.tsx", root), "utf8"),
     readFile(new URL("app/layout.tsx", root), "utf8"),
   ]);
-  assert.match(layout, /LabOVet \| Planillas SIGATM/);
+  assert.match(layout, /VetConver \| Planillas SIGATM/);
   assert.match(page, /De Excel a SIGATM/);
   assert.match(page, /Anemia infecciosa equina/);
   assert.match(page, /Brucelosis y leucosis/);
@@ -34,6 +34,6 @@ test("incluye el módulo SIGATM completo y sus recursos", async () => {
     access(new URL("public/sigatm/app.js", root)),
     access(new URL("public/sigatm/vendor/xlsx.full.min.js", root)),
     access(new URL("public/sigatm/assets/manual/01-datos-acta-redactado.png", root)),
-    access(new URL("public/labovet-logo.png", root)),
+    access(new URL("components/Brand.tsx", root)),
   ]);
 });

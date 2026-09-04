@@ -1,5 +1,5 @@
 {
-  "name": "labovet-app",
+  "name": "vetconver",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "dev:emulator": "concurrently --kill-others --names FIREBASE,LABOVET --prefix-colors yellow,cyan \"npm:emulators\" \"npm:dev:wait\"",
+    "dev:emulator": "concurrently --kill-others --names FIREBASE,VETCONVER --prefix-colors yellow,cyan \"npm:emulators\" \"npm:dev:wait\"",
     "dev:wait": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-next-after-emulators.ps1",
     "emulators": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-firebase-emulators.ps1",
     "emulators:seed": "node scripts/seed-firebase-emulator.mjs",

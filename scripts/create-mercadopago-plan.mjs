@@ -1,12 +1,12 @@
 const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-const amount = Number(process.env.LABOVET_MONTHLY_PRICE || 25000);
+const amount = Number(process.env.VETCONVER_MONTHLY_PRICE || 25000);
 const backUrl = process.env.NEXT_PUBLIC_APP_URL;
-if (!token || !amount || !backUrl) throw new Error("Definí MERCADOPAGO_ACCESS_TOKEN, LABOVET_MONTHLY_PRICE y NEXT_PUBLIC_APP_URL");
+if (!token || !amount || !backUrl) throw new Error("Definí MERCADOPAGO_ACCESS_TOKEN, VETCONVER_MONTHLY_PRICE y NEXT_PUBLIC_APP_URL");
 const response = await fetch("https://api.mercadopago.com/preapproval_plan", {
   method: "POST",
   headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
   body: JSON.stringify({
-    reason: "LabOVet Planillas SIGATM",
+    reason: "VetConver Planillas SIGATM",
     back_url: backUrl,
     auto_recurring: { frequency: 1, frequency_type: "months", transaction_amount: amount, currency_id: "ARS", free_trial: { frequency: 7, frequency_type: "days" } },
   }),

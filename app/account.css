@@ -1,3 +1,11 @@
 .access-status .primary-status { padding: 13px 18px; border-radius: 9px; background: var(--green); color: white; font-weight: 900; }
 .access-status small { margin-top: 14px; color: var(--muted); }
 .status-message { margin: 10px 0; color: var(--green); font-size: 14px; }
+.vetconver-wordmark { display: inline-flex; color: #102b49; font: 800 2.5rem/1 Arial, sans-serif; letter-spacing: -.06em; }
+.vetconver-wordmark strong { color: var(--green); }
+.vetconver-wordmark.compact { font-size: 1.8rem; }
+.public-logo > .vetconver-wordmark, .workspace-brand > .vetconver-wordmark { padding: 0; border: 0; }
+.public-logo .vetconver-wordmark span, .workspace-brand .vetconver-wordmark span { padding: 0; border: 0; font-size: inherit; font-weight: inherit; }
+.loading-screen > .vetconver-wordmark, .access-status > .vetconver-wordmark { margin: 0; color: #102b49; font-size: 2.5rem; letter-spacing: -.06em; }
+.auth-modal > .vetconver-wordmark { margin-bottom: 1rem; }
+.final-cta > .vetconver-wordmark { font-size: 2.8rem; }

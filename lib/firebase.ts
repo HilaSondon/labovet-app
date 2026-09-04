@@ -32,13 +32,13 @@ const useEmulators =
 
 if (useEmulators) {
   const marker = globalThis as typeof globalThis & {
-    __labovetFirebaseEmulatorsConnected?: boolean;
+    __vetconverFirebaseEmulatorsConnected?: boolean;
   };
-  if (!marker.__labovetFirebaseEmulatorsConnected) {
+  if (!marker.__vetconverFirebaseEmulatorsConnected) {
     connectAuthEmulator(auth, "http://127.0.0.1:9099", {
       disableWarnings: true,
     });
     connectFirestoreEmulator(db, "127.0.0.1", 8080);
-    marker.__labovetFirebaseEmulatorsConnected = true;
+    marker.__vetconverFirebaseEmulatorsConnected = true;
   }
 }

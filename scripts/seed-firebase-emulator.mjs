@@ -1,6 +1,6 @@
 const authBase = "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts";
 const firestoreBase = "http://127.0.0.1:8080/v1/projects/labovet-e70a2/databases/(default)/documents";
-const password = "LabOVet123!";
+const password = "VetConver123!";
 
 async function request(url, options = {}) {
   const response = await fetch(url, options);
@@ -44,20 +44,20 @@ async function ensureAccount({ email, displayName, role, plan }) {
 
 try {
   await ensureAccount({
-    email: "admin@labovet.local",
+    email: "admin@vetconver.local",
     displayName: "Administrador local",
     role: "admin",
     plan: "large_animals",
   });
   await ensureAccount({
-    email: "veterinario@labovet.local",
+    email: "veterinario@vetconver.local",
     displayName: "Veterinario local",
     role: "veterinarian",
     plan: "large_animals",
   });
 
-  console.log(`Administrador local: admin@labovet.local / ${password}`);
-  console.log(`Veterinario local: veterinario@labovet.local / ${password}`);
+  console.log(`Administrador local: admin@vetconver.local / ${password}`);
+  console.log(`Veterinario local: veterinario@vetconver.local / ${password}`);
 } catch (error) {
   console.error("No se pudo preparar el emulador:", error.message);
   process.exitCode = 1;

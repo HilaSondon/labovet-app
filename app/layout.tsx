@@ -6,8 +6,8 @@ import "./account.css";
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "LabOVet | Planillas SIGATM",
-  description: "De Excel a SIGATM en segundos. Estandarización y validación de planillas para veterinarios.",
+  title: "VetConver | Planillas SIGATM",
+  description: "De Excel a SIGATM en segundos. VetConver estandariza y valida planillas para veterinarios.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
