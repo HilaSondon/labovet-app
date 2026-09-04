@@ -22,6 +22,8 @@ npm run dev
 
 Para trabajar sin afectar los datos reales se recomienda `npm run dev:emulator`.
 
+El acceso directo de Windows abre `public/sigatm/index.html`, que conserva una versión local y sin conexión de la herramienta.
+
 ## Publicación
 
 La rama principal está conectada con Vercel. Las ramas de trabajo generan vistas previas antes de pasar a producción.
