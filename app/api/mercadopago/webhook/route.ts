@@ -4,12 +4,17 @@ import { mercadoPago, validWebhookSignature } from "../../../../lib/mercadopago"
 type MpSubscription = { id: string; status: string; external_reference?: string; payer_email?: string; next_payment_date?: string; payer_id?: number };
 type MpPayment = { preapproval_id?: string; status?: string };
 
+export async function GET() {
+  return NextResponse.json({ ok: true, service: "VetConver Mercado Pago webhook" });
+}
+
 export async function POST(request: Request) {
   const url = new URL(request.url);
   const body = await request.json().catch(() => ({}));
   const dataId = String(body?.data?.id || url.searchParams.get("data.id") || "");
   const type = String(body?.type || url.searchParams.get("type") || "");
-  if (!dataId || !validWebhookSignature(request, dataId)) return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
+  if (!dataId) return NextResponse.json({ ok: true, ignored: "validation" });
+  if (!validWebhookSignature(request, dataId)) return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
   try {
     const { getAdminDb } = await import("../../../../lib/firebase-admin");
     if (type === "subscription_preapproval") {
