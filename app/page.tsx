@@ -108,7 +108,6 @@ export default function Home() {
       <header className="workspace-bar">
         <div className="workspace-brand">
           <Brand compact />
-          <span>Planillas SIGATM</span>
         </div>
         <nav>
           <button
@@ -165,7 +164,6 @@ function PublicHome() {
       <header className="public-nav">
         <a href="#inicio" className="public-logo">
           <Brand />
-          <span>Planillas SIGATM</span>
         </a>
         <nav>
           <a href="#como-funciona">Cómo funciona</a>
@@ -361,8 +359,15 @@ function PublicHome() {
           <h2>Probalo 7 días sin cargo.</h2>
           <p>
             Acceso completo al generador de planillas SIGATM, las validaciones
-            y el instructivo visual. Cancelás cuando quieras.
+            y el instructivo visual. Además, te acompañamos durante todo el
+            proceso para que puedas trabajar con seguridad. Cancelás cuando
+            quieras.
           </p>
+          <ul className="pricing-benefits">
+            <li>Asesoramiento para generar tus actas</li>
+            <li>Resolución de dudas durante la carga</li>
+            <li>Acompañamiento ante cambios en SIGATM</li>
+          </ul>
         </div>
         <article>
           <span>Plan VetConver</span>
@@ -424,6 +429,13 @@ function PublicHome() {
         <span>© {new Date().getFullYear()} VetConver</span>
         <b>Planillas SIGATM para veterinarios</b>
         <a href="tel:2244429316">2244-429316</a>
+        <a
+          href="https://www.instagram.com/vetconver/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Instagram · @vetconver
+        </a>
       </footer>
       {authMode && (
         <AuthModal

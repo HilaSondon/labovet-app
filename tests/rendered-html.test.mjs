@@ -38,6 +38,16 @@ test("incluye el módulo SIGATM completo y sus recursos", async () => {
   ]);
 });
 
+test("conserva guiones internos en identificaciones y limpia guiones de listas", async () => {
+  const script = await readFile(new URL("public/sigatm/app.js", root), "utf8");
+  const source = script.match(/function cleanMessageLine\(line\)\{[^\n]+\}/)?.[0];
+  assert.ok(source, "No se encontró cleanMessageLine");
+  const cleanMessageLine = Function(`${source}; return cleanMessageLine;`)();
+
+  assert.equal(cleanMessageLine("2324-5465 VACA"), "2324-5465 VACA");
+  assert.equal(cleanMessageLine("1- 2324-5465 VACA"), "2324-5465 VACA");
+});
+
 test("protege el alta y ofrece ambas modalidades de pago", async () => {
   const [page, accessPanel, actionPage, sentPage] = await Promise.all([
     readFile(new URL("app/page.tsx", root), "utf8"),

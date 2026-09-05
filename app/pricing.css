@@ -23,6 +23,23 @@
   line-height: 1.6;
 }
 
+.pricing-benefits {
+  display: grid;
+  gap: 10px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--dark);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pricing-benefits li::before {
+  content: "✓";
+  margin-right: 9px;
+  color: var(--green);
+}
+
 .pricing article {
   display: flex;
   flex-direction: column;
