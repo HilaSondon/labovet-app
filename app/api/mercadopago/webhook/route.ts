@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { mercadoPago, validWebhookSignature } from "../../../../lib/mercadopago";
 
-type MpSubscription = { id: string; status: string; external_reference?: string; next_payment_date?: string; payer_id?: number };
+type MpSubscription = { id: string; status: string; external_reference?: string; payer_email?: string; next_payment_date?: string; payer_id?: number };
 type MpPayment = { preapproval_id?: string; status?: string };
 
 export async function POST(request: Request) {
@@ -14,9 +14,17 @@ export async function POST(request: Request) {
     const { getAdminDb } = await import("../../../../lib/firebase-admin");
     if (type === "subscription_preapproval") {
       const subscription = await mercadoPago(`/preapproval/${encodeURIComponent(dataId)}`) as MpSubscription;
-      const uid = subscription.external_reference;
+      let uid = subscription.external_reference;
+      if (!uid && subscription.payer_email) {
+        const byEmail = await getAdminDb()
+          .collection("users")
+          .where("email", "==", subscription.payer_email.toLowerCase())
+          .limit(1)
+          .get();
+        uid = byEmail.empty ? undefined : byEmail.docs[0].id;
+      }
       if (uid) {
-        const mapped = subscription.status === "authorized" ? "trial" : subscription.status === "paused" ? "suspended" : subscription.status === "cancelled" ? "expired" : "pending";
+        const mapped = subscription.status === "authorized" ? "trial" : subscription.status === "paused" ? "suspended" : ["cancelled", "canceled"].includes(subscription.status) ? "expired" : "pending";
         await getAdminDb().collection("users").doc(uid).set({
           plan: "large_animals",
           subscriptionStatus: mapped,

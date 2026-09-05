@@ -52,4 +52,9 @@ test("protege el alta y ofrece ambas modalidades de pago", async () => {
   assert.match(accessPanel, /Mercado Pago/);
   assert.match(accessPanel, /Transferencia bancaria/);
   assert.match(accessPanel, /NOAMS/);
+  const subscriptionRoute = await readFile(
+    new URL("app/api/subscriptions/create/route.ts", root),
+    "utf8",
+  );
+  assert.match(subscriptionRoute, /https:\/\/mpago\.la\/2s8oDCv/);
 });

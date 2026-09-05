@@ -5,7 +5,7 @@ La integración deja las credenciales exclusivamente en el servidor. Nunca uses 
 1. Crear una aplicación en Mercado Pago Developers y obtener el Access Token de producción.
 2. Definir temporalmente `MERCADOPAGO_ACCESS_TOKEN`, `VETCONVER_MONTHLY_PRICE` y `NEXT_PUBLIC_APP_URL` y ejecutar `npm run mercadopago:create-plan` una sola vez.
 3. Guardar el ID devuelto como `MERCADOPAGO_PLAN_ID` en Vercel.
-4. No hace falta configurar el webhook de Suscripciones en el panel: la aplicación envía `https://vetconver.com.ar/api/mercadopago/webhook` como `notification_url` al crear cada suscripción. Si Mercado Pago ofrece una clave secreta para esa notificación, guardarla como `MERCADOPAGO_WEBHOOK_SECRET`; si no, el servidor valida el evento consultando el recurso directamente con el Access Token.
+4. Configurar el webhook de Suscripciones en el panel de Mercado Pago con `https://www.vetconver.com.ar/api/mercadopago/webhook`. Guardar su clave como `MERCADOPAGO_WEBHOOK_SECRET`. El servidor vuelve a consultar cada recurso con el Access Token antes de modificar el acceso.
 5. Crear una cuenta de servicio de Firebase con acceso mínimo a Authentication y Firestore, convertir el JSON completo a Base64 y guardarlo como `FIREBASE_SERVICE_ACCOUNT_BASE64` en Vercel.
 6. Volver a desplegar y probar con una cuenta nueva y un medio de pago de prueba antes de activar producción.
 
