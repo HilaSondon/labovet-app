@@ -37,3 +37,19 @@ test("incluye el módulo SIGATM completo y sus recursos", async () => {
     access(new URL("components/Brand.tsx", root)),
   ]);
 });
+
+test("protege el alta y ofrece ambas modalidades de pago", async () => {
+  const [page, accessPanel, actionPage, sentPage] = await Promise.all([
+    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("components/AccountAccess.tsx", root), "utf8"),
+    readFile(new URL("app/auth/action/page.tsx", root), "utf8"),
+    readFile(new URL("app/registro-enviado/page.tsx", root), "utf8"),
+  ]);
+  assert.match(page, /registro-enviado/);
+  assert.match(page, /sendEmailVerification/);
+  assert.match(sentPage, /Revisá tu correo/);
+  assert.match(actionPage, /Tu correo quedó confirmado/);
+  assert.match(accessPanel, /Mercado Pago/);
+  assert.match(accessPanel, /Transferencia bancaria/);
+  assert.match(accessPanel, /NOAMS/);
+});

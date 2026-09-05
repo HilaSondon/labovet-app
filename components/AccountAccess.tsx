@@ -1,6 +1,8 @@
 "use client";
+import "../app/checkout.css";
 import { useEffect, useState } from "react";
 import { sendEmailVerification, type User } from "firebase/auth";
+import Brand from "./Brand";
 export function AccountAccess({
   user,
   status,
@@ -12,6 +14,8 @@ export function AccountAccess({
 }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"mercadopago" | "transfer">("mercadopago");
+  const [copied, setCopied] = useState(false);
   async function subscribe() {
     setBusy(true);
     setMessage("");
@@ -37,9 +41,15 @@ export function AccountAccess({
       );
     setBusy(false);
   }
+  async function copyAlias() {
+    await navigator.clipboard.writeText("NOAMS");
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
   if (!user.emailVerified)
     return (
       <main className="access-status">
+        <Brand />
         <span>PRIMER PASO</span>
         <h1>Verificá tu correo</h1>
         <p>
@@ -54,23 +64,52 @@ export function AccountAccess({
       </main>
     );
   return (
-    <main className="access-status">
-      <span>7 DÍAS SIN CARGO</span>
-      <h1>Activá tu prueba gratis</h1>
-      <p>
-        Vinculá un medio de pago en Mercado Pago. No se cobra hoy; luego son
-        $25.000 ARS por mes. El primer cobro se realiza al terminar los 7 días y
-        podés cancelar antes.
-      </p>
-      {message && <div className="auth-error">{message}</div>}
-      <button className="primary-status" onClick={subscribe} disabled={busy}>
-        {busy ? "Abriendo Mercado Pago…" : "Comenzar prueba gratis"}
-      </button>
-      <small>
-        Estado actual:{" "}
-        {status === "pending" ? "pendiente de activación" : status}
-      </small>
-      <button onClick={onExit}>Cerrar sesión</button>
+    <main className="checkout-page">
+      <header className="checkout-header">
+        <Brand />
+        <button onClick={onExit}>Cerrar sesión</button>
+      </header>
+      <section className="checkout-shell">
+        <div className="checkout-intro">
+          <span>ACTIVÁ TU CUENTA</span>
+          <h1>Elegí cómo querés pagar</h1>
+          <p>Un único plan, sin permanencia. Elegí la modalidad más cómoda.</p>
+        </div>
+        <div className="checkout-summary">
+          <div><span>Plan VetConver</span><b>Generador de planillas SIGATM</b></div>
+          <strong>$25.000 <small>ARS / mes</small></strong>
+        </div>
+        <div className="payment-tabs" role="tablist">
+          <button className={paymentMethod === "mercadopago" ? "active" : ""} onClick={() => setPaymentMethod("mercadopago")}>Mercado Pago</button>
+          <button className={paymentMethod === "transfer" ? "active" : ""} onClick={() => setPaymentMethod("transfer")}>Transferencia</button>
+        </div>
+        {paymentMethod === "mercadopago" ? (
+          <section className="payment-card">
+            <div className="payment-icon">MP</div>
+            <div>
+              <span className="payment-label">SUSCRIPCIÓN AUTOMÁTICA</span>
+              <h2>7 días gratis</h2>
+              <p>Vinculás un medio de pago de forma segura. Hoy pagás $0 y el primer cobro de $25.000 se realiza al finalizar la prueba.</p>
+            </div>
+            <ul><li>Renovación mensual automática</li><li>Cancelás antes del cobro si no querés continuar</li><li>Activación inmediata</li></ul>
+            {message && <div className="auth-error">{message}</div>}
+            <button className="checkout-primary" onClick={subscribe} disabled={busy}>{busy ? "Abriendo Mercado Pago…" : "Comenzar 7 días gratis"}<span>→</span></button>
+          </section>
+        ) : (
+          <section className="payment-card">
+            <div className="payment-icon transfer-icon">$</div>
+            <div>
+              <span className="payment-label">PAGO MANUAL</span>
+              <h2>Transferencia bancaria</h2>
+              <p>Transferí el abono mensual y envianos el comprobante. La cuenta se habilita cuando confirmamos el pago.</p>
+            </div>
+            <div className="alias-box"><span>ALIAS</span><strong>NOAMS</strong><button onClick={copyAlias}>{copied ? "Copiado ✓" : "Copiar alias"}</button></div>
+            <div className="transfer-note"><b>Importe: $25.000 ARS</b><span>Esta modalidad se renueva manualmente cada mes y no incluye débito automático.</span></div>
+            <a className="checkout-primary" href={`https://wa.me/5492244429316?text=${encodeURIComponent(`Hola, envío el comprobante de la suscripción VetConver. Mi usuario es ${user.email}.`)}`} target="_blank" rel="noreferrer">Enviar comprobante por WhatsApp<span>→</span></a>
+          </section>
+        )}
+        <small className="checkout-status">Estado: {status === "pending" ? "pendiente de activación" : status}</small>
+      </section>
     </main>
   );
 }

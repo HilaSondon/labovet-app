@@ -447,7 +447,6 @@ function AuthModal({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [registeredEmail, setRegisteredEmail] = useState("");
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -474,7 +473,9 @@ function AuthModal({
         });
         await sendEmailVerification(credential.user);
         await signOut(auth);
-        setRegisteredEmail(email);
+        window.location.assign(
+          `/registro-enviado?email=${encodeURIComponent(email)}`,
+        );
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -510,20 +511,6 @@ function AuthModal({
           ×
         </button>
         <Brand />
-        {registeredEmail ? (
-          <div className="registration-sent">
-            <span>CUENTA CREADA</span>
-            <h2 id="auth-title">Revisá tu correo</h2>
-            <p>
-              Enviamos un enlace de verificación a <b>{registeredEmail}</b>.
-              Verificalo y después iniciá sesión para activar tu prueba gratis.
-            </p>
-            <button className="submit-auth" onClick={onClose}>
-              Entendido <span>→</span>
-            </button>
-          </div>
-        ) : (
-          <>
         <div className="modal-tabs">
           <button
             className={mode === "login" ? "active" : ""}
@@ -579,8 +566,6 @@ function AuthModal({
             <span>→</span>
           </button>
         </form>
-          </>
-        )}
       </section>
     </div>
   );
