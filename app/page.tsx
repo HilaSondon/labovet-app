@@ -471,7 +471,11 @@ function AuthModal({
           subscriptionStatus: "pending",
           createdAt: serverTimestamp(),
         });
-        await sendEmailVerification(credential.user);
+        const verificationResponse = await fetch("/api/auth/send-verification", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${await credential.user.getIdToken()}` },
+        });
+        if (!verificationResponse.ok) await sendEmailVerification(credential.user);
         await signOut(auth);
         window.location.assign(
           `/registro-enviado?email=${encodeURIComponent(email)}`,

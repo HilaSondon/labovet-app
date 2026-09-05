@@ -34,11 +34,16 @@ export function AccountAccess({
   }
   async function resend() {
     setBusy(true);
-    await sendEmailVerification(user)
-      .then(() => setMessage("Te enviamos un nuevo correo de verificación."))
-      .catch(() =>
-        setMessage("Esperá unos minutos antes de volver a intentarlo."),
-      );
+    try {
+      const response = await fetch("/api/auth/send-verification", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+      });
+      if (!response.ok) await sendEmailVerification(user);
+      setMessage("Te enviamos un nuevo correo de verificación.");
+    } catch {
+      setMessage("Esperá unos minutos antes de volver a intentarlo.");
+    }
     setBusy(false);
   }
   async function copyAlias() {
