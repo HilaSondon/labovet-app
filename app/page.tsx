@@ -1,5 +1,7 @@
 "use client";
 
+import "./pricing.css";
+
 import { useEffect, useState } from "react";
 import {
   createUserWithEmailAndPassword,
@@ -56,8 +58,7 @@ export default function Home() {
       user &&
       profile &&
       profile.role !== "admin" &&
-      (!profile.subscriptionStatus ||
-        ["active", "trial"].includes(profile.subscriptionStatus)),
+      ["active", "trial"].includes(profile.subscriptionStatus || "pending"),
     ),
   );
 
@@ -68,8 +69,7 @@ export default function Home() {
   const isAdmin = profile.role === "admin";
   const enabled =
     isAdmin ||
-    !profile.subscriptionStatus ||
-    ["active", "trial"].includes(profile.subscriptionStatus);
+    ["active", "trial"].includes(profile.subscriptionStatus || "pending");
 
   if (profile.role === "laboratory") {
     return <ArchivedAccount onExit={() => signOut(auth)} />;
@@ -355,6 +355,25 @@ function PublicHome() {
         </aside>
       </section>
 
+      <section className="pricing" id="plan">
+        <div>
+          <span className="kicker">UN PLAN SIMPLE</span>
+          <h2>Probalo 7 días sin cargo.</h2>
+          <p>
+            Acceso completo al generador de planillas SIGATM, las validaciones
+            y el instructivo visual. Cancelás cuando quieras.
+          </p>
+        </div>
+        <article>
+          <span>Plan VetConver</span>
+          <strong>$25.000 <small>ARS / mes</small></strong>
+          <p>El primer cobro se realiza al finalizar los 7 días de prueba.</p>
+          <button onClick={() => setAuthMode("register")}>
+            Comenzar prueba gratis
+          </button>
+        </article>
+      </section>
+
       <section className="service" id="servicio">
         <span className="service-tag">SERVICIO ADMINISTRATIVO COMPLETO</span>
         <div className="service-grid">
@@ -428,6 +447,7 @@ function AuthModal({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [registeredEmail, setRegisteredEmail] = useState("");
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -453,6 +473,8 @@ function AuthModal({
           createdAt: serverTimestamp(),
         });
         await sendEmailVerification(credential.user);
+        await signOut(auth);
+        setRegisteredEmail(email);
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -488,6 +510,20 @@ function AuthModal({
           ×
         </button>
         <Brand />
+        {registeredEmail ? (
+          <div className="registration-sent">
+            <span>CUENTA CREADA</span>
+            <h2 id="auth-title">Revisá tu correo</h2>
+            <p>
+              Enviamos un enlace de verificación a <b>{registeredEmail}</b>.
+              Verificalo y después iniciá sesión para activar tu prueba gratis.
+            </p>
+            <button className="submit-auth" onClick={onClose}>
+              Entendido <span>→</span>
+            </button>
+          </div>
+        ) : (
+          <>
         <div className="modal-tabs">
           <button
             className={mode === "login" ? "active" : ""}
@@ -508,7 +544,7 @@ function AuthModal({
         <p>
           {mode === "login"
             ? "Ingresá para preparar tus planillas."
-            : "Registro exclusivo para profesionales veterinarios."}
+            : "7 días gratis. Después, $25.000 ARS por mes. Cancelás cuando quieras."}
         </p>
         <form onSubmit={submit}>
           {mode === "register" && (
@@ -543,6 +579,8 @@ function AuthModal({
             <span>→</span>
           </button>
         </form>
+          </>
+        )}
       </section>
     </div>
   );
