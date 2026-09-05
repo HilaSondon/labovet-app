@@ -82,4 +82,5 @@ test("permite administrar y cancelar una suscripción individual", async () => {
   assert.match(cancellation, /status: "canceled"/);
   assert.match(cancellation, /subscriptionCancelAtPeriodEnd/);
   assert.match(webhook, /cancellationHasTime/);
+  assert.match(webhook, /canceled && cancellationHasTime/);
 });

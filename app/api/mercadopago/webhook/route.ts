@@ -45,7 +45,9 @@ export async function POST(request: Request) {
           subscriptionStatus: mapped,
           mercadoPagoPreapprovalId: subscription.id,
           mercadoPagoPayerId: subscription.payer_id || null,
-          subscriptionEndsAtIso: subscription.next_payment_date || null,
+          subscriptionEndsAtIso: canceled && cancellationHasTime
+            ? current?.subscriptionEndsAtIso
+            : subscription.next_payment_date || null,
           subscriptionUpdatedAt: new Date(),
         }, { merge: true });
       }
