@@ -68,3 +68,18 @@ test("protege el alta y ofrece ambas modalidades de pago", async () => {
   );
   assert.match(subscriptionRoute, /https:\/\/mpago\.la\/2s8oDCv/);
 });
+
+test("permite administrar y cancelar una suscripción individual", async () => {
+  const [page, panel, cancellation, webhook] = await Promise.all([
+    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("components/SubscriptionPanel.tsx", root), "utf8"),
+    readFile(new URL("app/api/subscriptions/cancel/route.ts", root), "utf8"),
+    readFile(new URL("app/api/mercadopago/webhook/route.ts", root), "utf8"),
+  ]);
+  assert.match(page, /Mi suscripción/);
+  assert.match(panel, /Cancelar suscripción/);
+  assert.match(panel, /Transferencia manual/);
+  assert.match(cancellation, /status: "canceled"/);
+  assert.match(cancellation, /subscriptionCancelAtPeriodEnd/);
+  assert.match(webhook, /cancellationHasTime/);
+});

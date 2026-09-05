@@ -29,8 +29,18 @@ export async function POST(request: Request) {
         uid = byEmail.empty ? undefined : byEmail.docs[0].id;
       }
       if (uid) {
-        const mapped = subscription.status === "authorized" ? "trial" : subscription.status === "paused" ? "suspended" : ["cancelled", "canceled"].includes(subscription.status) ? "expired" : "pending";
-        await getAdminDb().collection("users").doc(uid).set({
+        const reference = getAdminDb().collection("users").doc(uid);
+        const current = (await reference.get()).data();
+        const cancellationHasTime = Boolean(
+          current?.subscriptionCancelAtPeriodEnd &&
+          current?.subscriptionEndsAtIso &&
+          new Date(current.subscriptionEndsAtIso).getTime() > Date.now(),
+        );
+        const canceled = ["cancelled", "canceled"].includes(subscription.status);
+        const mapped = canceled && cancellationHasTime
+          ? current?.subscriptionStatus || "active"
+          : subscription.status === "authorized" ? "trial" : subscription.status === "paused" ? "suspended" : canceled ? "expired" : "pending";
+        await reference.set({
           plan: "large_animals",
           subscriptionStatus: mapped,
           mercadoPagoPreapprovalId: subscription.id,

@@ -16,6 +16,7 @@ import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore/lite";
 import { auth, db } from "../lib/firebase";
 import AdminUsersPanel from "../components/AdminUsersPanel";
 import { AccountAccess, useSingleSession } from "../components/AccountAccess";
+import SubscriptionPanel from "../components/SubscriptionPanel";
 import Brand from "../components/Brand";
 
 type Profile = {
@@ -23,6 +24,11 @@ type Profile = {
   email?: string;
   role?: "veterinarian" | "laboratory" | "admin";
   subscriptionStatus?: "pending" | "trial" | "active" | "expired" | "suspended";
+  subscriptionEndsAt?: string;
+  subscriptionEndsAtIso?: string;
+  subscriptionCancelAtPeriodEnd?: boolean;
+  paymentMethod?: "mercadopago" | "transfer";
+  mercadoPagoPreapprovalId?: string;
 };
 
 type AuthMode = "login" | "register";
@@ -31,7 +37,8 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"sigatm" | "admin">("sigatm");
+  const [currentTime, setCurrentTime] = useState(0);
+  const [view, setView] = useState<"sigatm" | "subscription" | "admin">("sigatm");
 
   useEffect(
     () =>
@@ -52,12 +59,29 @@ export default function Home() {
     [],
   );
 
+  useEffect(() => {
+    const initial = window.setTimeout(() => setCurrentTime(Date.now()), 0);
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 60000);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const cancellationExpired = Boolean(
+    profile?.subscriptionCancelAtPeriodEnd &&
+      profile.subscriptionEndsAtIso &&
+      currentTime > 0 &&
+      new Date(profile.subscriptionEndsAtIso).getTime() <= currentTime,
+  );
+
   const sessionAllowed = useSingleSession(
     user,
     Boolean(
       user &&
       profile &&
       profile.role !== "admin" &&
+      !cancellationExpired &&
       ["active", "trial"].includes(profile.subscriptionStatus || "pending"),
     ),
   );
@@ -67,9 +91,8 @@ export default function Home() {
   if (!profile) return <LoadingScreen />;
 
   const isAdmin = profile.role === "admin";
-  const enabled =
-    isAdmin ||
-    ["active", "trial"].includes(profile.subscriptionStatus || "pending");
+  const enabled = isAdmin || (!cancellationExpired &&
+    ["active", "trial"].includes(profile.subscriptionStatus || "pending"));
 
   if (profile.role === "laboratory") {
     return <ArchivedAccount onExit={() => signOut(auth)} />;
@@ -116,6 +139,14 @@ export default function Home() {
           >
             Planillas SIGATM
           </button>
+          {!isAdmin && (
+            <button
+              className={view === "subscription" ? "active" : ""}
+              onClick={() => setView("subscription")}
+            >
+              Mi suscripción
+            </button>
+          )}
           {isAdmin && (
             <button
               className={view === "admin" ? "active" : ""}
@@ -137,6 +168,12 @@ export default function Home() {
         <section className="admin-page">
           <AdminUsersPanel currentUid={user.uid} />
         </section>
+      ) : view === "subscription" && !isAdmin ? (
+        <SubscriptionPanel
+          user={user}
+          profile={profile}
+          onCancelled={(updates) => setProfile((current) => current ? ({ ...current, ...updates }) : current)}
+        />
       ) : (
         <iframe
           className="sigatm-frame"
