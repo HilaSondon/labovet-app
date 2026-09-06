@@ -66,6 +66,19 @@ test("los ejemplos automáticos no agregan numeración", async () => {
   assert.doesNotMatch(sampleHandler, /"1\) GALLINAS/);
 });
 
+test("conserva como tubo la numeración pegada por el usuario", async () => {
+  const script = await readFile(new URL("public/sigatm/app.js", root), "utf8");
+  const source = script.match(/function numberedTube\(line\)\{[^\n]+\}/)?.[0];
+  assert.ok(source, "No se encontró numberedTube");
+  const numberedTube = Function(`${source}; return numberedTube;`)();
+  assert.equal(numberedTube("1- 032025000001887 VACA"), "1");
+  assert.equal(numberedTube("5- 032025000001888 VACA"), "5");
+  assert.equal(numberedTube("4- 032025000001889 VACA"), "4");
+  assert.equal(numberedTube("2324-5465 VACA"), "");
+  assert.match(script, /tube&&cells\.length\?\[tube,\.\.\.cells\]/);
+  assert.match(script, /if\(hasPastedTubes\)\$\("tubeMode"\)\.value="keep"/);
+});
+
 test("protege el alta y ofrece ambas modalidades de pago", async () => {
   const [page, accessPanel, actionPage, sentPage] = await Promise.all([
     readFile(new URL("app/page.tsx", root), "utf8"),
