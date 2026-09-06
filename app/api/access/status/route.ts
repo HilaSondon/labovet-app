@@ -10,10 +10,6 @@ function transferHasExpired(value: unknown) {
 export async function GET(request: Request) {
   try {
     const identity = await authenticatedUser(request);
-    if (!identity.email_verified) {
-      return NextResponse.json({ allowed: false, status: "unverified" }, { status: 403 });
-    }
-
     const { getAdminDb } = await import("../../../../lib/firebase-admin");
     const reference = getAdminDb().collection("users").doc(identity.uid);
     const snapshot = await reference.get();
@@ -22,6 +18,10 @@ export async function GET(request: Request) {
 
     if (profile.role === "admin") {
       return NextResponse.json({ allowed: true, status: "active", role: "admin" });
+    }
+
+    if (!identity.email_verified) {
+      return NextResponse.json({ allowed: false, status: "unverified" }, { status: 403 });
     }
 
     let status = String(profile.subscriptionStatus || "pending");

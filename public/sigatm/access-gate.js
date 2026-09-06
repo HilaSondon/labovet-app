@@ -22,6 +22,11 @@
     return;
   }
 
+  if (sessionStorage.getItem("vetconverSigatmAuthorized") === "1") {
+    allow();
+    return;
+  }
+
   window.addEventListener("message", async (event) => {
     if (event.origin !== window.location.origin || event.data?.type !== "vetconver-access-token") return;
     try {
@@ -29,7 +34,10 @@
         headers: { Authorization: `Bearer ${event.data.token}` },
       });
       const result = await response.json();
-      if (response.ok && result.allowed) allow();
+      if (response.ok && result.allowed) {
+        sessionStorage.setItem("vetconverSigatmAuthorized", "1");
+        allow();
+      }
       else deny("Tu prueba o suscripción no está activa. Revisá Mi suscripción para continuar.");
     } catch {
       deny("No pudimos verificar tu acceso. Volvé a ingresar e intentá nuevamente.");

@@ -49,6 +49,7 @@ export default function Home() {
       onAuthStateChanged(auth, async (current) => {
         setUser(current);
         setProfile(null);
+        if (!current) sessionStorage.removeItem("vetconverSigatmAuthorized");
         if (current) {
           try {
             const snapshot = await getDoc(doc(db, "users", current.uid));
