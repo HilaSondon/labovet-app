@@ -102,6 +102,10 @@ test("ofrece guías separadas para VetConver y SIGATM", async () => {
   ]);
   assert.match(page, /Cómo cargar en SIGATM/);
   assert.match(page, /Cómo usar VetConver/);
+  assert.match(page, /key="sigatm-guide"/);
+  assert.match(page, /key="vetconver-guide"/);
   assert.match(guide, /03123135 YEGUA LIBRETA/);
+  assert.match(guide, /Ingresá a Actas DNSA/);
+  assert.match(guide, /ícono de tres líneas/);
   assert.match(guide, /nueva Acta DNSA/i);
 });

@@ -175,9 +175,9 @@ export default function Home() {
           onCancelled={(updates) => setProfile((current) => current ? ({ ...current, ...updates }) : current)}
         />
       ) : view === "sigatm-guide" && !isAdmin ? (
-        <GuidePanel guide="sigatm" />
+        <GuidePanel key="sigatm-guide" guide="sigatm" />
       ) : view === "vetconver-guide" && !isAdmin ? (
-        <GuidePanel guide="vetconver" />
+        <GuidePanel key="vetconver-guide" guide="vetconver" />
       ) : (
         <iframe
           className="sigatm-frame"
