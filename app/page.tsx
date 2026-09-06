@@ -182,10 +182,10 @@ export default function Home() {
           >
             Planillas SIGATM
           </button>
+          <button className={view === "sigatm-guide" ? "active" : ""} onClick={() => setView("sigatm-guide")}>Cómo cargar en SIGATM</button>
+          <button className={view === "vetconver-guide" ? "active" : ""} onClick={() => setView("vetconver-guide")}>Cómo usar VetConver</button>
           {!isAdmin && (
             <>
-              <button className={view === "sigatm-guide" ? "active" : ""} onClick={() => setView("sigatm-guide")}>Cómo cargar en SIGATM</button>
-              <button className={view === "vetconver-guide" ? "active" : ""} onClick={() => setView("vetconver-guide")}>Cómo usar VetConver</button>
               <button className={view === "subscription" ? "active" : ""} onClick={() => setView("subscription")}>Mi suscripción</button>
             </>
           )}
@@ -216,9 +216,9 @@ export default function Home() {
           profile={profile}
           onCancelled={(updates) => setProfile((current) => current ? ({ ...current, ...updates }) : current)}
         />
-      ) : view === "sigatm-guide" && !isAdmin ? (
+      ) : view === "sigatm-guide" ? (
         <GuidePanel key="sigatm-guide" guide="sigatm" />
-      ) : view === "vetconver-guide" && !isAdmin ? (
+      ) : view === "vetconver-guide" ? (
         <GuidePanel key="vetconver-guide" guide="vetconver" />
       ) : (
         <iframe
