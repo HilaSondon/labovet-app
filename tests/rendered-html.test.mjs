@@ -58,6 +58,14 @@ test("acepta el tipo de identificación equina al final", async () => {
   assert.deepEqual(parseTrailing("03123135 YEGUA NRO DE CERTIFICADO", resolveType), ["Nro de Certificado", "03123135", "YEGUA"]);
 });
 
+test("los ejemplos automáticos no agregan numeración", async () => {
+  const script = await readFile(new URL("public/sigatm/app.js", root), "utf8");
+  const sampleHandler = script.match(/\$\("sampleButton"\)\.addEventListener\([^\n]+/)?.[0] || "";
+  assert.match(sampleHandler, /`032025000001887 \$\{config\.category\}/);
+  assert.doesNotMatch(sampleHandler, /`1- 032025000001887/);
+  assert.doesNotMatch(sampleHandler, /"1\) GALLINAS/);
+});
+
 test("protege el alta y ofrece ambas modalidades de pago", async () => {
   const [page, accessPanel, actionPage, sentPage] = await Promise.all([
     readFile(new URL("app/page.tsx", root), "utf8"),

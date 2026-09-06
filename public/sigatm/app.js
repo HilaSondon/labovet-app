@@ -27,7 +27,7 @@ let toastTimer;function toast(message){$("toast").textContent=message;$("toast")
 document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
 $("processButton").addEventListener("click",parse);
 $("clearButton").addEventListener("click",()=>{$("pasteArea").value="";rows=[];render()});
-$("sampleButton").addEventListener("click",()=>{const config=MODES[mode];$("pasteArea").value=mode==="aves"?"1) GALLINAS PONEDORAS BLANCAS\n2) GALLINAS PONEDORAS BLANCAS\n3) GALLINAS PONEDORAS BLANCAS":config.variableId?"LIBRETA\t737748-6\tYEGUA\nPASAPORTE\t4067\tYEGUA\nFICHA\t32025000002966\tPADRILLO":`1- 032025000001887 ${config.category}\n2- 032025000001888 ${config.category}\n3- 032025000001889 ${config.category}`;$("pasteArea").focus()});
+$("sampleButton").addEventListener("click",()=>{const config=MODES[mode];$("pasteArea").value=mode==="aves"?"GALLINAS PONEDORAS BLANCAS\nGALLINAS PONEDORAS BLANCAS\nGALLINAS PONEDORAS BLANCAS":config.variableId?"LIBRETA\t737748-6\tYEGUA\nPASAPORTE\t4067\tYEGUA\nFICHA\t32025000002966\tPADRILLO":`032025000001887 ${config.category}\n032025000001888 ${config.category}\n032025000001889 ${config.category}`;$("pasteArea").focus()});
 $("species").addEventListener("change",()=>{fillDependent(MODES[mode].idType,"SIN ESPECIFICAR",MODES[mode].age);applyAll("category",$("category").value);applyAll("age",$("age").value)});
 [["animalState","animal"],["idType","idType"],["category","category"],["age","age"]].forEach(([id,field])=>$(id).addEventListener("change",e=>applyAll(field,e.target.value)));
 $("rowsBody").addEventListener("change",e=>{const i=Number(e.target.dataset.i),field=e.target.dataset.field;if(field){rows[i][field]=e.target.value;render()}});
