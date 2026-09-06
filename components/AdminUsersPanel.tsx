@@ -9,7 +9,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore/lite";
-import { db } from "../lib/firebase";
+import { auth, db } from "../lib/firebase";
 import {
   PLAN_DEFINITIONS,
   PlanId,
@@ -63,6 +63,37 @@ export default function AdminUsersPanel({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [cleaning, setCleaning] = useState(false);
+
+  const cleanupTestUsers = async () => {
+    const confirmation = window.prompt(
+      "Esta acción elimina definitivamente todas las cuentas excepto tu administrador. Escribí BORRAR USUARIOS para continuar.",
+    );
+    if (confirmation !== "BORRAR USUARIOS") return;
+    const current = auth.currentUser;
+    if (!current) return setFeedback("Tu sesión ya no está activa.");
+    setCleaning(true);
+    setFeedback("");
+    try {
+      const response = await fetch("/api/admin/cleanup-users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await current.getIdToken(true)}`,
+        },
+        body: JSON.stringify({ confirmation }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "No se pudo completar");
+      await loadUsers();
+      setFeedback(`Limpieza completa: ${result.deletedAuthenticationUsers} cuentas y ${result.deletedProfiles} perfiles eliminados. Tu administrador se conservó.`);
+    } catch (error) {
+      console.error("No pudimos limpiar los usuarios", error);
+      setFeedback("No pudimos borrar las cuentas. No se modificó tu administrador.");
+    } finally {
+      setCleaning(false);
+    }
+  };
 
   const loadUsers = async () => {
     setLoading(true);
@@ -114,7 +145,6 @@ export default function AdminUsersPanel({
 
   useEffect(() => {
     // La carga inicial sincroniza este panel con Firebase.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadUsers();
   }, []);
 
@@ -228,9 +258,14 @@ export default function AdminUsersPanel({
           <h1>Usuarios y accesos</h1>
           <p>Asigná planes y controlá quién puede utilizar cada módulo.</p>
         </div>
-        <button className="outline-btn" type="button" onClick={loadUsers}>
-          Actualizar lista
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="outline-btn" style={{ color: "var(--red)", borderColor: "var(--red)" }} type="button" onClick={cleanupTestUsers} disabled={cleaning}>
+            {cleaning ? "Eliminando…" : "Borrar usuarios de prueba"}
+          </button>
+          <button className="outline-btn" type="button" onClick={loadUsers}>
+            Actualizar lista
+          </button>
+        </div>
       </header>
 
       <section className="module-stats admin-user-stats">
