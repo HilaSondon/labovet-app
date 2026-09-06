@@ -2,7 +2,7 @@
 
 import "./pricing.css";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
@@ -37,6 +37,7 @@ type Profile = {
 type AuthMode = "login" | "register";
 
 export default function Home() {
+  const sigatmFrame = useRef<HTMLIFrameElement>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +79,19 @@ export default function Home() {
       window.clearInterval(timer);
     };
   }, []);
+
+  useEffect(() => {
+    if (profile?.role === "admin") localStorage.setItem("vetconverAdminBrowser", "1");
+  }, [profile?.role]);
+
+  const authorizeSigatm = async () => {
+    if (!user || !sigatmFrame.current?.contentWindow) return;
+    const token = await user.getIdToken();
+    sigatmFrame.current.contentWindow.postMessage(
+      { type: "vetconver-access-token", token },
+      window.location.origin,
+    );
+  };
 
   const cancellationExpired = Boolean(
     profile?.subscriptionCancelAtPeriodEnd &&
@@ -207,9 +221,11 @@ export default function Home() {
         <GuidePanel key="vetconver-guide" guide="vetconver" />
       ) : (
         <iframe
+          ref={sigatmFrame}
           className="sigatm-frame"
           src="/sigatm/index.html?embedded=1"
           title="VetConver Planillas SIGATM"
+          onLoad={authorizeSigatm}
         />
       )}
     </main>

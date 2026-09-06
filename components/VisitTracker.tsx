@@ -9,6 +9,7 @@ export default function VisitTracker() {
     if (process.env.NODE_ENV !== "production") return;
     const sessionKey = "vetconverVisitSent";
     if (sessionStorage.getItem(sessionKey)) return;
+    if (localStorage.getItem("vetconverAdminBrowser") === "1") return;
     let unsubscribe = () => {};
     unsubscribe = onAuthStateChanged(auth, async (user) => {
       unsubscribe();

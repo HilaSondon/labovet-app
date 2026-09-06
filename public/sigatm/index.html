@@ -11,8 +11,19 @@
     <title>VetConver | Planillas SIGATM</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="visual-overrides.css" />
+    <style>
+      body.vetconver-access-pending > main { visibility: hidden; }
+      .vetconver-access-gate { position: fixed; inset: 0; z-index: 99999; display: grid; place-items: center; padding: 24px; background: #f3f8f6; color: #123c35; font-family: Arial, sans-serif; }
+      .vetconver-access-gate div { max-width: 520px; padding: 36px; border: 1px solid #cbded8; border-radius: 20px; background: white; text-align: center; box-shadow: 0 18px 55px rgba(18,60,53,.12); }
+      .vetconver-access-gate h1 { margin: 0 0 12px; font-size: 26px; }
+      .vetconver-access-gate p { margin: 0; line-height: 1.6; color: #55706a; }
+      .vetconver-access-gate a { display: inline-block; margin-top: 22px; padding: 12px 20px; border-radius: 10px; background: #108a70; color: white; font-weight: 700; text-decoration: none; }
+    </style>
   </head>
-  <body>
+  <body class="vetconver-access-pending">
+    <section id="vetconverAccessGate" class="vetconver-access-gate" aria-live="polite">
+      <div><h1>Validando tu acceso…</h1><p>Esperá un momento mientras verificamos tu sesión.</p></div>
+    </section>
     <main id="homeView" class="home-view">
       <nav class="home-nav">
         <a class="vetconver-brand" href="#" aria-label="VetConver, inicio"
@@ -641,6 +652,7 @@
       </footer>
     </main>
     <div id="toast" class="toast" aria-live="polite"></div>
+    <script src="access-gate.js"></script>
     <script src="vendor/xlsx.full.min.js"></script>
     <script src="app.js"></script>
   </body>
