@@ -155,7 +155,9 @@ test("registra visitas propias y las muestra solo al administrador", async () =>
   ]);
   assert.match(page, />Visitas</);
   assert.match(tracker, /vetconverVisitorId/);
+  assert.match(tracker, /headers\.Authorization/);
   assert.match(visitRoute, /uniqueVisitors/);
+  assert.match(visitRoute, /ignored: "admin"/);
   assert.match(summaryRoute, /profile\?\.role !== "admin"/);
   assert.match(panel, /Visitantes únicos/);
 });

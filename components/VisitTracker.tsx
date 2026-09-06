@@ -1,22 +1,31 @@
 "use client";
 
 import { useEffect } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../lib/firebase";
 
 export default function VisitTracker() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
     const sessionKey = "vetconverVisitSent";
     if (sessionStorage.getItem(sessionKey)) return;
-    const visitorKey = "vetconverVisitorId";
-    const visitorId = localStorage.getItem(visitorKey) || crypto.randomUUID();
-    localStorage.setItem(visitorKey, visitorId);
-    sessionStorage.setItem(sessionKey, "1");
-    fetch("/api/analytics/visit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ visitorId }),
-      keepalive: true,
-    }).catch(() => sessionStorage.removeItem(sessionKey));
+    let unsubscribe = () => {};
+    unsubscribe = onAuthStateChanged(auth, async (user) => {
+      unsubscribe();
+      const visitorKey = "vetconverVisitorId";
+      const visitorId = localStorage.getItem(visitorKey) || crypto.randomUUID();
+      localStorage.setItem(visitorKey, visitorId);
+      sessionStorage.setItem(sessionKey, "1");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (user) headers.Authorization = `Bearer ${await user.getIdToken()}`;
+      fetch("/api/analytics/visit", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ visitorId }),
+        keepalive: true,
+      }).catch(() => sessionStorage.removeItem(sessionKey));
+    });
+    return unsubscribe;
   }, []);
   return null;
 }

@@ -1,5 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
+import { authenticatedUid } from "../../../../lib/server-auth";
 
 function argentinaDay() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -25,6 +26,17 @@ export async function POST(request: Request) {
     }
     const { getAdminDb } = await import("../../../../lib/firebase-admin");
     const db = getAdminDb();
+    if (request.headers.get("authorization")) {
+      try {
+        const uid = await authenticatedUid(request);
+        const profile = (await db.collection("users").doc(uid).get()).data();
+        if (profile?.role === "admin") {
+          return NextResponse.json({ ok: true, ignored: "admin" });
+        }
+      } catch {
+        return NextResponse.json({ error: "Sesión inválida" }, { status: 401 });
+      }
+    }
     const day = argentinaDay();
     const daily = db.collection("analyticsDaily").doc(day);
     const visitor = daily.collection("visitors").doc(visitorId);
