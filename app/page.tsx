@@ -18,6 +18,7 @@ import AdminUsersPanel from "../components/AdminUsersPanel";
 import { AccountAccess, useSingleSession } from "../components/AccountAccess";
 import SubscriptionPanel from "../components/SubscriptionPanel";
 import GuidePanel from "../components/GuidePanel";
+import VisitAnalyticsPanel from "../components/VisitAnalyticsPanel";
 import Brand from "../components/Brand";
 
 type Profile = {
@@ -39,7 +40,7 @@ export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
-  const [view, setView] = useState<"sigatm" | "sigatm-guide" | "vetconver-guide" | "subscription" | "admin">("sigatm");
+  const [view, setView] = useState<"sigatm" | "sigatm-guide" | "vetconver-guide" | "subscription" | "admin" | "analytics">("sigatm");
 
   useEffect(
     () =>
@@ -148,12 +149,10 @@ export default function Home() {
             </>
           )}
           {isAdmin && (
-            <button
-              className={view === "admin" ? "active" : ""}
-              onClick={() => setView("admin")}
-            >
-              Usuarios
-            </button>
+            <>
+              <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>Usuarios</button>
+              <button className={view === "analytics" ? "active" : ""} onClick={() => setView("analytics")}>Visitas</button>
+            </>
           )}
         </nav>
         <div className="user-menu">
@@ -168,6 +167,8 @@ export default function Home() {
         <section className="admin-page">
           <AdminUsersPanel currentUid={user.uid} />
         </section>
+      ) : view === "analytics" && isAdmin ? (
+        <VisitAnalyticsPanel user={user} />
       ) : view === "subscription" && !isAdmin ? (
         <SubscriptionPanel
           user={user}

@@ -10,8 +10,8 @@ test("la versión pública comunica el producto actual", async () => {
     readFile(new URL("app/layout.tsx", root), "utf8"),
   ]);
   assert.match(layout, /VetConver \| Planillas SIGATM/);
-  assert.match(layout, /@vercel\/analytics\/next/);
-  assert.match(layout, /<Analytics \/>/);
+  assert.doesNotMatch(layout, /@vercel\/analytics/);
+  assert.match(layout, /<VisitTracker \/>/);
   assert.match(page, /De Excel a SIGATM/);
   assert.match(page, /Anemia infecciosa equina/);
   assert.match(page, /Brucelosis y leucosis/);
@@ -143,4 +143,19 @@ test("ofrece guías separadas para VetConver y SIGATM", async () => {
   assert.match(guide, /Ingresá a Actas DNSA/);
   assert.match(guide, /ícono de tres líneas/);
   assert.match(guide, /nueva Acta DNSA/i);
+});
+
+test("registra visitas propias y las muestra solo al administrador", async () => {
+  const [page, tracker, panel, visitRoute, summaryRoute] = await Promise.all([
+    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("components/VisitTracker.tsx", root), "utf8"),
+    readFile(new URL("components/VisitAnalyticsPanel.tsx", root), "utf8"),
+    readFile(new URL("app/api/analytics/visit/route.ts", root), "utf8"),
+    readFile(new URL("app/api/analytics/summary/route.ts", root), "utf8"),
+  ]);
+  assert.match(page, />Visitas</);
+  assert.match(tracker, /vetconverVisitorId/);
+  assert.match(visitRoute, /uniqueVisitors/);
+  assert.match(summaryRoute, /profile\?\.role !== "admin"/);
+  assert.match(panel, /Visitantes únicos/);
 });
