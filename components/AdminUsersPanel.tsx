@@ -183,6 +183,7 @@ export default function AdminUsersPanel({
           plan: user.request.plan,
           subscriptionStatus: "active",
           subscriptionStartedAt: serverTimestamp(),
+          paymentMethod: "transfer",
           subscriptionEndsAt: endsAt,
           subscriptionUpdatedAt: serverTimestamp(),
           subscriptionUpdatedBy: currentUid,

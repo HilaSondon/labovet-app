@@ -8,7 +8,7 @@ const response = await fetch("https://api.mercadopago.com/preapproval_plan", {
   body: JSON.stringify({
     reason: "VetConver Planillas SIGATM",
     back_url: backUrl,
-    auto_recurring: { frequency: 1, frequency_type: "months", transaction_amount: amount, currency_id: "ARS", free_trial: { frequency: 7, frequency_type: "days" } },
+    auto_recurring: { frequency: 1, frequency_type: "months", transaction_amount: amount, currency_id: "ARS" },
   }),
 });
 if (!response.ok) throw new Error(`Mercado Pago ${response.status}: ${await response.text()}`);

@@ -7,7 +7,7 @@ import "../app/subscription.css";
 type SubscriptionProfile = {
   subscriptionStatus?: "pending" | "trial" | "active" | "expired" | "suspended";
   subscriptionEndsAt?: string;
-  subscriptionEndsAtIso?: string;
+  subscriptionEndsAtIso?: string | null;
   subscriptionCancelAtPeriodEnd?: boolean;
   paymentMethod?: "mercadopago" | "transfer";
   mercadoPagoPreapprovalId?: string;
@@ -36,6 +36,8 @@ export default function SubscriptionPanel({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const isTransfer = profile.paymentMethod === "transfer";
+  const isMercadoPago = profile.paymentMethod === "mercadopago";
+  const isTrial = profile.subscriptionStatus === "trial";
   const ending = profile.subscriptionCancelAtPeriodEnd;
   const date = profile.subscriptionEndsAtIso || profile.subscriptionEndsAt;
 
@@ -76,19 +78,23 @@ export default function SubscriptionPanel({
           <strong>$25.000 <small>ARS / mes</small></strong>
         </div>
         <div className="subscription-details">
-          <div><span>Estado</span><b>{ending ? "Cancelación programada" : profile.subscriptionStatus === "trial" ? "Prueba gratuita" : "Activo"}</b></div>
-          <div><span>Forma de pago</span><b>{isTransfer ? "Transferencia manual" : "Mercado Pago"}</b></div>
-          <div><span>{ending ? "Acceso disponible hasta" : isTransfer ? "Vencimiento" : "Próximo cobro"}</span><b>{formatDate(date)}</b></div>
+          <div><span>Estado</span><b>{ending ? "Cancelación programada" : isTrial ? "Prueba gratuita de 7 días" : "Activo"}</b></div>
+          <div><span>Forma de pago</span><b>{isTransfer ? "Transferencia manual" : isMercadoPago ? "Mercado Pago" : "Aún no elegida"}</b></div>
+          <div><span>{ending ? "Acceso disponible hasta" : isTrial ? "Fin de la prueba" : isTransfer ? "Vencimiento" : "Próximo cobro"}</span><b>{formatDate(date)}</b></div>
         </div>
         {ending ? (
           <div className="subscription-notice success">No volveremos a cobrarte. Podés seguir usando VetConver hasta el {formatDate(date)}.</div>
+        ) : isTrial && !profile.paymentMethod ? (
+          <div className="subscription-notice">Tenés acceso completo durante la prueba. Cuando finalicen los 7 días, deberás elegir Mercado Pago o transferencia para continuar.</div>
         ) : isTransfer ? (
           <div className="subscription-notice">La transferencia no tiene débito automático. Si no renovás, el acceso finaliza en la fecha indicada.</div>
-        ) : (
+        ) : isMercadoPago && profile.mercadoPagoPreapprovalId ? (
           <div className="subscription-actions">
             <p>Podés cancelar cuando quieras. No se generan nuevos cobros y conservás el acceso hasta que termine el período vigente.</p>
             <button onClick={() => setConfirming(true)}>Cancelar suscripción</button>
           </div>
+        ) : (
+          <div className="subscription-notice">La activación del medio de pago está pendiente de confirmación.</div>
         )}
         {message && <div className="subscription-message">{message}</div>}
       </article>

@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         const canceled = ["cancelled", "canceled"].includes(subscription.status);
         const mapped = canceled && cancellationHasTime
           ? current?.subscriptionStatus || "active"
-          : subscription.status === "authorized" ? "trial" : subscription.status === "paused" ? "suspended" : canceled ? "expired" : "pending";
+          : subscription.status === "authorized" ? "active" : subscription.status === "paused" ? "suspended" : canceled ? "expired" : "pending";
         await reference.set({
           plan: "large_animals",
           subscriptionStatus: mapped,

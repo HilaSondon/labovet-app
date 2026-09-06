@@ -47,9 +47,25 @@ export function AccountAccess({
     setBusy(false);
   }
   async function copyAlias() {
-    await navigator.clipboard.writeText("NOAMS");
+    await navigator.clipboard.writeText("CLARA.CHASIS.FORMA");
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
+  }
+  async function requestTransfer() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/subscriptions/request-transfer", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      window.location.assign(`https://wa.me/5492244429316?text=${encodeURIComponent(`Hola, envío el comprobante de la suscripción VetConver. Mi usuario es ${user.email}.`)}`);
+    } catch {
+      setMessage("No pudimos registrar la solicitud. Intentá nuevamente.");
+      setBusy(false);
+    }
   }
   if (!user.emailVerified)
     return (
@@ -76,9 +92,9 @@ export function AccountAccess({
       </header>
       <section className="checkout-shell">
         <div className="checkout-intro">
-          <span>ACTIVÁ TU CUENTA</span>
-          <h1>Elegí cómo querés pagar</h1>
-          <p>Un único plan, sin permanencia. Elegí la modalidad más cómoda.</p>
+          <span>CONTINUÁ CON VETCONVER</span>
+          <h1>{status === "expired" ? "Tu prueba gratuita terminó" : "Elegí cómo querés pagar"}</h1>
+          <p>Elegí una modalidad para continuar utilizando todas las herramientas.</p>
         </div>
         <div className="checkout-summary">
           <div><span>Plan VetConver</span><b>Generador de planillas SIGATM</b></div>
@@ -93,12 +109,12 @@ export function AccountAccess({
             <div className="payment-icon">MP</div>
             <div>
               <span className="payment-label">SUSCRIPCIÓN AUTOMÁTICA</span>
-              <h2>7 días gratis</h2>
-              <p>Vinculás un medio de pago de forma segura. Hoy pagás $0 y el primer cobro de $25.000 se realiza al finalizar la prueba.</p>
+              <h2>Renovación mensual</h2>
+              <p>Vinculás un medio de pago de forma segura y Mercado Pago realiza la renovación mensual automáticamente.</p>
             </div>
-            <ul><li>Renovación mensual automática</li><li>Cancelás antes del cobro si no querés continuar</li><li>Activación inmediata</li></ul>
+            <ul><li>$25.000 ARS por mes</li><li>Renovación mensual automática</li><li>Cancelás cuando quieras desde Mi suscripción</li></ul>
             {message && <div className="auth-error">{message}</div>}
-            <button className="checkout-primary" onClick={subscribe} disabled={busy}>{busy ? "Abriendo Mercado Pago…" : "Comenzar 7 días gratis"}<span>→</span></button>
+            <button className="checkout-primary" onClick={subscribe} disabled={busy}>{busy ? "Abriendo Mercado Pago…" : "Suscribirme con Mercado Pago"}<span>→</span></button>
           </section>
         ) : (
           <section className="payment-card">
@@ -108,9 +124,11 @@ export function AccountAccess({
               <h2>Transferencia bancaria</h2>
               <p>Transferí el abono mensual y envianos el comprobante. La cuenta se habilita cuando confirmamos el pago.</p>
             </div>
-            <div className="alias-box"><span>ALIAS</span><strong>NOAMS</strong><button onClick={copyAlias}>{copied ? "Copiado ✓" : "Copiar alias"}</button></div>
+            <div className="alias-box"><span>ALIAS</span><strong>CLARA.CHASIS.FORMA</strong><button onClick={copyAlias}>{copied ? "Copiado ✓" : "Copiar alias"}</button></div>
+            <div className="transfer-note"><b>Titular: Hilario Sondon</b><span>Verificá el nombre del titular antes de confirmar la transferencia.</span></div>
             <div className="transfer-note"><b>Importe: $25.000 ARS</b><span>Esta modalidad se renueva manualmente cada mes y no incluye débito automático.</span></div>
-            <a className="checkout-primary" href={`https://wa.me/5492244429316?text=${encodeURIComponent(`Hola, envío el comprobante de la suscripción VetConver. Mi usuario es ${user.email}.`)}`} target="_blank" rel="noreferrer">Enviar comprobante por WhatsApp<span>→</span></a>
+            {message && <div className="auth-error">{message}</div>}
+            <button className="checkout-primary" onClick={requestTransfer} disabled={busy}>{busy ? "Preparando solicitud…" : "Enviar comprobante por WhatsApp"}<span>→</span></button>
           </section>
         )}
         <small className="checkout-status">Estado: {status === "pending" ? "pendiente de activación" : status}</small>

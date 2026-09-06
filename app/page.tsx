@@ -26,8 +26,9 @@ type Profile = {
   email?: string;
   role?: "veterinarian" | "laboratory" | "admin";
   subscriptionStatus?: "pending" | "trial" | "active" | "expired" | "suspended";
+  trialStartedAtIso?: string;
   subscriptionEndsAt?: string;
-  subscriptionEndsAtIso?: string;
+  subscriptionEndsAtIso?: string | null;
   subscriptionCancelAtPeriodEnd?: boolean;
   paymentMethod?: "mercadopago" | "transfer";
   mercadoPagoPreapprovalId?: string;
@@ -50,7 +51,15 @@ export default function Home() {
         if (current) {
           try {
             const snapshot = await getDoc(doc(db, "users", current.uid));
-            setProfile(snapshot.exists() ? (snapshot.data() as Profile) : {});
+            let loaded = snapshot.exists() ? (snapshot.data() as Profile) : {};
+            if (current.emailVerified && loaded.subscriptionStatus === "pending" && !loaded.trialStartedAtIso) {
+              const response = await fetch("/api/subscriptions/start-trial", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${await current.getIdToken(true)}` },
+              });
+              if (response.ok) loaded = { ...loaded, ...(await response.json()).profile };
+            }
+            setProfile(loaded);
           } catch (error) {
             console.error("No pudimos cargar el perfil", error);
             setProfile({});
@@ -76,6 +85,23 @@ export default function Home() {
       currentTime > 0 &&
       new Date(profile.subscriptionEndsAtIso).getTime() <= currentTime,
   );
+  const trialExpired = Boolean(
+    profile?.subscriptionStatus === "trial" &&
+      profile.subscriptionEndsAtIso &&
+      currentTime > 0 &&
+      new Date(profile.subscriptionEndsAtIso).getTime() <= currentTime,
+  );
+  const transferEnd = profile?.subscriptionEndsAt && /^\d{2}\/\d{2}\/\d{4}$/.test(profile.subscriptionEndsAt)
+    ? new Date(profile.subscriptionEndsAt.split("/").reverse().join("-") + "T23:59:59").getTime()
+    : 0;
+  const transferExpired = Boolean(
+    profile?.subscriptionStatus === "active" &&
+      profile.paymentMethod === "transfer" &&
+      transferEnd > 0 &&
+      currentTime > 0 &&
+      transferEnd <= currentTime,
+  );
+  const accessExpired = cancellationExpired || trialExpired || transferExpired;
 
   const sessionAllowed = useSingleSession(
     user,
@@ -83,7 +109,7 @@ export default function Home() {
       user &&
       profile &&
       profile.role !== "admin" &&
-      !cancellationExpired &&
+      !accessExpired &&
       ["active", "trial"].includes(profile.subscriptionStatus || "pending"),
     ),
   );
@@ -93,7 +119,7 @@ export default function Home() {
   if (!profile) return <LoadingScreen />;
 
   const isAdmin = profile.role === "admin";
-  const enabled = isAdmin || (!cancellationExpired &&
+  const enabled = isAdmin || (!accessExpired &&
     ["active", "trial"].includes(profile.subscriptionStatus || "pending"));
 
   if (profile.role === "laboratory") {
@@ -104,7 +130,7 @@ export default function Home() {
     return (
       <AccountAccess
         user={user}
-        status={profile.subscriptionStatus || "pending"}
+        status={accessExpired ? "expired" : profile.subscriptionStatus || "pending"}
         onExit={() => signOut(auth)}
       />
     );

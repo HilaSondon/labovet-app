@@ -106,12 +106,39 @@ test("protege el alta y ofrece ambas modalidades de pago", async () => {
   assert.match(actionPage, /Tu correo quedó confirmado/);
   assert.match(accessPanel, /Mercado Pago/);
   assert.match(accessPanel, /Transferencia bancaria/);
-  assert.match(accessPanel, /NOAMS/);
+  assert.match(accessPanel, /CLARA\.CHASIS\.FORMA/);
+  assert.match(accessPanel, /Titular: Hilario Sondon/);
   const subscriptionRoute = await readFile(
     new URL("app/api/subscriptions/create/route.ts", root),
     "utf8",
   );
   assert.match(subscriptionRoute, /https:\/\/mpago\.la\/2s8oDCv/);
+});
+
+test("inicia siete días de prueba al verificar el correo y bloquea al vencer", async () => {
+  const [page, trialRoute, accessPanel] = await Promise.all([
+    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("app/api/subscriptions/start-trial/route.ts", root), "utf8"),
+    readFile(new URL("components/AccountAccess.tsx", root), "utf8"),
+  ]);
+  assert.match(page, /\/api\/subscriptions\/start-trial/);
+  assert.match(page, /trialExpired/);
+  assert.match(trialRoute, /7 \* 24 \* 60 \* 60 \* 1000/);
+  assert.match(trialRoute, /email_verified/);
+  assert.match(accessPanel, /Tu prueba gratuita terminó/);
+});
+
+test("diferencia Mercado Pago de transferencia y registra la solicitud manual", async () => {
+  const [panel, transferRoute, admin] = await Promise.all([
+    readFile(new URL("components/SubscriptionPanel.tsx", root), "utf8"),
+    readFile(new URL("app/api/subscriptions/request-transfer/route.ts", root), "utf8"),
+    readFile(new URL("components/AdminUsersPanel.tsx", root), "utf8"),
+  ]);
+  assert.match(panel, /Aún no elegida/);
+  assert.match(panel, /isMercadoPago && profile\.mercadoPagoPreapprovalId/);
+  assert.match(panel, /Fin de la prueba/);
+  assert.match(transferRoute, /paymentMethod: "transfer"/);
+  assert.match(admin, /paymentMethod: "transfer"/);
 });
 
 test("permite administrar y cancelar una suscripción individual", async () => {
