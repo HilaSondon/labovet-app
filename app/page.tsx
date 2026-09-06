@@ -204,6 +204,14 @@ export default function Home() {
           <button onClick={() => signOut(auth)}>Salir</button>
         </div>
       </header>
+      <iframe
+        ref={sigatmFrame}
+        className="sigatm-frame"
+        src="/sigatm/index.html?embedded=1"
+        title="VetConver Planillas SIGATM"
+        onLoad={authorizeSigatm}
+        style={{ display: view === "sigatm" ? "block" : "none" }}
+      />
       {view === "admin" && isAdmin ? (
         <section className="admin-page">
           <AdminUsersPanel currentUid={user.uid} />
@@ -220,15 +228,7 @@ export default function Home() {
         <GuidePanel key="sigatm-guide" guide="sigatm" />
       ) : view === "vetconver-guide" ? (
         <GuidePanel key="vetconver-guide" guide="vetconver" />
-      ) : (
-        <iframe
-          ref={sigatmFrame}
-          className="sigatm-frame"
-          src="/sigatm/index.html?embedded=1"
-          title="VetConver Planillas SIGATM"
-          onLoad={authorizeSigatm}
-        />
-      )}
+      ) : null}
     </main>
   );
 }
