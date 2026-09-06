@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Correo propio no configurado" }, { status: 503 });
     }
 
-    const { getAdminAuth } = await import("../../../../lib/firebase-admin");
+    const { getAdminAuth, getAdminDb } = await import("../../../../lib/firebase-admin");
     const generated = await getAdminAuth().generateEmailVerificationLink(email, { url: appUrl });
     const firebaseUrl = new URL(generated);
     const verificationUrl = `${appUrl}/auth/action?${firebaseUrl.searchParams.toString()}`;
@@ -53,6 +53,41 @@ export async function POST(request: Request) {
           </div>
         </div>`,
     });
+
+    // El aviso administrativo nunca debe impedir que el usuario reciba su
+    // verificación. Si falla, el registro continúa normalmente.
+    try {
+      const reference = getAdminDb().collection("users").doc(identity.uid);
+      const userProfile = (await reference.get()).data();
+      if (!userProfile?.registrationAdminNotifiedAt) {
+        const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || user;
+        const registeredAt = new Intl.DateTimeFormat("es-AR", {
+          dateStyle: "full",
+          timeStyle: "short",
+          timeZone: "America/Argentina/Buenos_Aires",
+        }).format(new Date());
+        await transporter.sendMail({
+          from: `VetConver <${from}>`,
+          to: adminEmail,
+          subject: "Nuevo usuario registrado en VetConver",
+          text: `Se registró un nuevo usuario en VetConver.\n\nNombre: ${profile.displayName || "No informado"}\nCorreo: ${email}\nFecha: ${registeredAt}`,
+          html: `
+            <div style="background:#f1f8f5;padding:28px 12px;font-family:Arial,sans-serif;color:#102923">
+              <div style="max-width:560px;margin:auto;background:white;border:1px solid #d7e4df;border-radius:18px;padding:30px">
+                <p style="margin:0 0 8px;color:#0d806a;font-size:11px;font-weight:800;letter-spacing:.12em">ADMINISTRACIÓN VETCONVER</p>
+                <h1 style="margin:0 0 20px;font-family:Georgia,serif;font-size:27px">Nuevo usuario registrado</h1>
+                <p><b>Nombre:</b> ${escapeHtml(profile.displayName || "No informado")}</p>
+                <p><b>Correo:</b> ${escapeHtml(email)}</p>
+                <p><b>Fecha:</b> ${escapeHtml(registeredAt)}</p>
+                <p style="margin:22px 0 0;color:#637972;font-size:13px">Podés consultar su prueba y suscripción desde el panel Usuarios.</p>
+              </div>
+            </div>`,
+        });
+        await reference.set({ registrationAdminNotifiedAt: new Date() }, { merge: true });
+      }
+    } catch (notificationError) {
+      console.error("No pudimos enviar el aviso administrativo", notificationError);
+    }
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("No pudimos enviar la verificación", error);

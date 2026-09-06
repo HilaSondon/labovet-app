@@ -113,6 +113,12 @@ test("protege el alta y ofrece ambas modalidades de pago", async () => {
     "utf8",
   );
   assert.match(subscriptionRoute, /https:\/\/mpago\.la\/2s8oDCv/);
+  const verificationRoute = await readFile(
+    new URL("app/api/auth/send-verification/route.ts", root),
+    "utf8",
+  );
+  assert.match(verificationRoute, /Nuevo usuario registrado en VetConver/);
+  assert.match(verificationRoute, /registrationAdminNotifiedAt/);
 });
 
 test("inicia siete días de prueba al verificar el correo y bloquea al vencer", async () => {
