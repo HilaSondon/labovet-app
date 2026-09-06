@@ -79,6 +79,18 @@ test("conserva como tubo la numeración pegada por el usuario", async () => {
   assert.match(script, /if\(hasPastedTubes\)\$\("tubeMode"\)\.value="keep"/);
 });
 
+test("reconoce tubos separados solo por espacios sin confundir equinos", async () => {
+  const script = await readFile(new URL("public/sigatm/app.js", root), "utf8");
+  const trailingSource = script.match(/function trailingIdTypeCells\(line,typeResolver\)\{[^\n]+\}/)?.[0];
+  const spacedSource = script.match(/function spacedTube\(line,variableId,typeResolver\)\{[^\n]+\}/)?.[0];
+  assert.ok(trailingSource && spacedSource, "No se encontraron los analizadores de tubos");
+  const spacedTube = Function(`${trailingSource}; ${spacedSource}; return spacedTube;`)();
+  const resolveType = (value) => /CERTIFICADO/i.test(value) ? "Nro de Certificado" : "";
+  assert.equal(spacedTube("5 032025000001888 VACA", false, resolveType), "5");
+  assert.equal(spacedTube("03123135 YEGUA CERTIFICADO", true, resolveType), "");
+  assert.equal(spacedTube("5 03123135 YEGUA CERTIFICADO", true, resolveType), "5");
+});
+
 test("protege el alta y ofrece ambas modalidades de pago", async () => {
   const [page, accessPanel, actionPage, sentPage] = await Promise.all([
     readFile(new URL("app/page.tsx", root), "utf8"),
