@@ -5,12 +5,13 @@ import type { User } from "firebase/auth";
 import "../app/subscription.css";
 
 type SubscriptionProfile = {
-  subscriptionStatus?: "pending" | "trial" | "active" | "expired" | "suspended";
+  subscriptionStatus?: "pending" | "trial" | "active" | "payment_retry" | "expired" | "suspended";
   subscriptionEndsAt?: string;
   subscriptionEndsAtIso?: string | null;
   subscriptionCancelAtPeriodEnd?: boolean;
   paymentMethod?: "mercadopago" | "transfer";
   mercadoPagoPreapprovalId?: string;
+  paymentGraceEndsAtIso?: string | null;
 };
 
 function formatDate(value?: string) {
@@ -39,6 +40,7 @@ export default function SubscriptionPanel({
   const isMercadoPago = profile.paymentMethod === "mercadopago";
   const isTrial = profile.subscriptionStatus === "trial";
   const ending = profile.subscriptionCancelAtPeriodEnd;
+  const retrying = profile.subscriptionStatus === "payment_retry";
   const date = profile.subscriptionEndsAtIso || profile.subscriptionEndsAt;
 
   async function cancelSubscription() {
@@ -78,11 +80,13 @@ export default function SubscriptionPanel({
           <strong>$25.000 <small>ARS / mes</small></strong>
         </div>
         <div className="subscription-details">
-          <div><span>Estado</span><b>{ending ? "Cancelación programada" : isTrial ? "Prueba gratuita de 7 días" : "Activo"}</b></div>
+          <div><span>Estado</span><b>{ending ? "Cancelación programada" : isTrial ? "Prueba gratuita de 7 días" : retrying ? "Pago en reintento" : "Activo"}</b></div>
           <div><span>Forma de pago</span><b>{isTransfer ? "Transferencia manual" : isMercadoPago ? "Mercado Pago" : "Aún no elegida"}</b></div>
           <div><span>{ending ? "Acceso disponible hasta" : isTrial ? "Fin de la prueba" : isTransfer ? "Vencimiento" : "Próximo cobro"}</span><b>{formatDate(date)}</b></div>
         </div>
-        {ending ? (
+        {retrying ? (
+          <div className="subscription-notice">Mercado Pago no pudo cobrar la última cuota y está realizando nuevos intentos. Podés usar VetConver hasta el {formatDate(profile.paymentGraceEndsAtIso || undefined)}.</div>
+        ) : ending ? (
           <div className="subscription-notice success">No volveremos a cobrarte. Podés seguir usando VetConver hasta el {formatDate(date)}.</div>
         ) : isTrial && !profile.paymentMethod ? (
           <div className="subscription-notice">Tenés acceso completo durante la prueba. Cuando finalicen los 7 días, deberás elegir Mercado Pago o transferencia para continuar.</div>

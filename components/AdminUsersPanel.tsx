@@ -10,6 +10,7 @@ import {
   updateDoc,
 } from "firebase/firestore/lite";
 import { auth, db } from "../lib/firebase";
+import "./AdminUsersPanel.css";
 import {
   PLAN_DEFINITIONS,
   PlanId,
@@ -24,6 +25,15 @@ type AdminUser = {
   plan: PlanId;
   subscriptionStatus: SubscriptionStatus;
   subscriptionEndsAt: string;
+  subscriptionEndsAtIso: string;
+  trialStartedAtIso: string;
+  paymentMethod: "mercadopago" | "transfer" | "";
+  lastPaymentApprovedAt: string;
+  lastPaymentAttemptAt: string;
+  lastPaymentStatus: string;
+  paymentGraceEndsAtIso: string;
+  subscriptionCancelAtPeriodEnd: boolean;
+  mercadoPagoPreapprovalId: string;
   request?: { plan: PlanId; status: string };
   createdAt?: { toDate?: () => Date };
 };
@@ -32,6 +42,7 @@ const statuses: { value: SubscriptionStatus; label: string }[] = [
   { value: "pending", label: "Pendiente" },
   { value: "trial", label: "Prueba" },
   { value: "active", label: "Activo" },
+  { value: "payment_retry", label: "Pago en reintento" },
   { value: "expired", label: "Vencido" },
   { value: "suspended", label: "Suspendido" },
 ];
@@ -51,6 +62,21 @@ const normalizeStatus = (value: unknown): SubscriptionStatus =>
   statuses.some((status) => status.value === value)
     ? (value as SubscriptionStatus)
     : "pending";
+
+const isoDate = (value: unknown) => {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
+    return value.toDate().toISOString();
+  }
+  return "";
+};
+
+const shortDate = (value: string) => {
+  if (!value) return "—";
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : new Intl.DateTimeFormat("es-AR").format(date);
+};
 
 export default function AdminUsersPanel({
   currentUid,
@@ -122,6 +148,15 @@ export default function AdminUsersPanel({
                 ? "active"
                 : normalizeStatus(data.subscriptionStatus),
               subscriptionEndsAt: String(data.subscriptionEndsAt || ""),
+              subscriptionEndsAtIso: String(data.subscriptionEndsAtIso || ""),
+              trialStartedAtIso: String(data.trialStartedAtIso || ""),
+              paymentMethod: data.paymentMethod === "mercadopago" || data.paymentMethod === "transfer" ? data.paymentMethod : "",
+              lastPaymentApprovedAt: isoDate(data.lastPaymentApprovedAt),
+              lastPaymentAttemptAt: isoDate(data.lastPaymentAttemptAt),
+              lastPaymentStatus: String(data.lastPaymentStatus || ""),
+              paymentGraceEndsAtIso: String(data.paymentGraceEndsAtIso || ""),
+              subscriptionCancelAtPeriodEnd: Boolean(data.subscriptionCancelAtPeriodEnd),
+              mercadoPagoPreapprovalId: String(data.mercadoPagoPreapprovalId || ""),
               request: request
                 ? {
                     plan: normalizePlan(request.plan),
@@ -155,7 +190,11 @@ export default function AdminUsersPanel({
         (!query ||
           user.name.toLowerCase().includes(query) ||
           user.email.toLowerCase().includes(query)) &&
-        (!statusFilter || user.subscriptionStatus === statusFilter),
+        (!statusFilter ||
+          user.subscriptionStatus === statusFilter ||
+          (statusFilter === "mercadopago" && user.paymentMethod === "mercadopago") ||
+          (statusFilter === "transfer" && user.paymentMethod === "transfer") ||
+          (statusFilter === "problems" && ["payment_retry", "suspended", "expired"].includes(user.subscriptionStatus))),
     );
   }, [search, statusFilter, users]);
 
@@ -238,10 +277,35 @@ export default function AdminUsersPanel({
     }
   };
 
+  const cancelMercadoPago = async (user: AdminUser) => {
+    if (!window.confirm(`¿Cancelar la renovación de Mercado Pago de ${user.name}? No se realizarán nuevos cobros.`)) return;
+    const current = auth.currentUser;
+    if (!current) return setFeedback("Tu sesión ya no está activa.");
+    setSaving(user.uid);
+    setFeedback("");
+    try {
+      const response = await fetch("/api/admin/cancel-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await current.getIdToken(true)}` },
+        body: JSON.stringify({ userId: user.uid }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "No se pudo cancelar");
+      await loadUsers();
+      setFeedback(`La renovación de ${user.name} quedó cancelada en Mercado Pago.`);
+    } catch (error) {
+      console.error("No pudimos cancelar la suscripción", error);
+      setFeedback("Mercado Pago no confirmó la cancelación. No se modificó el estado.");
+    } finally {
+      setSaving("");
+    }
+  };
+
   const activeUsers = users.filter(
     (user) =>
       user.subscriptionStatus === "active" ||
-      user.subscriptionStatus === "trial",
+      user.subscriptionStatus === "trial" ||
+      user.subscriptionStatus === "payment_retry",
   ).length;
   const pendingUsers = users.filter(
     (user) => user.subscriptionStatus === "pending",
@@ -321,7 +385,10 @@ export default function AdminUsersPanel({
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
             >
-              <option value="">Todos los estados</option>
+              <option value="">Todos</option>
+              <option value="mercadopago">Mercado Pago</option>
+              <option value="transfer">Transferencia</option>
+              <option value="problems">Con problemas</option>
               {statuses.map((status) => (
                 <option key={status.value} value={status.value}>
                   {status.label}
@@ -331,18 +398,19 @@ export default function AdminUsersPanel({
           </div>
         </div>
 
-        <div className="admin-users-head">
+        <div className="admin-users-head subscription-admin-grid">
           <span>Usuario</span>
           <span>Plan</span>
+          <span>Método</span>
           <span>Estado</span>
-          <span>Vencimiento</span>
+          <span>Fechas y pagos</span>
           <span>Acción</span>
         </div>
         {loading ? (
           <div className="admin-users-empty">Cargando usuarios…</div>
         ) : visibleUsers.length ? (
           visibleUsers.map((user) => (
-            <article className="admin-user-row" key={user.uid}>
+            <article className="admin-user-row subscription-admin-grid" key={user.uid}>
               <div>
                 <b>{user.name}</b>
                 <small>
@@ -369,6 +437,10 @@ export default function AdminUsersPanel({
                   </option>
                 ))}
               </select>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <b>{user.paymentMethod === "mercadopago" ? "Mercado Pago" : user.paymentMethod === "transfer" ? "Transferencia" : user.subscriptionStatus === "trial" ? "Sin elegir" : "—"}</b>
+                {user.subscriptionCancelAtPeriodEnd && <small>Cancelación programada</small>}
+              </div>
               <select
                 className={`subscription-${user.subscriptionStatus}`}
                 value={user.subscriptionStatus}
@@ -385,16 +457,13 @@ export default function AdminUsersPanel({
                   </option>
                 ))}
               </select>
-              <input
-                className="admin-expiration-input"
-                value={user.subscriptionEndsAt}
-                onChange={(event) =>
-                  updateLocal(user.uid, {
-                    subscriptionEndsAt: event.target.value,
-                  })
-                }
-                placeholder="DD/MM/AAAA"
-              />
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {user.subscriptionStatus === "trial" && <small>Prueba: {shortDate(user.trialStartedAtIso)} → {shortDate(user.subscriptionEndsAtIso)}</small>}
+                {user.paymentMethod === "mercadopago" && <small>Último pago: {shortDate(user.lastPaymentApprovedAt || user.lastPaymentAttemptAt)}{user.lastPaymentStatus ? ` · ${user.lastPaymentStatus}` : ""}</small>}
+                {user.paymentMethod === "mercadopago" && <small>{user.subscriptionCancelAtPeriodEnd ? "Acceso hasta" : "Próximo cobro"}: {shortDate(user.subscriptionEndsAtIso)}</small>}
+                {user.subscriptionStatus === "payment_retry" && <small style={{ color: "var(--red)" }}>Gracia hasta: {shortDate(user.paymentGraceEndsAtIso)}</small>}
+                {user.paymentMethod !== "mercadopago" && <input className="admin-expiration-input" value={user.subscriptionEndsAt} onChange={(event) => updateLocal(user.uid, { subscriptionEndsAt: event.target.value })} placeholder="DD/MM/AAAA" />}
+              </div>
               {user.request?.status === "pending" ? (
                 <div className="request-actions">
                   <button
@@ -411,6 +480,11 @@ export default function AdminUsersPanel({
                   >
                     Rechazar
                   </button>
+                </div>
+              ) : user.paymentMethod === "mercadopago" && user.mercadoPagoPreapprovalId && !user.subscriptionCancelAtPeriodEnd && ["active", "payment_retry"].includes(user.subscriptionStatus) ? (
+                <div className="request-actions" style={{ flexDirection: "column" }}>
+                  <button type="button" onClick={() => saveAccess(user)} disabled={saving === user.uid}>Guardar</button>
+                  <button type="button" style={{ background: "var(--red)" }} onClick={() => cancelMercadoPago(user)} disabled={saving === user.uid}>Cancelar MP</button>
                 </div>
               ) : (
                 <button

@@ -34,8 +34,11 @@ export async function GET(request: Request) {
     const manualExpired = status === "active" &&
       profile.paymentMethod === "transfer" &&
       transferHasExpired(profile.subscriptionEndsAt);
+    const retryExpired = status === "payment_retry" &&
+      typeof profile.paymentGraceEndsAtIso === "string" &&
+      new Date(profile.paymentGraceEndsAtIso).getTime() <= Date.now();
 
-    if (trialExpired || cancelledExpired || manualExpired) {
+    if (trialExpired || cancelledExpired || manualExpired || retryExpired) {
       status = "expired";
       await reference.set({
         subscriptionStatus: "expired",
@@ -43,7 +46,7 @@ export async function GET(request: Request) {
       }, { merge: true });
     }
 
-    const allowed = status === "active" || status === "trial";
+    const allowed = status === "active" || status === "trial" || status === "payment_retry";
     return NextResponse.json({ allowed, status }, { status: allowed ? 200 : 403 });
   } catch {
     return NextResponse.json({ allowed: false, status: "unauthenticated" }, { status: 401 });

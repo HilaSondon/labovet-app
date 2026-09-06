@@ -1,0 +1,16 @@
+.admin-users-head.subscription-admin-grid,
+.admin-user-row.subscription-admin-grid {
+  grid-template-columns: 1.35fr .9fr .9fr .9fr 1.25fr .8fr;
+}
+
+@media (max-width: 900px) {
+  .admin-user-row.subscription-admin-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-user-row.subscription-admin-grid {
+    grid-template-columns: 1fr;
+  }
+}

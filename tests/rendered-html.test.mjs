@@ -157,6 +157,26 @@ test("permite administrar y cancelar una suscripción individual", async () => {
   assert.match(webhook, /canceled && cancellationHasTime/);
 });
 
+test("administra medios de pago, reintentos y conciliación automática", async () => {
+  const [admin, webhook, reconciliation, access, vercel] = await Promise.all([
+    readFile(new URL("components/AdminUsersPanel.tsx", root), "utf8"),
+    readFile(new URL("app/api/mercadopago/webhook/route.ts", root), "utf8"),
+    readFile(new URL("app/api/cron/reconcile-subscriptions/route.ts", root), "utf8"),
+    readFile(new URL("app/api/access/status/route.ts", root), "utf8"),
+    readFile(new URL("vercel.json", root), "utf8"),
+  ]);
+  assert.match(admin, /Mercado Pago/);
+  assert.match(admin, /Transferencia/);
+  assert.match(admin, /Pago en reintento/);
+  assert.match(admin, /Con problemas/);
+  assert.match(admin, /Cancelar MP/);
+  assert.match(webhook, /payment_retry/);
+  assert.match(webhook, /paymentRetryAttempt/);
+  assert.match(reconciliation, /authorized_payments\/search/);
+  assert.match(access, /retryExpired/);
+  assert.match(vercel, /reconcile-subscriptions/);
+});
+
 test("ofrece guías separadas para VetConver y SIGATM", async () => {
   const [page, guide] = await Promise.all([
     readFile(new URL("app/page.tsx", root), "utf8"),

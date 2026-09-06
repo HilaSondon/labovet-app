@@ -9,6 +9,7 @@ export type SubscriptionStatus =
   | "pending"
   | "trial"
   | "active"
+  | "payment_retry"
   | "expired"
   | "suspended";
 
@@ -96,7 +97,7 @@ const isPlanId = (value: unknown): value is PlanId =>
   typeof value === "string" && value in PLAN_DEFINITIONS;
 
 const isSubscriptionStatus = (value: unknown): value is SubscriptionStatus =>
-  ["pending", "trial", "active", "expired", "suspended"].includes(
+  ["pending", "trial", "active", "payment_retry", "expired", "suspended"].includes(
     String(value),
   );
 
@@ -136,7 +137,7 @@ export function resolveUserAccess(data?: Record<string, unknown>): UserAccess {
     const expiration = new Date(year, month - 1, day, 23, 59, 59);
     if (expiration.getTime() < Date.now()) status = "expired";
   }
-  const enabled = role === "admin" || status === "active" || status === "trial";
+  const enabled = role === "admin" || status === "active" || status === "trial" || status === "payment_retry";
   const permissions = role === "admin"
     ? { ...PLAN_DEFINITIONS.administrative_service.permissions, laboratory: true }
     : enabled

@@ -25,13 +25,14 @@ type Profile = {
   name?: string;
   email?: string;
   role?: "veterinarian" | "laboratory" | "admin";
-  subscriptionStatus?: "pending" | "trial" | "active" | "expired" | "suspended";
+  subscriptionStatus?: "pending" | "trial" | "active" | "payment_retry" | "expired" | "suspended";
   trialStartedAtIso?: string;
   subscriptionEndsAt?: string;
   subscriptionEndsAtIso?: string | null;
   subscriptionCancelAtPeriodEnd?: boolean;
   paymentMethod?: "mercadopago" | "transfer";
   mercadoPagoPreapprovalId?: string;
+  paymentGraceEndsAtIso?: string | null;
 };
 
 type AuthMode = "login" | "register";
@@ -60,6 +61,13 @@ export default function Home() {
                 headers: { Authorization: `Bearer ${await current.getIdToken(true)}` },
               });
               if (response.ok) loaded = { ...loaded, ...(await response.json()).profile };
+            }
+            if (current.emailVerified || loaded.role === "admin") {
+              const accessResponse = await fetch("/api/access/status", {
+                headers: { Authorization: `Bearer ${await current.getIdToken()}` },
+              });
+              const access = await accessResponse.json().catch(() => ({}));
+              if (access.status) loaded = { ...loaded, subscriptionStatus: access.status };
             }
             setProfile(loaded);
           } catch (error) {
@@ -117,6 +125,12 @@ export default function Home() {
       transferEnd <= currentTime,
   );
   const accessExpired = cancellationExpired || trialExpired || transferExpired;
+  const retryExpired = Boolean(
+    profile?.subscriptionStatus === "payment_retry" &&
+      profile.paymentGraceEndsAtIso &&
+      currentTime > 0 &&
+      new Date(profile.paymentGraceEndsAtIso).getTime() <= currentTime,
+  );
 
   const sessionAllowed = useSingleSession(
     user,
@@ -124,8 +138,8 @@ export default function Home() {
       user &&
       profile &&
       profile.role !== "admin" &&
-      !accessExpired &&
-      ["active", "trial"].includes(profile.subscriptionStatus || "pending"),
+      !accessExpired && !retryExpired &&
+      ["active", "trial", "payment_retry"].includes(profile.subscriptionStatus || "pending"),
     ),
   );
 
@@ -134,8 +148,8 @@ export default function Home() {
   if (!profile) return <LoadingScreen />;
 
   const isAdmin = profile.role === "admin";
-  const enabled = isAdmin || (!accessExpired &&
-    ["active", "trial"].includes(profile.subscriptionStatus || "pending"));
+  const enabled = isAdmin || (!accessExpired && !retryExpired &&
+    ["active", "trial", "payment_retry"].includes(profile.subscriptionStatus || "pending"));
 
   if (profile.role === "laboratory") {
     return <ArchivedAccount onExit={() => signOut(auth)} />;
@@ -145,7 +159,7 @@ export default function Home() {
     return (
       <AccountAccess
         user={user}
-        status={accessExpired ? "expired" : profile.subscriptionStatus || "pending"}
+        status={accessExpired || retryExpired ? "expired" : profile.subscriptionStatus || "pending"}
         onExit={() => signOut(auth)}
       />
     );
