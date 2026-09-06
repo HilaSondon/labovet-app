@@ -17,6 +17,7 @@ import { auth, db } from "../lib/firebase";
 import AdminUsersPanel from "../components/AdminUsersPanel";
 import { AccountAccess, useSingleSession } from "../components/AccountAccess";
 import SubscriptionPanel from "../components/SubscriptionPanel";
+import GuidePanel from "../components/GuidePanel";
 import Brand from "../components/Brand";
 
 type Profile = {
@@ -38,7 +39,7 @@ export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
-  const [view, setView] = useState<"sigatm" | "subscription" | "admin">("sigatm");
+  const [view, setView] = useState<"sigatm" | "sigatm-guide" | "vetconver-guide" | "subscription" | "admin">("sigatm");
 
   useEffect(
     () =>
@@ -140,12 +141,11 @@ export default function Home() {
             Planillas SIGATM
           </button>
           {!isAdmin && (
-            <button
-              className={view === "subscription" ? "active" : ""}
-              onClick={() => setView("subscription")}
-            >
-              Mi suscripción
-            </button>
+            <>
+              <button className={view === "sigatm-guide" ? "active" : ""} onClick={() => setView("sigatm-guide")}>Cómo cargar en SIGATM</button>
+              <button className={view === "vetconver-guide" ? "active" : ""} onClick={() => setView("vetconver-guide")}>Cómo usar VetConver</button>
+              <button className={view === "subscription" ? "active" : ""} onClick={() => setView("subscription")}>Mi suscripción</button>
+            </>
           )}
           {isAdmin && (
             <button
@@ -174,6 +174,10 @@ export default function Home() {
           profile={profile}
           onCancelled={(updates) => setProfile((current) => current ? ({ ...current, ...updates }) : current)}
         />
+      ) : view === "sigatm-guide" && !isAdmin ? (
+        <GuidePanel guide="sigatm" />
+      ) : view === "vetconver-guide" && !isAdmin ? (
+        <GuidePanel guide="vetconver" />
       ) : (
         <iframe
           className="sigatm-frame"

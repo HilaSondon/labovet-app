@@ -48,6 +48,16 @@ test("conserva guiones internos en identificaciones y limpia guiones de listas",
   assert.equal(cleanMessageLine("1- 2324-5465 VACA"), "2324-5465 VACA");
 });
 
+test("acepta el tipo de identificación equina al final", async () => {
+  const script = await readFile(new URL("public/sigatm/app.js", root), "utf8");
+  const source = script.match(/function trailingIdTypeCells\(line,typeResolver\)\{[^\n]+\}/)?.[0];
+  assert.ok(source, "No se encontró trailingIdTypeCells");
+  const parseTrailing = Function(`${source}; return trailingIdTypeCells;`)();
+  const resolveType = (value) => value.toUpperCase().includes("CERTIFICADO") ? "Nro de Certificado" : "";
+  assert.deepEqual(parseTrailing("03123135 YEGUA CERTIFICADO", resolveType), ["Nro de Certificado", "03123135", "YEGUA"]);
+  assert.deepEqual(parseTrailing("03123135 YEGUA NRO DE CERTIFICADO", resolveType), ["Nro de Certificado", "03123135", "YEGUA"]);
+});
+
 test("protege el alta y ofrece ambas modalidades de pago", async () => {
   const [page, accessPanel, actionPage, sentPage] = await Promise.all([
     readFile(new URL("app/page.tsx", root), "utf8"),
@@ -83,4 +93,15 @@ test("permite administrar y cancelar una suscripción individual", async () => {
   assert.match(cancellation, /subscriptionCancelAtPeriodEnd/);
   assert.match(webhook, /cancellationHasTime/);
   assert.match(webhook, /canceled && cancellationHasTime/);
+});
+
+test("ofrece guías separadas para VetConver y SIGATM", async () => {
+  const [page, guide] = await Promise.all([
+    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("components/GuidePanel.tsx", root), "utf8"),
+  ]);
+  assert.match(page, /Cómo cargar en SIGATM/);
+  assert.match(page, /Cómo usar VetConver/);
+  assert.match(guide, /03123135 YEGUA LIBRETA/);
+  assert.match(guide, /nueva Acta DNSA/i);
 });

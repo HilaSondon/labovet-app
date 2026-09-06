@@ -67,6 +67,7 @@
 .pricing button { margin-top: 20px; padding: 13px; border: 0; border-radius: 9px; background: white; color: var(--dark); font-weight: 900; }
 .registration-sent > span { display: block; margin-top: 24px; color: var(--green); font-size: 11px; font-weight: 900; letter-spacing: 0.12em; }
 .registration-sent p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+.auth-modal input { font-weight: 400; }
 
 @media (max-width: 900px) {
   .pricing { grid-template-columns: 1fr; }

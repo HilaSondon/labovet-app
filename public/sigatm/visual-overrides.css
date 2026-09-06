@@ -34,6 +34,11 @@
   cursor: pointer;
 }
 
+.embedded-online .home-button,
+.embedded-online .manual-button {
+  display: none;
+}
+
 .manual-panel {
   padding: 30px 42px 34px;
   background: #f7faf9;
