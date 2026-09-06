@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import "./account.css";
 
@@ -13,5 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="es"><body className={geist.variable}>{children}</body></html>;
+  return <html lang="es"><body className={geist.variable}>{children}<Analytics /></body></html>;
 }

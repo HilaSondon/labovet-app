@@ -10,6 +10,8 @@ test("la versión pública comunica el producto actual", async () => {
     readFile(new URL("app/layout.tsx", root), "utf8"),
   ]);
   assert.match(layout, /VetConver \| Planillas SIGATM/);
+  assert.match(layout, /@vercel\/analytics\/next/);
+  assert.match(layout, /<Analytics \/>/);
   assert.match(page, /De Excel a SIGATM/);
   assert.match(page, /Anemia infecciosa equina/);
   assert.match(page, /Brucelosis y leucosis/);
