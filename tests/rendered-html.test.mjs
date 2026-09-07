@@ -93,6 +93,38 @@ test("reconoce tubos separados solo por espacios sin confundir equinos", async (
   assert.equal(spacedTube("5 03123135 YEGUA CERTIFICADO", true, resolveType), "5");
 });
 
+test("conserva espacios internos en identificaciones escritas a mano", async () => {
+  const script = await readFile(new URL("public/sigatm/app.js", root), "utf8");
+  const identificationStart = script.indexOf("function manualIdentification");
+  const cellsStart = script.indexOf("function manualCells", identificationStart);
+  const parseStart = script.indexOf("function parse()", cellsStart);
+  const identificationSource = script.slice(identificationStart, cellsStart);
+  const cellsSource = script.slice(cellsStart, parseStart);
+  assert.ok(identificationSource && cellsSource, "No se encontraron los analizadores de carga manual");
+  const manualIdentification = Function(`${identificationSource}; return manualIdentification;`)();
+  const manualCells = Function(
+    "numberedTube", "cleanMessageLine", "spacedTube", "MODES", "mode", "aliasType", "CATALOG", "$", "norm",
+    `${identificationSource}; ${cellsSource}; return manualCells;`,
+  )(
+    () => "",
+    (value) => value.trim(),
+    (value) => /^\d+\s+.+\s+VACA$/i.test(value) ? value.match(/^\d+/)?.[0] || "" : "",
+    { bovine: { variableId: false } },
+    "bovine",
+    () => "",
+    { categories: { BOVINO: { VACA: 7 } } },
+    () => ({ value: "BOVINO" }),
+    (value) => value.trim().replace(/\s+/g, " ").toUpperCase(),
+  );
+
+  assert.equal(manualIdentification("JS332 A235"), "JS332 A235");
+  assert.equal(manualIdentification("  JS332   A235  "), "JS332 A235");
+  assert.deepEqual(manualCells("JS332 A235 VACA"), ["JS332 A235", "VACA"]);
+  assert.deepEqual(manualCells("1 JS332 A235 VACA"), ["1", "JS332 A235", "VACA"]);
+  assert.deepEqual(manualCells("5 032025000001888 VACA"), ["5", "032025000001888", "VACA"]);
+  assert.match(script, /identifier:manualIdentification\(identifier\)/);
+});
+
 test("protege el alta y ofrece ambas modalidades de pago", async () => {
   const [page, accessPanel, actionPage, sentPage] = await Promise.all([
     readFile(new URL("app/page.tsx", root), "utf8"),
