@@ -179,6 +179,20 @@ test("diferencia Mercado Pago de transferencia y registra la solicitud manual", 
   assert.match(admin, /paymentMethod: "transfer"/);
 });
 
+test("comunica el valor completo y ofrece administración asistida", async () => {
+  const [panel, access] = await Promise.all([
+    readFile(new URL("components/SubscriptionPanel.tsx", root), "utf8"),
+    readFile(new URL("components/AccountAccess.tsx", root), "utf8"),
+  ]);
+  assert.match(panel, /No es solamente un convertidor/);
+  assert.match(panel, /Validación antes de descargar/);
+  assert.match(panel, /Acompañamiento real/);
+  assert.match(panel, /SERVICIO ADMINISTRATIVO COMPLETO/);
+  assert.match(access, /Administración completa/);
+  assert.match(access, /servicio de administración completa de actas SIGATM/);
+  assert.match(access, /wa\.me\/5492244429316/);
+});
+
 test("permite administrar y cancelar una suscripción individual", async () => {
   const [page, panel, cancellation, webhook] = await Promise.all([
     readFile(new URL("app/page.tsx", root), "utf8"),

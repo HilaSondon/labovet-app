@@ -102,6 +102,27 @@ export default function SubscriptionPanel({
         )}
         {message && <div className="subscription-message">{message}</div>}
       </article>
+      <section className="subscription-value" aria-labelledby="subscription-value-title">
+        <div className="subscription-value-copy">
+          <span>TODO LO QUE INCLUYE</span>
+          <h2 id="subscription-value-title">No es solamente un convertidor.</h2>
+          <p>VetConver te acompaña desde los datos originales hasta una planilla lista para cargar con mayor seguridad.</p>
+        </div>
+        <div className="subscription-benefits">
+          <article><b>Menos trabajo repetitivo</b><p>Transformá datos de Excel, WhatsApp o carga manual sin acomodar cada columna.</p></article>
+          <article><b>Validación antes de descargar</b><p>Detectá identificaciones faltantes, duplicados y valores inválidos antes de llegar a SIGATM.</p></article>
+          <article><b>Códigos resueltos</b><p>Aplicá categoría, edad, estado y tipo de identificación sin memorizarlos.</p></article>
+          <article><b>Acompañamiento real</b><p>Consultanos si tenés dudas para preparar el acta o cambia el procedimiento de SIGATM.</p></article>
+        </div>
+      </section>
+      <section className="managed-service">
+        <div>
+          <span>SERVICIO ADMINISTRATIVO COMPLETO</span>
+          <h2>¿Preferís delegar todo el trabajo?</h2>
+          <p>Envianos por WhatsApp las fotos de los protocolos y nos ocupamos de preparar y gestionar el acta. Es un servicio personalizado, independiente de la suscripción.</p>
+        </div>
+        <a href={`https://wa.me/5492244429316?text=${encodeURIComponent(`Hola, quiero consultar por el servicio de administración completa de actas SIGATM. Mi usuario de VetConver es ${user.email}.`)}`} target="_blank" rel="noreferrer">Consultar por WhatsApp <span>→</span></a>
+      </section>
       {confirming && (
         <div className="cancel-backdrop" role="dialog" aria-modal="true" aria-labelledby="cancel-title">
           <div className="cancel-dialog">

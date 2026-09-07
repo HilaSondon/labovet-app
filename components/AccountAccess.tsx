@@ -14,7 +14,7 @@ export function AccountAccess({
 }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"mercadopago" | "transfer">("mercadopago");
+  const [paymentMethod, setPaymentMethod] = useState<"mercadopago" | "transfer" | "managed">("mercadopago");
   const [copied, setCopied] = useState(false);
   async function subscribe() {
     setBusy(true);
@@ -100,9 +100,17 @@ export function AccountAccess({
           <div><span>Plan VetConver</span><b>Generador de planillas SIGATM</b></div>
           <strong>$25.000 <small>ARS / mes</small></strong>
         </div>
+        <ul className="checkout-benefits">
+          <li>Datos de Excel, WhatsApp o carga manual listos para SIGATM</li>
+          <li>Validación de identificaciones, duplicados y códigos</li>
+          <li>Asesoramiento para preparar actas y resolver dudas</li>
+        </ul>
         <div className="payment-tabs" role="tablist">
           <button className={paymentMethod === "mercadopago" ? "active" : ""} onClick={() => setPaymentMethod("mercadopago")}>Mercado Pago</button>
           <button className={paymentMethod === "transfer" ? "active" : ""} onClick={() => setPaymentMethod("transfer")}>Transferencia</button>
+          <button className={paymentMethod === "managed" ? "active" : ""} onClick={() => setPaymentMethod("managed")}>
+            Administración completa
+          </button>
         </div>
         {paymentMethod === "mercadopago" ? (
           <section className="payment-card">
@@ -116,7 +124,7 @@ export function AccountAccess({
             {message && <div className="auth-error">{message}</div>}
             <button className="checkout-primary" onClick={subscribe} disabled={busy}>{busy ? "Abriendo Mercado Pago…" : "Suscribirme con Mercado Pago"}<span>→</span></button>
           </section>
-        ) : (
+        ) : paymentMethod === "transfer" ? (
           <section className="payment-card">
             <div className="payment-icon transfer-icon">$</div>
             <div>
@@ -129,6 +137,17 @@ export function AccountAccess({
             <div className="transfer-note"><b>Importe: $25.000 ARS</b><span>Esta modalidad se renueva manualmente cada mes y no incluye débito automático.</span></div>
             {message && <div className="auth-error">{message}</div>}
             <button className="checkout-primary" onClick={requestTransfer} disabled={busy}>{busy ? "Preparando solicitud…" : "Enviar comprobante por WhatsApp"}<span>→</span></button>
+          </section>
+        ) : (
+          <section className="payment-card managed-payment-card">
+            <div className="payment-icon managed-icon">✓</div>
+            <div>
+              <span className="payment-label">SERVICIO PERSONALIZADO</span>
+              <h2>Nos ocupamos por vos</h2>
+              <p>Nos enviás las fotos de los protocolos y coordinamos la preparación y gestión completa del acta.</p>
+            </div>
+            <ul><li>No necesitás preparar la planilla</li><li>Revisión de la información antes de gestionar el acta</li><li>Atención directa y condiciones según cada trabajo</li></ul>
+            <a className="checkout-primary" href={`https://wa.me/5492244429316?text=${encodeURIComponent(`Hola, quiero consultar por el servicio de administración completa de actas SIGATM. Mi usuario de VetConver es ${user.email}.`)}`} target="_blank" rel="noreferrer">Consultar por WhatsApp<span>→</span></a>
           </section>
         )}
         <small className="checkout-status">Estado: {status === "pending" ? "pendiente de activación" : status}</small>
