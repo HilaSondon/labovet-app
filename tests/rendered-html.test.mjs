@@ -125,6 +125,17 @@ test("conserva espacios internos en identificaciones escritas a mano", async () 
   assert.match(script, /identifier:manualIdentification\(identifier\)/);
 });
 
+test("genera nombres descriptivos y únicos sin guardar historial", async () => {
+  const script = await readFile(new URL("public/sigatm/app.js", root), "utf8");
+  const start = script.indexOf("function suggestedFilename");
+  const end = script.indexOf("function download", start);
+  const source = script.slice(start, end);
+  const suggestedFilename = Function(`${source}; return suggestedFilename;`)();
+  const date = new Date(2026, 8, 7, 19, 32, 47);
+  assert.equal(suggestedFilename(4, "anemia", date), "4 - Anemia - 07-09 - 19-32-47");
+  assert.notEqual(suggestedFilename(4, "anemia", date), suggestedFilename(4, "anemia", new Date(2026, 8, 7, 19, 32, 48)));
+});
+
 test("protege el alta y ofrece ambas modalidades de pago", async () => {
   const [page, accessPanel, actionPage, sentPage] = await Promise.all([
     readFile(new URL("app/page.tsx", root), "utf8"),
