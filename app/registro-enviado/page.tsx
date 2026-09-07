@@ -21,10 +21,10 @@ export default async function RegistrationSentPage({
           cuenta queda protegida hasta que confirmes que el correo es tuyo.
         </p>
         <div className="flow-notice">
-          <b>¿No lo encontrás?</b>
+          <b>El correo puede llegar a Spam</b>
           <span>
-            Revisá Spam o Correo no deseado. El envío puede demorar unos
-            minutos.
+            Si no aparece en Recibidos, revisá Spam o Correo no deseado. El
+            envío también puede demorar unos minutos.
           </span>
         </div>
         <Link className="flow-primary" href="/">

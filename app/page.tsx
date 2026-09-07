@@ -558,6 +558,7 @@ function AuthModal({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -661,15 +662,20 @@ function AuthModal({
           </label>
           <label>
             Contraseña
-            <input
-              name="password"
-              type="password"
-              minLength={6}
-              autoComplete={
-                mode === "register" ? "new-password" : "current-password"
-              }
-              required
-            />
+            <div className="password-field">
+              <input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                minLength={6}
+                autoComplete={
+                  mode === "register" ? "new-password" : "current-password"
+                }
+                required
+              />
+              <button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}>
+                {showPassword ? "Ocultar" : "Ver"}
+              </button>
+            </div>
           </label>
           {error && <div className="auth-error">{error}</div>}
           <button className="submit-auth" disabled={loading}>

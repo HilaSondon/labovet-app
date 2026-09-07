@@ -77,6 +77,7 @@ export function AccountAccess({
           Enviamos un enlace a <b>{user.email}</b>. Abrilo y después volvé a
           iniciar sesión.
         </p>
+        <div className="status-message">Si no lo encontrás, revisá Spam o Correo no deseado.</div>
         {message && <div className="status-message">{message}</div>}
         <button className="primary-status" onClick={resend} disabled={busy}>
           Reenviar correo

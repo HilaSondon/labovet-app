@@ -62,7 +62,7 @@ function AuthActionContent() {
 
   const content = {
     loading: ["VALIDANDO", "Estamos verificando el enlace…", "Esto demora solo unos segundos."],
-    verified: ["TODO LISTO", "Tu correo quedó confirmado", message || "Ya podés ingresar a VetConver y elegir cómo activar tu plan."],
+    verified: ["TODO LISTO", "Correo verificado", message || "Ya podés cerrar esta pestaña y volver a VetConver desde donde te registraste."],
     recovered: ["TODO LISTO", "Tu correo fue recuperado", "La dirección anterior volvió a estar asociada a tu cuenta."],
     error: ["ENLACE NO VÁLIDO", "No pudimos completar la verificación", "El enlace puede haber vencido o ya haber sido utilizado. Iniciá sesión para solicitar uno nuevo."],
   } as const;
@@ -90,7 +90,7 @@ function AuthActionContent() {
             <span className="flow-kicker">{content[view][0]}</span>
             <h1>{content[view][1]}</h1>
             <p>{content[view][2]}</p>
-            {view !== "loading" && <Link className="flow-primary" href="/">Ir a VetConver <span>→</span></Link>}
+            {view !== "loading" && view !== "verified" && <Link className="flow-primary" href="/">Ir a VetConver <span>→</span></Link>}
           </>
         )}
       </section>

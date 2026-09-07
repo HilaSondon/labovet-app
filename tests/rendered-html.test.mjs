@@ -135,7 +135,7 @@ test("protege el alta y ofrece ambas modalidades de pago", async () => {
   assert.match(page, /registro-enviado/);
   assert.match(page, /sendEmailVerification/);
   assert.match(sentPage, /Revisá tu correo/);
-  assert.match(actionPage, /Tu correo quedó confirmado/);
+  assert.match(actionPage, /Correo verificado/);
   assert.match(accessPanel, /Mercado Pago/);
   assert.match(accessPanel, /Transferencia bancaria/);
   assert.match(accessPanel, /CLARA\.CHASIS\.FORMA/);
@@ -151,6 +151,22 @@ test("protege el alta y ofrece ambas modalidades de pago", async () => {
   );
   assert.match(verificationRoute, /Nuevo usuario registrado en VetConver/);
   assert.match(verificationRoute, /registrationAdminNotifiedAt/);
+});
+
+test("mejora registro, verificación y encabezado móvil", async () => {
+  const [page, actionPage, sentPage, styles] = await Promise.all([
+    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("app/auth/action/page.tsx", root), "utf8"),
+    readFile(new URL("app/registro-enviado/page.tsx", root), "utf8"),
+    readFile(new URL("app/globals.css", root), "utf8"),
+  ]);
+  assert.match(page, /showPassword \? "text" : "password"/);
+  assert.match(page, /Ocultar contraseña/);
+  assert.match(sentPage, /El correo puede llegar a Spam/);
+  assert.match(actionPage, /"Correo verificado"/);
+  assert.match(actionPage, /view !== "verified"/);
+  assert.match(styles, /\.user-menu\{display:contents\}/);
+  assert.match(styles, /\.workspace-bar\{position:sticky/);
 });
 
 test("inicia siete días de prueba al verificar el correo y bloquea al vencer", async () => {
