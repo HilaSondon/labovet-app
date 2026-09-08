@@ -20,6 +20,8 @@ test("la versión pública comunica el producto actual", async () => {
   assert.match(page, /Correo de consultas: próximamente/);
   assert.match(page, /QUIÉN ESTÁ DETRÁS DE VETCONVER/);
   assert.match(page, /Soy Hilario Sondon/);
+  assert.match(page, /experiencia administrativa/);
+  assert.match(page, /Hablar conmigo por WhatsApp/);
   assert.match(page, /más de diez laboratorios/);
   assert.match(page, /No soy veterinario ni represento a SENASA/);
 });

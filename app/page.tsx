@@ -525,7 +525,7 @@ function PublicHome() {
         </figure>
         <div>
           <span className="kicker">QUIÉN ESTÁ DETRÁS DE VETCONVER</span>
-          <h2>Experiencia real en la gestión veterinaria.</h2>
+          <h2>Una herramienta creada desde la experiencia administrativa.</h2>
           <p>
             Soy Hilario Sondon. Durante más de cinco años trabajé en el área
             administrativa de un laboratorio veterinario. Allí conocí de
@@ -553,6 +553,14 @@ function PublicHome() {
             experiencia administrativa y el trabajo cotidiano con laboratorios
             veterinarios.
           </small>
+          <a
+            className="founder-contact"
+            href="https://wa.me/5492244429316?text=Hola%2C%20Hilario.%20Quiero%20hacerte%20una%20consulta%20sobre%20VetConver."
+            target="_blank"
+            rel="noreferrer"
+          >
+            Hablar conmigo por WhatsApp <span>→</span>
+          </a>
         </div>
       </section>
 
