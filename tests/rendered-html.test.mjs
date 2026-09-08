@@ -18,6 +18,10 @@ test("la versión pública comunica el producto actual", async () => {
   assert.match(page, /Brucella ovis/);
   assert.match(page, /Aujeszky y triquina/);
   assert.match(page, /Correo de consultas: próximamente/);
+  assert.match(page, /QUIÉN ESTÁ DETRÁS DE VETCONVER/);
+  assert.match(page, /Soy Hilario Sondon/);
+  assert.match(page, /más de diez laboratorios/);
+  assert.match(page, /No soy veterinario ni represento a SENASA/);
 });
 
 test("conserva veterinarios y administración, sin registrar laboratorios", async () => {

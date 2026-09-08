@@ -516,6 +516,46 @@ function PublicHome() {
         </div>
       </section>
 
+      <section className="founder" id="quien-esta-detras">
+        <figure>
+          <img
+            src="/hilario-sondon-vetconver.jpeg"
+            alt="Hilario Sondon, creador de VetConver"
+          />
+        </figure>
+        <div>
+          <span className="kicker">QUIÉN ESTÁ DETRÁS DE VETCONVER</span>
+          <h2>Experiencia real en la gestión veterinaria.</h2>
+          <p>
+            Soy Hilario Sondon. Durante más de cinco años trabajé en el área
+            administrativa de un laboratorio veterinario. Allí conocí de
+            primera mano el tiempo que requiere transcribir protocolos, ordenar
+            identificaciones y preparar correctamente la información para
+            cargarla en los distintos sistemas.
+          </p>
+          <p>
+            Durante el último año acompañé a más de diez laboratorios
+            veterinarios en su adaptación al sistema GRECERT. Esa experiencia me
+            permitió observar algo que se repetía: buena parte del trabajo
+            administrativo depende de tareas manuales, códigos y formatos que
+            consumen tiempo y pueden generar errores.
+          </p>
+          <p>
+            Creé VetConver para aplicar lo aprendido y facilitarles ese proceso
+            a los veterinarios. La propuesta no es solamente ofrecer una
+            herramienta: también brindar acompañamiento para preparar las
+            planillas, resolver dudas y adaptarnos a los cambios que puedan
+            aparecer.
+          </p>
+          <small>
+            No soy veterinario ni represento a SENASA, SIGATM o GRECERT.
+            VetConver es una iniciativa independiente, desarrollada desde la
+            experiencia administrativa y el trabajo cotidiano con laboratorios
+            veterinarios.
+          </small>
+        </div>
+      </section>
+
       <section className="final-cta">
         <Brand />
         <h2>
