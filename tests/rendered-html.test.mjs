@@ -178,6 +178,7 @@ test("mejora registro, verificación y encabezado móvil", async () => {
   assert.match(actionPage, /view !== "verified"/);
   assert.match(styles, /\.user-menu\{display:contents\}/);
   assert.match(styles, /\.workspace-bar\{position:sticky/);
+  assert.match(styles, /max-height:calc\(100dvh - 24px\)/);
 });
 
 test("inicia siete días de prueba al verificar el correo y bloquea al vencer", async () => {
