@@ -20,7 +20,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Origen inválido" }, { status: 403 });
       }
     }
-    const { visitorId } = await request.json();
+    const { visitorId, source: requestedSource } = await request.json();
     if (typeof visitorId !== "string" || !/^[a-f0-9-]{20,50}$/i.test(visitorId)) {
       return NextResponse.json({ error: "Visita inválida" }, { status: 400 });
     }
@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       }
     }
     const day = argentinaDay();
+    const source = ["instagram", "facebook", "google", "direct", "other"].includes(requestedSource) ? requestedSource : "other";
     const daily = db.collection("analyticsDaily").doc(day);
     const visitor = daily.collection("visitors").doc(visitorId);
     await db.runTransaction(async (transaction) => {
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
       }, { merge: true });
       if (!existing.exists) transaction.set(visitor, { firstSeenAt: new Date() });
     });
+    await db.collection("analyticsSourcesDaily").doc(`${day}_${source}`).set({ date: day, source, count: FieldValue.increment(1) }, { merge: true });
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("No se pudo registrar la visita", error);

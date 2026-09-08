@@ -20,6 +20,7 @@ import SubscriptionPanel from "../components/SubscriptionPanel";
 import GuidePanel from "../components/GuidePanel";
 import VisitAnalyticsPanel from "../components/VisitAnalyticsPanel";
 import Brand from "../components/Brand";
+import { trackEvent } from "../lib/analytics-client";
 
 type Profile = {
   name?: string;
@@ -559,6 +560,9 @@ function AuthModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  useEffect(() => {
+    if (mode === "register") trackEvent("register_open");
+  }, [mode]);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -588,6 +592,7 @@ function AuthModal({
           headers: { Authorization: `Bearer ${await credential.user.getIdToken()}` },
         });
         if (!verificationResponse.ok) await sendEmailVerification(credential.user);
+        trackEvent("registration_completed");
         await signOut(auth);
         window.location.assign(
           `/registro-enviado?email=${encodeURIComponent(email)}`,

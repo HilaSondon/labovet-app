@@ -3,6 +3,7 @@ import "../app/checkout.css";
 import { useEffect, useState } from "react";
 import { sendEmailVerification, type User } from "firebase/auth";
 import Brand from "./Brand";
+import { trackEvent } from "../lib/analytics-client";
 export function AccountAccess({
   user,
   status,
@@ -17,6 +18,7 @@ export function AccountAccess({
   const [paymentMethod, setPaymentMethod] = useState<"mercadopago" | "transfer" | "managed">("mercadopago");
   const [copied, setCopied] = useState(false);
   async function subscribe() {
+    trackEvent("payment_mercadopago");
     setBusy(true);
     setMessage("");
     try {
@@ -52,6 +54,7 @@ export function AccountAccess({
     window.setTimeout(() => setCopied(false), 1800);
   }
   async function requestTransfer() {
+    trackEvent("payment_transfer");
     setBusy(true);
     setMessage("");
     try {
@@ -148,7 +151,7 @@ export function AccountAccess({
               <p>Nos enviás las fotos de los protocolos y coordinamos la preparación y gestión completa del acta.</p>
             </div>
             <ul><li>No necesitás preparar la planilla</li><li>Revisión de la información antes de gestionar el acta</li><li>Atención directa y condiciones según cada trabajo</li></ul>
-            <a className="checkout-primary" href={`https://wa.me/5492244429316?text=${encodeURIComponent(`Hola, quiero consultar por el servicio de administración completa de actas SIGATM. Mi usuario de VetConver es ${user.email}.`)}`} target="_blank" rel="noreferrer">Consultar por WhatsApp<span>→</span></a>
+            <a className="checkout-primary" onClick={() => trackEvent("whatsapp_managed")} href={`https://wa.me/5492244429316?text=${encodeURIComponent(`Hola, quiero consultar por el servicio de administración completa de actas SIGATM. Mi usuario de VetConver es ${user.email}.`)}`} target="_blank" rel="noreferrer">Consultar por WhatsApp<span>→</span></a>
           </section>
         )}
         <small className="checkout-status">Estado: {status === "pending" ? "pendiente de activación" : status}</small>

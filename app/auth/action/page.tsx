@@ -11,6 +11,7 @@ import {
 import { auth } from "../../../lib/firebase";
 import Brand from "../../../components/Brand";
 import "../../account-flow.css";
+import { trackEvent } from "../../../lib/analytics-client";
 
 type View = "loading" | "verified" | "reset" | "recovered" | "error";
 
@@ -35,7 +36,10 @@ function AuthActionContent() {
       return;
     }
     applyActionCode(auth, code)
-      .then(() => setView(mode === "recoverEmail" ? "recovered" : "verified"))
+      .then(() => {
+        if (mode !== "recoverEmail") trackEvent("email_verified");
+        setView(mode === "recoverEmail" ? "recovered" : "verified");
+      })
       .catch(() => setView("error"));
   }, [code, mode]);
 

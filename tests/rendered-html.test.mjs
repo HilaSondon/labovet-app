@@ -281,10 +281,29 @@ test("registra visitas propias y las muestra solo al administrador", async () =>
     readFile(new URL("app/api/analytics/summary/route.ts", root), "utf8"),
   ]);
   assert.match(page, />Visitas</);
-  assert.match(tracker, /vetconverVisitorId/);
+  assert.match(tracker, /analyticsVisitorId/);
   assert.match(tracker, /headers\.Authorization/);
   assert.match(visitRoute, /uniqueVisitors/);
   assert.match(visitRoute, /ignored: "admin"/);
   assert.match(summaryRoute, /profile\?\.role !== "admin"/);
   assert.match(panel, /Visitantes únicos/);
+});
+
+test("mide origen y embudo sin guardar contenido veterinario", async () => {
+  const [client, eventRoute, summary, panel, sigatm] = await Promise.all([
+    readFile(new URL("lib/analytics-client.ts", root), "utf8"),
+    readFile(new URL("app/api/analytics/event/route.ts", root), "utf8"),
+    readFile(new URL("app/api/analytics/summary/route.ts", root), "utf8"),
+    readFile(new URL("components/VisitAnalyticsPanel.tsx", root), "utf8"),
+    readFile(new URL("public/sigatm/app.js", root), "utf8"),
+  ]);
+  assert.match(client, /instagram/);
+  assert.match(client, /vetconverAdminBrowser/);
+  assert.match(eventRoute, /analyticsEventsDaily/);
+  assert.match(summary, /analyticsSourcesDaily/);
+  assert.match(panel, /Qué hacen los visitantes/);
+  assert.match(panel, /De dónde llegan/);
+  assert.match(sigatm, /spreadsheet_downloaded/);
+  assert.doesNotMatch(eventRoute, /const \{ event, visitorId, (email|name|identifier)/);
+  assert.match(eventRoute, /Origen inválido/);
 });

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../lib/firebase";
+import { analyticsVisitorId, visitSource } from "../lib/analytics-client";
 
 export default function VisitTracker() {
   useEffect(() => {
@@ -13,16 +14,14 @@ export default function VisitTracker() {
     let unsubscribe = () => {};
     unsubscribe = onAuthStateChanged(auth, async (user) => {
       unsubscribe();
-      const visitorKey = "vetconverVisitorId";
-      const visitorId = localStorage.getItem(visitorKey) || crypto.randomUUID();
-      localStorage.setItem(visitorKey, visitorId);
+      const visitorId = analyticsVisitorId();
       sessionStorage.setItem(sessionKey, "1");
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (user) headers.Authorization = `Bearer ${await user.getIdToken()}`;
       fetch("/api/analytics/visit", {
         method: "POST",
         headers,
-        body: JSON.stringify({ visitorId }),
+        body: JSON.stringify({ visitorId, source: visitSource() }),
         keepalive: true,
       }).catch(() => sessionStorage.removeItem(sessionKey));
     });

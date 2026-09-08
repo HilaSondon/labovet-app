@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { User } from "firebase/auth";
 import "../app/subscription.css";
+import { trackEvent } from "../lib/analytics-client";
 
 type SubscriptionProfile = {
   subscriptionStatus?: "pending" | "trial" | "active" | "payment_retry" | "expired" | "suspended";
@@ -121,7 +122,7 @@ export default function SubscriptionPanel({
           <h2>¿Preferís delegar todo el trabajo?</h2>
           <p>Envianos por WhatsApp las fotos de los protocolos y nos ocupamos de preparar y gestionar el acta. Es un servicio personalizado, independiente de la suscripción.</p>
         </div>
-        <a href={`https://wa.me/5492244429316?text=${encodeURIComponent(`Hola, quiero consultar por el servicio de administración completa de actas SIGATM. Mi usuario de VetConver es ${user.email}.`)}`} target="_blank" rel="noreferrer">Consultar por WhatsApp <span>→</span></a>
+        <a onClick={() => trackEvent("whatsapp_managed")} href={`https://wa.me/5492244429316?text=${encodeURIComponent(`Hola, quiero consultar por el servicio de administración completa de actas SIGATM. Mi usuario de VetConver es ${user.email}.`)}`} target="_blank" rel="noreferrer">Consultar por WhatsApp <span>→</span></a>
       </section>
       {confirming && (
         <div className="cancel-backdrop" role="dialog" aria-modal="true" aria-labelledby="cancel-title">
