@@ -46,6 +46,17 @@ test("incluye el módulo SIGATM completo y sus recursos", async () => {
   ]);
 });
 
+test("abre Brucelosis bovina como trabajo predeterminado", async () => {
+  const [html, script] = await Promise.all([
+    readFile(new URL("public/sigatm/index.html", root), "utf8"),
+    readFile(new URL("public/sigatm/app.js", root), "utf8"),
+  ]);
+  assert.ok(html.indexOf('data-mode="brucelosis"') < html.indexOf('data-mode="anemia"'));
+  assert.match(html, /class="selected" data-mode="brucelosis"/);
+  assert.match(script, /let mode="brucelosis",rows=\[\]/);
+  assert.match(script, /setMode\("brucelosis"\);render\(\)/);
+});
+
 test("conserva guiones internos en identificaciones y limpia guiones de listas", async () => {
   const script = await readFile(new URL("public/sigatm/app.js", root), "utf8");
   const source = script.match(/function cleanMessageLine\(line\)\{[^\n]+\}/)?.[0];
