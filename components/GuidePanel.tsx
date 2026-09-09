@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import "../app/guides.css";
-import "../app/guide-demo.css";
 
 type Step = {
   title: string;
@@ -31,32 +30,6 @@ const sigatmSteps: Step[] = [
   { title: "Elegí laboratorio y finalizá", intro: "Revisá el acta completa antes de enviarla.", items: ["Seleccioná el laboratorio de destino.", "Usá “Grabar borrador” si todavía necesitás revisar información.", "Tocá “Finalizar” solamente cuando todo esté correcto.", "Imprimí el talón y envialo con las muestras cuando corresponda."], tip: "Finalizar envía el acta al laboratorio; una corrección posterior puede requerir rectificarla o rehacerla.", image: "/sigatm/assets/manual/05-finalizar.png" },
 ];
 
-const demoStages = ["Elegimos Brucelosis bovina", "Pegamos 100 caravanas", "Procesamos la información", "Aplicamos estado y edad a todas", "Validamos las 100 muestras", "Descargamos el archivo", "Abrimos el Excel listo para SIGATM"];
-
-function VetconverDemo() {
-  const [stage, setStage] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  useEffect(() => {
-    if (!playing) return;
-    const timer = window.setTimeout(() => stage === demoStages.length - 1 ? setPlaying(false) : setStage((value) => value + 1), 2200);
-    return () => window.clearTimeout(timer);
-  }, [playing, stage]);
-  const restart = () => { setStage(0); setPlaying(true); };
-  return <section className="guide-demo" aria-label="Demostración animada de VetConver">
-    <div className="demo-heading"><div><span>DEMOSTRACIÓN INTERACTIVA</span><h2>De 100 caravanas a un Excel listo</h2><p>Una simulación breve del proceso completo. No utiliza datos reales ni genera archivos.</p></div><div className="demo-controls"><button onClick={() => stage === demoStages.length - 1 ? restart() : setPlaying((value) => !value)}>{playing ? "Pausar" : stage === demoStages.length - 1 ? "Repetir" : "Reproducir"}</button>{stage > 0 && <button className="quiet" onClick={restart}>Reiniciar</button>}</div></div>
-    <div className="demo-window"><div className="demo-progress"><i style={{ width: `${((stage + 1) / demoStages.length) * 100}%` }} /></div><div className="demo-status"><b>Paso {stage + 1} de {demoStages.length}</b><span>{demoStages[stage]}</span></div>
-      {stage < 6 ? <div className="demo-app"><aside>{["Anemia equina", "Brucelosis bovina", "Leucosis bovina"].map((item, index) => <div key={item} className={index === 1 ? "chosen" : ""}>{item}</div>)}</aside><main>
-        <div className={`demo-paste ${stage >= 1 ? "filled" : ""}`}>{stage >= 1 ? <><code>032025000001887&nbsp;&nbsp;VACA</code><code>032025000001888&nbsp;&nbsp;VACA</code><code>032025000001889&nbsp;&nbsp;VACA</code><small>… 97 filas más</small></> : <span>Pegá acá las identificaciones</span>}</div>
-        <button className={stage === 2 ? "pulse" : ""}>Procesar información</button>
-        {stage >= 3 && <div className="demo-defaults"><span>Estado: <b>Animal sano</b></span><span>Edad: <b>Adulto</b></span></div>}
-        {stage >= 2 && <div className="demo-result"><b>{stage >= 4 ? "100 correctos" : "100 animales cargados"}</b><span>{stage >= 4 ? "✓ Sin errores" : "Listos para revisar"}</span></div>}
-        {stage >= 5 && <div className="demo-download">↓ 100 - Brucelosis - archivo SIGATM.xlsx</div>}
-      </main></div> : <div className="demo-sheet"><div>A</div><div>B</div><div>C</div><div>D</div><b>Tubo</b><b>Animal</b><b>Tipo ID</b><b>Identificador</b>{["032025000001887", "032025000001888", "032025000001889"].map((id, index) => <span key={id}><em>{index + 1}</em><em>2</em><em>1</em><em>{id}</em></span>)}<small>100 filas preparadas para cargar en SIGATM</small></div>}
-    </div>
-    <ol className="demo-dots">{demoStages.map((label, index) => <li key={label} className={index === stage ? "active" : index < stage ? "done" : ""}><button title={label} aria-label={label} onClick={() => { setStage(index); setPlaying(false); }}>{index + 1}</button></li>)}</ol>
-  </section>;
-}
-
 export default function GuidePanel({ guide }: { guide: "vetconver" | "sigatm" }) {
   const [selected, setSelected] = useState(0);
   const steps = guide === "vetconver" ? vetconverSteps : sigatmSteps;
@@ -68,7 +41,6 @@ export default function GuidePanel({ guide }: { guide: "vetconver" | "sigatm" })
         <h1>{guide === "vetconver" ? "Cómo usar VetConver" : "Cómo cargar el archivo en SIGATM"}</h1>
         <p>{guide === "vetconver" ? "Desde los datos originales hasta el Excel validado y listo para descargar." : "Recorrido completo para incorporar el archivo generado a una nueva Acta DNSA."}</p>
       </header>
-      {guide === "vetconver" && <VetconverDemo />}
       <nav className="guide-step-tabs" aria-label="Pasos de la guía">
         {steps.map((item, index) => <button key={item.title} className={selected === index ? "active" : ""} onClick={() => setSelected(index)}><b>{index + 1}</b><span>{item.title}</span></button>)}
       </nav>

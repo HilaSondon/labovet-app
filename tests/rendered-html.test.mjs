@@ -145,16 +145,10 @@ test("permite filtrar errores conservando los índices originales", async () => 
   assert.match(script, /visibleRows=rows\.map\(\(row,index\)=>\(\{row,index\}\)\)/);
 });
 
-test("incluye una demostración animada liviana en la guía de VetConver", async () => {
-  const [guide, styles] = await Promise.all([
-    readFile(new URL("components/GuidePanel.tsx", root), "utf8"),
-    readFile(new URL("app/guide-demo.css", root), "utf8"),
-  ]);
-  assert.match(guide, /DEMOSTRACIÓN INTERACTIVA/);
-  assert.match(guide, /No utiliza datos reales ni genera archivos/);
-  assert.match(guide, /guide === "vetconver" && <VetconverDemo/);
-  assert.doesNotMatch(guide, /<video|\.mp4/i);
-  assert.match(styles, /prefers-reduced-motion/);
+test("muestra el valor original de una categoría inválida para poder corregirla", async () => {
+  const script = await readFile(new URL("public/sigatm/app.js", root), "utf8");
+  assert.match(script, /⚠ \$\{v\} \(valor pegado\)/);
+  assert.match(script, /choices=valid\?\["",\.\.\.values\]:\["",value,\.\.\.values\]/);
 });
 
 test("genera nombres descriptivos y únicos sin guardar historial", async () => {
