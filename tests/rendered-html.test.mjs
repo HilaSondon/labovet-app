@@ -126,9 +126,35 @@ test("conserva espacios internos en identificaciones escritas a mano", async () 
   assert.equal(manualIdentification("JS332 A235"), "JS332 A235");
   assert.equal(manualIdentification("  JS332   A235  "), "JS332 A235");
   assert.deepEqual(manualCells("JS332 A235 VACA"), ["JS332 A235", "VACA"]);
+  assert.deepEqual(manualCells("FJ852A060\t\tVACA"), ["FJ852A060", "VACA"]);
+  assert.deepEqual(manualCells("FJ852A061   VACA"), ["FJ852A061", "VACA"]);
+  assert.deepEqual(manualCells("JS332 A235\t\tVACA"), ["JS332 A235", "VACA"]);
   assert.deepEqual(manualCells("1 JS332 A235 VACA"), ["1", "JS332 A235", "VACA"]);
   assert.deepEqual(manualCells("5 032025000001888 VACA"), ["5", "032025000001888", "VACA"]);
   assert.match(script, /identifier:manualIdentification\(identifier\)/);
+});
+
+test("permite filtrar errores conservando los índices originales", async () => {
+  const [html, script] = await Promise.all([
+    readFile(new URL("public/sigatm/index.html", root), "utf8"),
+    readFile(new URL("public/sigatm/app.js", root), "utf8"),
+  ]);
+  assert.match(html, /id="showErrorRows"/);
+  assert.match(html, /id="showAllRows"/);
+  assert.match(script, /rowFilter="errors"/);
+  assert.match(script, /visibleRows=rows\.map\(\(row,index\)=>\(\{row,index\}\)\)/);
+});
+
+test("incluye una demostración animada liviana en la guía de VetConver", async () => {
+  const [guide, styles] = await Promise.all([
+    readFile(new URL("components/GuidePanel.tsx", root), "utf8"),
+    readFile(new URL("app/guide-demo.css", root), "utf8"),
+  ]);
+  assert.match(guide, /DEMOSTRACIÓN INTERACTIVA/);
+  assert.match(guide, /No utiliza datos reales ni genera archivos/);
+  assert.match(guide, /guide === "vetconver" && <VetconverDemo/);
+  assert.doesNotMatch(guide, /<video|\.mp4/i);
+  assert.match(styles, /prefers-reduced-motion/);
 });
 
 test("genera nombres descriptivos y únicos sin guardar historial", async () => {

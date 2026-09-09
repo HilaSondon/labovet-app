@@ -847,3 +847,25 @@
     grid-template-columns: 1fr;
   }
 }
+
+.summary button {
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--mint);
+  color: var(--green-dark);
+  font-size: 11px;
+  font-weight: 800;
+}
+.summary button:hover,
+.summary button.active {
+  border-color: currentColor;
+}
+.summary .error-count {
+  background: #fae5e6;
+  color: var(--red);
+}
+.summary button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
