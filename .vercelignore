@@ -1,0 +1,14 @@
+.next
+.vercel
+.firebase-emulator-data
+.tools
+node_modules
+coverage
+dist
+out
+outputs
+work
+tmp
+*.log
+.env*
+!.env.example
