@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { DOMMatrix, ImageData, Path2D } from "@napi-rs/canvas";
 import { authenticatedUser } from "../../../../lib/server-auth";
 
 export const runtime = "nodejs";
+
+Object.assign(globalThis, { DOMMatrix, ImageData, Path2D });
 
 export async function POST(request: Request) {
   try {
@@ -14,6 +16,7 @@ export async function POST(request: Request) {
     }
     const bytes = new Uint8Array(await request.arrayBuffer());
     if (!bytes.length || bytes.length > 15_000_000) return NextResponse.json({ error: "El PDF está vacío o supera 15 MB." }, { status: 400 });
+    const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
     const pdf = await getDocument({ data: bytes, useSystemFonts: true }).promise;
     const pages: Array<{ number: number; lines: string[]; text: string; sampleCells: Record<string, string>[] }> = [];
     let columns: number[] | null = null;
