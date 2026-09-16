@@ -51,6 +51,7 @@ const plans: PlanId[] = [
   "unassigned",
   "large_animals",
   "administrative_service",
+  "laboratory",
 ];
 
 const normalizePlan = (value: unknown): PlanId =>
@@ -201,7 +202,7 @@ export default function AdminUsersPanel({
   const updateLocal = (
     uid: string,
     changes: Partial<
-      Pick<AdminUser, "plan" | "subscriptionStatus" | "subscriptionEndsAt">
+      Pick<AdminUser, "role" | "plan" | "subscriptionStatus" | "subscriptionEndsAt">
     >,
   ) =>
     setUsers((current) =>
@@ -215,6 +216,7 @@ export default function AdminUsersPanel({
     setFeedback("");
     try {
       await updateDoc(doc(db, "users", user.uid), {
+        role: user.role,
         plan: user.plan,
         subscriptionStatus: user.subscriptionStatus,
         subscriptionEndsAt: user.subscriptionEndsAt,
@@ -400,6 +402,7 @@ export default function AdminUsersPanel({
 
         <div className="admin-users-head subscription-admin-grid">
           <span>Usuario</span>
+          <span>Tipo</span>
           <span>Plan</span>
           <span>Método</span>
           <span>Estado</span>
@@ -425,6 +428,18 @@ export default function AdminUsersPanel({
                   <em>Solicitó: {PLAN_DEFINITIONS[user.request.plan].name}</em>
                 )}
               </div>
+              <select
+                value={user.role}
+                disabled={user.uid === currentUid}
+                onChange={(event) => {
+                  const role = event.target.value;
+                  updateLocal(user.uid, { role, ...(role === "laboratory" ? { plan: "laboratory", subscriptionStatus: "pending" } : {}) });
+                }}
+              >
+                <option value="veterinarian">Veterinario</option>
+                <option value="laboratory">Laboratorio</option>
+                {user.role === "admin" && <option value="admin">Administrador</option>}
+              </select>
               <select
                 value={plans.includes(user.plan) ? user.plan : "unassigned"}
                 onChange={(event) =>

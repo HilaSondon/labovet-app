@@ -9,6 +9,8 @@ do {
 } until ($firestore -and $auth)
 
 Set-Location -LiteralPath $root
+$env:FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099"
+$env:FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080"
 Write-Host "Preparando usuarios locales..."
 & npm run emulators:seed
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

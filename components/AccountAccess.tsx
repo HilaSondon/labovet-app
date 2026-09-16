@@ -161,8 +161,9 @@ export function AccountAccess({
 }
 export function useSingleSession(user: User | null, enabled: boolean) {
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const localDevelopment = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
   useEffect(() => {
-    if (!user || !enabled) return;
+    if (!user || !enabled || localDevelopment) return;
     let stopped = false;
     const deviceId =
       localStorage.getItem("vetconverDeviceId") ||
@@ -209,6 +210,6 @@ export function useSingleSession(user: User | null, enabled: boolean) {
       stopped = true;
       clearInterval(timer);
     };
-  }, [user, enabled]);
-  return enabled ? allowed : true;
+  }, [user, enabled, localDevelopment]);
+  return !enabled || localDevelopment ? true : allowed;
 }

@@ -26,14 +26,39 @@ test("la versión pública comunica el producto actual", async () => {
   assert.match(page, /No soy veterinario ni represento a SENASA/);
 });
 
-test("conserva veterinarios y administración, sin registrar laboratorios", async () => {
-  const page = await readFile(new URL("app/page.tsx", root), "utf8");
-  assert.match(page, /role: "veterinarian"/);
+test("conserva veterinarios y agrega laboratorios con aprobación administrativa", async () => {
+  const [page, rules, laboratory, adminFirebase, accessRoute, laboratoryScript] = await Promise.all([
+    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("firestore.rules", root), "utf8"),
+    readFile(new URL("components/LaboratoryWorkspace.tsx", root), "utf8"),
+    readFile(new URL("lib/firebase-admin.ts", root), "utf8"),
+    readFile(new URL("app/api/access/status/route.ts", root), "utf8"),
+    readFile(new URL("public/laboratory/app.js", root), "utf8"),
+  ]);
+  assert.match(page, /"veterinarian" \| "laboratory"/);
   assert.match(page, /<AdminUsersPanel/);
   assert.match(page, /subscriptionStatus: "pending"/);
-  assert.match(page, /El módulo para laboratorios no está disponible/);
-  assert.doesNotMatch(page, /role: "laboratory"/);
-  assert.doesNotMatch(page, /LaboratoryManagementPanel/);
+  assert.match(page, /Tu solicitud está pendiente de aprobación/);
+  assert.match(page, /<LaboratoryWorkspace/);
+  assert.match(rules, /\['veterinarian', 'laboratory'\]/);
+  assert.match(laboratory, /users.*laboratory.*settings/s);
+  assert.match(page, /validAccessStatuses\.includes\(access\.status\)/);
+  assert.match(adminFirebase, /process\.env\.FIRESTORE_EMULATOR_HOST\s*\?\s*initializeFirestore\(adminApp\(\)\)/s);
+  assert.doesNotMatch(adminFirebase, /NODE_ENV\s*!==\s*["']production["']/);
+  assert.match(accessRoute, /status:\s*500/);
+  assert.match(laboratoryScript, /function renderCodeMappingsGrouped\(\)\{const host=\$\("codeMappingsList"\);if\(!host\)return;/);
+  assert.doesNotMatch(laboratoryScript, /fetch\("\/api\/parse-pdf"/);
+  assert.match(await readFile(new URL("app/api/auth/dev-verify/route.ts", root), "utf8"), /NODE_ENV/);
+  await access(new URL("public/laboratory/index.html", root));
+});
+
+test("tolera siglas parentéticas inconsistentes en submotivos de las actas", async () => {
+  const script = await readFile(new URL("public/laboratory/app.js", root), "utf8");
+  const source = script.match(/function codeTextWithoutParenthetical\(value\)\{[^}]+\}/)?.[0];
+  assert.ok(source, "No se encontró el normalizador de submotivos");
+  const normalize = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+  const comparable = Function("norm", `${source}; return codeTextWithoutParenthetical;`)(normalize);
+  assert.equal(comparable("PLAN DE SANEAMIENTO (BCR)"), comparable("PLAN DE SANEAMIENTO (BRC)"));
 });
 
 test("incluye el módulo SIGATM completo y sus recursos", async () => {

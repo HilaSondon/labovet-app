@@ -8,8 +8,14 @@ function transferHasExpired(value: unknown) {
 }
 
 export async function GET(request: Request) {
+  let identity;
   try {
-    const identity = await authenticatedUser(request);
+    identity = await authenticatedUser(request);
+  } catch {
+    return NextResponse.json({ allowed: false, error: "Sesión no válida." }, { status: 401 });
+  }
+
+  try {
     const { getAdminDb } = await import("../../../../lib/firebase-admin");
     const reference = getAdminDb().collection("users").doc(identity.uid);
     const snapshot = await reference.get();
@@ -48,7 +54,8 @@ export async function GET(request: Request) {
 
     const allowed = status === "active" || status === "trial" || status === "payment_retry";
     return NextResponse.json({ allowed, status }, { status: allowed ? 200 : 403 });
-  } catch {
-    return NextResponse.json({ allowed: false, status: "unauthenticated" }, { status: 401 });
+  } catch (error) {
+    console.error("No pudimos consultar el acceso de la cuenta", error);
+    return NextResponse.json({ allowed: false, error: "No se pudo consultar el estado de la cuenta." }, { status: 500 });
   }
 }

@@ -19,6 +19,7 @@ import { AccountAccess, useSingleSession } from "../components/AccountAccess";
 import SubscriptionPanel from "../components/SubscriptionPanel";
 import GuidePanel from "../components/GuidePanel";
 import VisitAnalyticsPanel from "../components/VisitAnalyticsPanel";
+import LaboratoryWorkspace from "../components/LaboratoryWorkspace";
 import Brand from "../components/Brand";
 import { trackEvent } from "../lib/analytics-client";
 
@@ -44,7 +45,7 @@ export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
-  const [view, setView] = useState<"sigatm" | "sigatm-guide" | "vetconver-guide" | "subscription" | "admin" | "analytics">("sigatm");
+  const [view, setView] = useState<"sigatm" | "sigatm-guide" | "vetconver-guide" | "subscription" | "admin" | "analytics" | "laboratory">("sigatm");
 
   useEffect(
     () =>
@@ -56,7 +57,7 @@ export default function Home() {
           try {
             const snapshot = await getDoc(doc(db, "users", current.uid));
             let loaded = snapshot.exists() ? (snapshot.data() as Profile) : {};
-            if (current.emailVerified && loaded.subscriptionStatus === "pending" && !loaded.trialStartedAtIso) {
+            if (current.emailVerified && loaded.role !== "laboratory" && loaded.subscriptionStatus === "pending" && !loaded.trialStartedAtIso) {
               const response = await fetch("/api/subscriptions/start-trial", {
                 method: "POST",
                 headers: { Authorization: `Bearer ${await current.getIdToken(true)}` },
@@ -68,8 +69,10 @@ export default function Home() {
                 headers: { Authorization: `Bearer ${await current.getIdToken()}` },
               });
               const access = await accessResponse.json().catch(() => ({}));
-              if (access.status) loaded = { ...loaded, subscriptionStatus: access.status };
+              const validAccessStatuses = ["pending", "trial", "active", "payment_retry", "expired", "suspended"];
+              if (validAccessStatuses.includes(access.status)) loaded = { ...loaded, subscriptionStatus: access.status };
             }
+            if (loaded.role === "laboratory") setView("laboratory");
             setProfile(loaded);
           } catch (error) {
             console.error("No pudimos cargar el perfil", error);
@@ -149,11 +152,12 @@ export default function Home() {
   if (!profile) return <LoadingScreen />;
 
   const isAdmin = profile.role === "admin";
+  const isLaboratory = profile.role === "laboratory";
   const enabled = isAdmin || (!accessExpired && !retryExpired &&
     ["active", "trial", "payment_retry"].includes(profile.subscriptionStatus || "pending"));
 
-  if (profile.role === "laboratory") {
-    return <ArchivedAccount onExit={() => signOut(auth)} />;
+  if (isLaboratory && (!user.emailVerified || profile.subscriptionStatus !== "active")) {
+    return <LaboratoryPending user={user} verified={user.emailVerified} status={profile.subscriptionStatus || "pending"} onExit={() => signOut(auth)} />;
   }
 
   if (!enabled) {
@@ -191,15 +195,16 @@ export default function Home() {
           <Brand compact />
         </div>
         <nav>
-          <button
+          {!isLaboratory && <button
             className={view === "sigatm" ? "active" : ""}
             onClick={() => setView("sigatm")}
           >
             Planillas SIGATM
-          </button>
-          <button className={view === "sigatm-guide" ? "active" : ""} onClick={() => setView("sigatm-guide")}>Cómo cargar en SIGATM</button>
-          <button className={view === "vetconver-guide" ? "active" : ""} onClick={() => setView("vetconver-guide")}>Cómo usar VetConver</button>
-          {!isAdmin && (
+          </button>}
+          {!isLaboratory && <button className={view === "sigatm-guide" ? "active" : ""} onClick={() => setView("sigatm-guide")}>Cómo cargar en SIGATM</button>}
+          {!isLaboratory && <button className={view === "vetconver-guide" ? "active" : ""} onClick={() => setView("vetconver-guide")}>Cómo usar VetConver</button>}
+          {(isLaboratory || isAdmin) && <button className={view === "laboratory" ? "active" : ""} onClick={() => setView("laboratory")}>Laboratorios</button>}
+          {!isAdmin && !isLaboratory && (
             <>
               <button className={view === "subscription" ? "active" : ""} onClick={() => setView("subscription")}>Mi suscripción</button>
             </>
@@ -214,7 +219,7 @@ export default function Home() {
         <div className="user-menu">
           <span>
             <b>{profile.name || user.displayName || "Usuario"}</b>
-            <small>{isAdmin ? "Administrador" : "Veterinario"}</small>
+            <small>{isAdmin ? "Administrador" : isLaboratory ? "Laboratorio" : "Veterinario"}</small>
           </span>
           <button onClick={() => signOut(auth)}>Salir</button>
         </div>
@@ -225,9 +230,11 @@ export default function Home() {
         src="/sigatm/index.html?embedded=1"
         title="VetConver Planillas SIGATM"
         onLoad={authorizeSigatm}
-        style={{ display: view === "sigatm" ? "block" : "none" }}
+        style={{ display: view === "sigatm" && !isLaboratory ? "block" : "none" }}
       />
-      {view === "admin" && isAdmin ? (
+      {view === "laboratory" && (isLaboratory || isAdmin) ? (
+        <LaboratoryWorkspace user={user} isAdmin={isAdmin} />
+      ) : view === "admin" && isAdmin ? (
         <section className="admin-page">
           <AdminUsersPanel currentUid={user.uid} />
         </section>
@@ -608,6 +615,7 @@ function AuthModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [accountType, setAccountType] = useState<"veterinarian" | "laboratory">("veterinarian");
   useEffect(() => {
     if (mode === "register") trackEvent("register_open");
   }, [mode]);
@@ -621,6 +629,7 @@ function AuthModal({
     try {
       if (mode === "register") {
         const name = String(data.get("name") || "").trim();
+        const role = accountType;
         const credential = await createUserWithEmailAndPassword(
           auth,
           email,
@@ -630,8 +639,8 @@ function AuthModal({
         await setDoc(doc(db, "users", credential.user.uid), {
           name,
           email,
-          role: "veterinarian",
-          plan: "unassigned",
+          role,
+          plan: role === "laboratory" ? "laboratory" : "unassigned",
           subscriptionStatus: "pending",
           createdAt: serverTimestamp(),
         });
@@ -700,14 +709,26 @@ function AuthModal({
         <p>
           {mode === "login"
             ? "Ingresá para preparar tus planillas."
-            : "7 días gratis. Después, $25.000 ARS por mes. Cancelás cuando quieras."}
+            : accountType === "laboratory"
+              ? "Solicitá el acceso para tu laboratorio. La habilitación y facturación son administradas personalmente."
+              : "7 días gratis. Después, $25.000 ARS por mes. Cancelás cuando quieras."}
         </p>
         <form onSubmit={submit}>
           {mode === "register" && (
-            <label>
-              Nombre y apellido
-              <input name="name" autoComplete="name" required />
-            </label>
+            <>
+              <label>
+                Tipo de cuenta
+                <select value={accountType} onChange={(event) => setAccountType(event.target.value as "veterinarian" | "laboratory")}>
+                  <option value="veterinarian">Veterinario/a</option>
+                  <option value="laboratory">Laboratorio</option>
+                </select>
+              </label>
+              <label>
+                {accountType === "laboratory" ? "Nombre del laboratorio" : "Nombre y apellido"}
+                <input name="name" autoComplete="name" required />
+              </label>
+              {accountType === "laboratory" && <div className="laboratory-registration-note">El acceso para laboratorios queda pendiente hasta que el administrador verifique y habilite la cuenta.</div>}
+            </>
           )}
           <label>
             Correo electrónico
@@ -745,16 +766,34 @@ function AuthModal({
   );
 }
 
-function ArchivedAccount({ onExit }: { onExit: () => void }) {
+function LaboratoryPending({ user, verified, status, onExit }: { user: User; verified: boolean; status: string; onExit: () => void }) {
+  const pending = status === "pending";
+  const [localBusy, setLocalBusy] = useState(false);
+  const [localError, setLocalError] = useState("");
+  const verifyLocally = async () => {
+    setLocalBusy(true);setLocalError("");
+    try {
+      const response = await fetch("/api/auth/dev-verify", { method: "POST", headers: { Authorization: `Bearer ${await user.getIdToken(true)}` } });
+      if (!response.ok) throw new Error();
+      window.location.reload();
+    } catch { setLocalError("No se pudo verificar la cuenta local.");setLocalBusy(false); }
+  };
   return (
     <main className="access-status">
       <Brand />
-      <span>CUENTA CONSERVADA</span>
-      <h1>El módulo para laboratorios no está disponible.</h1>
+      <span>ACCESO PARA LABORATORIOS</span>
+      <h1>{!verified ? "Verificá tu correo electrónico" : pending ? "Tu solicitud está pendiente de aprobación" : "El acceso del laboratorio está deshabilitado"}</h1>
       <p>
-        La información anterior permanece guardada, pero esta etapa de VetConver
-        está destinada exclusivamente a profesionales veterinarios.
+        {!verified
+          ? "Enviamos un enlace a tu correo. Después de verificarlo, la solicitud quedará disponible para que el administrador la revise."
+          : pending
+          ? "El administrador verificará los datos del laboratorio y habilitará personalmente el acceso. No se realizará ningún cobro automático."
+          : "La cuenta se conserva, pero el módulo no puede utilizarse hasta que el administrador vuelva a habilitarla."}
       </p>
+      {!verified && typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname) && <>
+        <button className="access-status-local-button" onClick={verifyLocally} disabled={localBusy}>{localBusy ? "Verificando…" : "Verificar cuenta local"}</button>
+        {localError && <small className="laboratory-load-error">{localError}</small>}
+      </>}
       <button onClick={onExit}>Cerrar sesión</button>
     </main>
   );
