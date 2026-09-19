@@ -3,6 +3,7 @@
 import "./pricing.css";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
@@ -39,7 +40,7 @@ type Profile = {
 
 type AuthMode = "login" | "register";
 
-export default function Home() {
+export default function Home({ publicPage = "general" }: { publicPage?: "general" | "veterinarians" | "laboratories" | "about" }) {
   const sigatmFrame = useRef<HTMLIFrameElement>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -149,7 +150,7 @@ export default function Home() {
   );
 
   if (loading) return <LoadingScreen />;
-  if (!user) return <PublicHome />;
+  if (!user) return publicPage === "veterinarians" ? <PublicHome /> : <MarketingHome page={publicPage} />;
   if (!profile) return <LoadingScreen />;
 
   const isAdmin = profile.role === "admin";
@@ -270,15 +271,72 @@ function LoadingScreen() {
   );
 }
 
+function MarketingHome({ page }: { page: "general" | "laboratories" | "about" }) {
+  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
+  const initialAccountType = page === "laboratories" ? "laboratory" : "veterinarian";
+  const cards = [
+    {
+      kind: "veterinarians", href: "/veterinarios", eyebrow: "PARA VETERINARIOS", title: "Simplificá la carga en SIGATM.",
+      description: "Convertí tus listados en planillas listas para SIGATM en segundos o delegá directamente la generación de tus actas.",
+      benefits: ["Planillas SIGATM listas en segundos.", "Validación y estandarización automática de los datos.", "Servicio opcional de generación completa de actas."],
+      action: "Conocer la herramienta",
+    },
+    {
+      kind: "laboratories", href: "/laboratorios", eyebrow: "PARA LABORATORIOS", title: "Del acta recibida a resultados listos en segundos.",
+      description: "Procesá las actas recibidas y generá rápidamente los archivos que necesitás para continuar el trabajo del laboratorio.",
+      benefits: ["JSON listo para carga rápida en GRECERT.", "Informes detallados en PDF y Excel.", "Compatible con los distintos rubros contemplados.", "Herramienta complementaria: no reemplaza el sistema de gestión del laboratorio."],
+      action: "Conocer la herramienta",
+    },
+    {
+      kind: "about", href: "/sobre-vetconver", eyebrow: "QUIÉN ESTÁ DETRÁS", title: "Una herramienta creada desde la experiencia real.",
+      description: "Soy Hilario Sondón. Desarrollé VetConver a partir de más de 4 años de experiencia trabajando en la administración de un laboratorio veterinario, buscando simplificar tareas que conozco de primera mano.",
+      benefits: ["Más de 4 años de experiencia en laboratorio veterinario.", "Conocimiento práctico de SIGATM y GRECERT.", "Atención y asesoramiento directo."],
+      action: "Conocé mi historia",
+    },
+  ] as const;
+  return <main className="landing-site">
+    <header className="landing-nav">
+      <Link href="/" aria-label="VetConver, ir al inicio"><Brand /></Link>
+      <nav aria-label="Navegación principal">
+        <Link className={page === "general" ? "selected" : ""} href="/">Inicio</Link>
+        <Link href="/veterinarios">Veterinarios</Link>
+        <Link className={page === "laboratories" ? "selected" : ""} href="/laboratorios">Laboratorios</Link>
+        <Link className={page === "about" ? "selected" : ""} href="/sobre-vetconver">Sobre mí</Link>
+      </nav>
+      <button className="landing-login" onClick={() => setAuthMode("login")}>Ingresar</button>
+    </header>
+
+    {page === "general" ? <>
+      <div className="landing-intro"><span>UN MISMO OBJETIVO</span><h1>Más tiempo para <em>lo importante.</em></h1><p>Herramientas y servicios para veterinarios y laboratorios.</p></div>
+      <div className="landing-cards">{cards.map(card => <Link className={`landing-card ${card.kind}`} key={card.kind} href={card.href}>
+        <span className="landing-card-art" aria-hidden="true" />
+        <span className="landing-card-copy"><small>{card.eyebrow}</small><strong>{card.title}</strong><span className="landing-description">{card.description}</span><span className="landing-benefits">{card.benefits.map(benefit => <span key={benefit}>✓ {benefit}</span>)}</span><span className="landing-card-action">{card.action} <span aria-hidden="true">→</span></span></span>
+      </Link>)}</div>
+      <div className="landing-trust"><span>◇ Información segura</span><span>✦ En constante mejora</span><span>◉ Atención directa</span></div>
+    </> : page === "laboratories" ? <>
+      <section className="landing-detail-hero laboratory-detail"><div><span>VETCONVER PARA LABORATORIOS</span><h1>Del acta recibida a resultados listos en segundos.</h1><p>Procesá las actas recibidas y generá rápidamente los archivos que necesitás para continuar el trabajo del laboratorio.</p><div className="landing-actions"><button onClick={() => setAuthMode("register")}>Solicitar acceso <span>→</span></button><a href="https://wa.me/5492244429316" target="_blank" rel="noreferrer">Consultar por WhatsApp</a></div></div></section>
+      <section className="landing-detail-body"><span>UNA HERRAMIENTA COMPLEMENTARIA</span><h2>Una carga, tres archivos útiles.</h2><div className="landing-feature-grid"><article><b>01 · JSON</b><h3>Listo para GRECERT</h3><p>Prepará la carga rápida a partir del acta, los códigos y los resultados revisados.</p></article><article><b>02 · PDF</b><h3>Informe para entregar</h3><p>Generá un informe detallado y ordenado con muestras, resultados y conclusión.</p></article><article><b>03 · EXCEL</b><h3>Detalle editable</h3><p>Conservá una planilla para control interno y archivo del laboratorio.</p></article></div><p className="landing-note">Compatible con los distintos rubros contemplados. VetConver complementa tu trabajo: no reemplaza el sistema de gestión del laboratorio. El acceso se habilita personalmente después de revisar cada solicitud.</p></section>
+    </> : <>
+      <section className="landing-detail-hero about-detail"><div><span>QUIÉN ESTÁ DETRÁS DE VETCONVER</span><h1>Una herramienta creada desde la experiencia real.</h1><p>Soy Hilario Sondón. Desarrollé VetConver a partir de más de 4 años de experiencia trabajando en la administración de un laboratorio veterinario, buscando simplificar tareas que conozco de primera mano.</p><a className="landing-about-link" href="https://wa.me/5492244429316" target="_blank" rel="noreferrer">Hablemos por WhatsApp <span>→</span></a></div></section>
+      <section className="landing-detail-body"><span>DE LA EXPERIENCIA AL PRODUCTO</span><h2>Conozco estas tareas porque trabajé con ellas.</h2><p>El trabajo con actas, planillas, códigos y resultados me mostró cuánto tiempo se pierde al volver a cargar los mismos datos. VetConver nació para simplificar ese recorrido y acompañar a quienes lo hacen todos los días.</p><div className="landing-feature-grid"><article><b>EXPERIENCIA</b><p>Más de 4 años en laboratorio veterinario.</p></article><article><b>CONOCIMIENTO</b><p>Trabajo práctico con SIGATM y GRECERT.</p></article><article><b>ACOMPAÑAMIENTO</b><p>Atención directa y mejoras continuas según las necesidades de veterinarios y laboratorios.</p></article></div><p className="landing-note">VetConver es una iniciativa independiente; no representa a SENASA, SIGATM ni GRECERT. La fotografía personal se incorporará más adelante.</p></section>
+    </>}
+    <footer className="landing-footer"><span>© {new Date().getFullYear()} VetConver</span><span>Más tiempo para lo importante.</span><a href="https://www.instagram.com/vetconver/" target="_blank" rel="noreferrer">Instagram · @vetconver</a></footer>
+    {authMode && <AuthModal mode={authMode} onMode={setAuthMode} onClose={() => setAuthMode(null)} initialAccountType={initialAccountType} />}
+  </main>;
+}
+
 function PublicHome() {
   const [authMode, setAuthMode] = useState<AuthMode | null>(null);
   return (
     <main className="public-site">
       <header className="public-nav">
-        <a href="#inicio" className="public-logo">
+        <Link href="/" className="public-logo">
           <Brand />
-        </a>
+        </Link>
         <nav>
+          <Link href="/">Inicio</Link>
+          <Link href="/laboratorios">Laboratorios</Link>
+          <Link href="/sobre-vetconver">Sobre mí</Link>
           <a href="#como-funciona">Cómo funciona</a>
           <a href="#rubros">Rubros</a>
           <a href="#servicio">Servicio administrativo</a>
@@ -607,15 +665,17 @@ function AuthModal({
   mode,
   onMode,
   onClose,
+  initialAccountType = "veterinarian",
 }: {
   mode: AuthMode;
   onMode: (mode: AuthMode) => void;
   onClose: () => void;
+  initialAccountType?: "veterinarian" | "laboratory";
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [accountType, setAccountType] = useState<"veterinarian" | "laboratory">("veterinarian");
+  const [accountType, setAccountType] = useState<"veterinarian" | "laboratory">(initialAccountType);
   useEffect(() => {
     if (mode === "register") trackEvent("register_open");
   }, [mode]);

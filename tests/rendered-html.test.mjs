@@ -9,7 +9,7 @@ test("la versión pública comunica el producto actual", async () => {
     readFile(new URL("app/page.tsx", root), "utf8"),
     readFile(new URL("app/layout.tsx", root), "utf8"),
   ]);
-  assert.match(layout, /VetConver \| Planillas SIGATM/);
+  assert.match(layout, /VetConver \| Herramientas para veterinarios y laboratorios/);
   assert.doesNotMatch(layout, /@vercel\/analytics/);
   assert.match(layout, /<VisitTracker \/>/);
   assert.match(page, /De Excel a SIGATM/);
@@ -24,6 +24,13 @@ test("la versión pública comunica el producto actual", async () => {
   assert.match(page, /Hablar conmigo por WhatsApp/);
   assert.match(page, /más de diez laboratorios/);
   assert.match(page, /No soy veterinario ni represento a SENASA/);
+  assert.match(page, /function MarketingHome/);
+  assert.match(page, /Del acta recibida a resultados listos en segundos/);
+  assert.match(page, /Una herramienta creada desde la experiencia real/);
+  assert.match(layout, /className="whatsapp-float"/);
+  for (const route of ["veterinarios", "laboratorios", "sobre-vetconver"]) {
+    await access(new URL(`app/${route}/page.tsx`, root));
+  }
 });
 
 test("conserva veterinarios y agrega laboratorios con aprobación administrativa", async () => {
