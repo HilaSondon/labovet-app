@@ -437,11 +437,12 @@ laboratoryParentMessage({type:'vetconver-laboratory-ready'});
 
 // Laboratory accounts use the single VetConver navigation bar outside this iframe.
 if(window.parent!==window&&laboratoryRole==='laboratory'){
- document.body.classList.add('embedded-laboratory');
- showView('protocol');
  window.addEventListener('message',event=>{
   if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=='vetconver-laboratory-navigate')return;
-  if(['protocol','profile','vets','merge'].includes(event.data.section))showView(event.data.section);
+  if(['protocol','profile','vets','merge'].includes(event.data.section)){
+   document.body.classList.add('embedded-laboratory');
+   showView(event.data.section);
+  }
  });
 }
 
