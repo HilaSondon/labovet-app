@@ -524,12 +524,6 @@ function PublicHome() {
       </section>
 
       <section className="founder" id="quien-esta-detras">
-        <figure>
-          <img
-            src="/hilario-sondon-vetconver.jpeg"
-            alt="Hilario Sondon, creador de VetConver"
-          />
-        </figure>
         <div>
           <span className="kicker">QUIÉN ESTÁ DETRÁS DE VETCONVER</span>
           <h2>Una herramienta creada desde la experiencia administrativa.</h2>
