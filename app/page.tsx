@@ -46,6 +46,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [view, setView] = useState<"sigatm" | "sigatm-guide" | "vetconver-guide" | "subscription" | "admin" | "analytics" | "laboratory">("sigatm");
+  const [laboratorySection, setLaboratorySection] = useState<"protocol" | "profile" | "vets" | "merge">("protocol");
 
   useEffect(
     () =>
@@ -203,7 +204,12 @@ export default function Home() {
           </button>}
           {!isLaboratory && <button className={view === "sigatm-guide" ? "active" : ""} onClick={() => setView("sigatm-guide")}>Cómo cargar en SIGATM</button>}
           {!isLaboratory && <button className={view === "vetconver-guide" ? "active" : ""} onClick={() => setView("vetconver-guide")}>Cómo usar VetConver</button>}
-          {(isLaboratory || isAdmin) && <button className={view === "laboratory" ? "active" : ""} onClick={() => setView("laboratory")}>Laboratorios</button>}
+          {isLaboratory ? ([
+            ["protocol", "Nuevo protocolo"],
+            ["profile", "Mis datos"],
+            ["vets", "Veterinarios"],
+            ["merge", "Unir JSON"],
+          ] as const).map(([section, label]) => <button key={section} className={laboratorySection === section ? "active" : ""} onClick={() => setLaboratorySection(section)}>{label}</button>) : isAdmin && <button className={view === "laboratory" ? "active" : ""} onClick={() => setView("laboratory")}>Laboratorios</button>}
           {!isAdmin && !isLaboratory && (
             <>
               <button className={view === "subscription" ? "active" : ""} onClick={() => setView("subscription")}>Mi suscripción</button>
@@ -233,7 +239,7 @@ export default function Home() {
         style={{ display: view === "sigatm" && !isLaboratory ? "block" : "none" }}
       />
       {view === "laboratory" && (isLaboratory || isAdmin) ? (
-        <LaboratoryWorkspace user={user} isAdmin={isAdmin} />
+        <LaboratoryWorkspace user={user} isAdmin={isAdmin} section={laboratorySection} />
       ) : view === "admin" && isAdmin ? (
         <section className="admin-page">
           <AdminUsersPanel currentUid={user.uid} />
