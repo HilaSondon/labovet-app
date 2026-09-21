@@ -1,5 +1,10 @@
 // Shared report data and layout. Exporters never modify the protocol being edited.
-export const FOOTER='El Plan Nacional de Control y Erradicación de Brucelosis Bovina (Resolución SENASA N°67/19) establece las obligaciones ante uno o más animales positivos a brucelosis. Si ésta es su situación, debe concurrir, en un plazo máximo de 60 días, a la oficina local del SENASA para descartar o confirmar el caso y presentar un plan de saneamiento. Recuerde que los resultados positivos no descartados generan restricciones para acceder a ciertos mercados que así lo exigen.';
+const FOOTER_PARTS=[
+ {text:'Documento complementario de gestión.',bold:true},
+ {text:'La información contenida en este informe se genera a partir de los datos registrados en el sistema y tiene carácter informativo.',bold:false},
+ {text:'No reemplaza ni sustituye los informes, protocolos o constancias oficiales emitidos a través de GRECERT/SENASA.',bold:true}
+];
+export const FOOTER=FOOTER_PARTS.map(part=>part.text).join(' ');
 const clean=v=>String(v??'');
 const norm=v=>clean(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
 const date=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')?v.split('-').reverse().join('/'):v||'';
@@ -131,7 +136,7 @@ export async function buildPdf(data){
  y+=4;ensure(20);rule(y);y+=7;paragraph('Conclusión',true,11);paragraph(data.conclusion||'Sin informar');
  const total=doc.getNumberOfPages();
  for(const b of bands){doc.setPage(b.page);text(`Página ${b.page} de ${total}`,194,b.y+3.6,8,false,'right')}
- for(let p=1;p<=total;p++){doc.setPage(p);rule(273);text(wrap(FOOTER,181,8),105,278,8,false,'center')}
+ for(let p=1;p<=total;p++){doc.setPage(p);rule(273);let footerY=277;for(const part of FOOTER_PARTS)for(const line of wrap(part.text,181,8,part.bold)){text(line,105,footerY,8,part.bold,'center');footerY+=3.3}}
  return doc;
 }
 
@@ -155,7 +160,8 @@ export async function buildExcel(data){
   return ws;
  }
  function footer(ws,row){
-  merge(ws,row,1,n,FOOTER,{font:{size:8},alignment:{horizontal:'center'}});ws.getRow(row).height=58;
+  const footerCell=merge(ws,row,1,n,'',{font:{size:8},alignment:{horizontal:'center'}});
+  footerCell.value={richText:FOOTER_PARTS.map((part,index)=>({text:part.text+(index<FOOTER_PARTS.length-1?' ':''),font:{name:'Arial',size:8,bold:part.bold}}))};ws.getRow(row).height=58;
   ws.pageSetup.printArea=`A1:${ws.getColumn(n).letter}${row}`;
  }
  function table(ws,start,pageRows){

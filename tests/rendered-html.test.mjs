@@ -85,6 +85,9 @@ test("el administrador asigna logos separados para los informes de cada laborato
   assert.match(report, /imageData\(data\.lab\.logo\)/);
   assert.match(report, /imageData\('assets\/vetconver-logo\.png',\.32\)/);
   assert.match(report, /logo\(logos\[0\],14\);logo\(logos\[1\],169,15,11\)/);
+  assert.match(report, /Documento complementario de gestión\./);
+  assert.match(report, /No reemplaza ni sustituye los informes, protocolos o constancias oficiales/);
+  assert.doesNotMatch(report, /El Plan Nacional de Control y Erradicación de Brucelosis Bovina/);
 });
 
 test("tolera siglas parentéticas inconsistentes en submotivos de las actas", async () => {
