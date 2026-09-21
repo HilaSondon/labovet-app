@@ -104,6 +104,18 @@ test("el protocolo busca tubos y caravanas por separado sin recortar el JSON", a
   assert.match(script, /selected=samples\.filter\(r=>r\.selected\)/);
 });
 
+test("el acta PDF se selecciona o arrastra en la zona vacía sin ejemplo de brucelosis", async () => {
+  const [html, script] = await Promise.all([
+    readFile(new URL("public/laboratory/index.html", root), "utf8"),
+    readFile(new URL("public/laboratory/app.js", root), "utf8"),
+  ]);
+  assert.match(html, /id="emptyProtocol"[^>]*>.*id="selectActaButton".*id="actaFile"/s);
+  assert.doesNotMatch(html, /Usar ejemplo de brucelosis|id="loadExample"/);
+  assert.match(script, /function loadActaFile\(f\)/);
+  assert.match(script, /actaDropZone\.addEventListener\("drop"/);
+  assert.match(script, /loadActaFile\(files\[0\]\)/);
+});
+
 test("tolera siglas parentéticas inconsistentes en submotivos de las actas", async () => {
   const script = await readFile(new URL("public/laboratory/app.js", root), "utf8");
   const source = script.match(/function codeTextWithoutParenthetical\(value\)\{[^}]+\}/)?.[0];
