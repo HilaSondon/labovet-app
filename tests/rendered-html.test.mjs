@@ -90,6 +90,20 @@ test("el administrador asigna logos separados para los informes de cada laborato
   assert.doesNotMatch(report, /El Plan Nacional de Control y Erradicación de Brucelosis Bovina/);
 });
 
+test("el protocolo busca tubos y caravanas por separado sin recortar el JSON", async () => {
+  const [html, script] = await Promise.all([
+    readFile(new URL("public/laboratory/index.html", root), "utf8"),
+    readFile(new URL("public/laboratory/app.js", root), "utf8"),
+  ]);
+  assert.ok(html.indexOf('id="tubeSearch"') < html.indexOf('id="countAll"'));
+  assert.ok(html.indexOf('id="identifierSearch"') < html.indexOf('id="countAll"'));
+  assert.match(script, /row\.tube\|\|''\)\)\.includes\(tubeQuery\)/);
+  assert.match(script, /row\.identifier\|\|''\)\)\.includes\(identifierQuery\)/);
+  assert.match(script, /makeAnalysis\(p,samples\)/);
+  assert.match(script, /cantidadDeLote:samples\.length/);
+  assert.match(script, /selected=samples\.filter\(r=>r\.selected\)/);
+});
+
 test("tolera siglas parentéticas inconsistentes en submotivos de las actas", async () => {
   const script = await readFile(new URL("public/laboratory/app.js", root), "utf8");
   const source = script.match(/function codeTextWithoutParenthetical\(value\)\{[^}]+\}/)?.[0];

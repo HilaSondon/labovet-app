@@ -442,13 +442,17 @@ if(window.parent!==window&&laboratoryRole==='laboratory'){
 }
 
 // Quick lookup in long protocols. The underlying samples never change.
-let sampleQuery='';
-const matchesSampleQuery=row=>!sampleQuery||[row.tube,row.identifier].some(value=>norm(String(value||'')).includes(sampleQuery));
+let tubeQuery='',identifierQuery='';
+const matchesSampleQuery=row=>(!tubeQuery||norm(String(row.tube||'')).includes(tubeQuery))&&(!identifierQuery||norm(String(row.identifier||'')).includes(identifierQuery));
 const renderSamplesBeforeSearch=renderSamples;
-renderSamples=function(){renderSamplesBeforeSearch();if(!act||!sampleQuery)return;$('samplesBody').querySelectorAll('tr').forEach(row=>{const sample=samples[Number(row.querySelector('[data-i]')?.dataset.i)];if(sample)row.hidden=!matchesSampleQuery(sample)});if(confirmatory)$('confirmatoryBody').querySelectorAll('tr').forEach(row=>{const sample=confirmatory.rows[Number(row.querySelector('[data-ci]')?.dataset.ci)];if(sample)row.hidden=!matchesSampleQuery(sample)})};
-$('sampleSearch').addEventListener('input',event=>{sampleQuery=norm(event.target.value.trim());renderSamples()});
-const setActBeforeSearch=setAct;setAct=function(next){sampleQuery='';$('sampleSearch').value='';setActBeforeSearch(next)};
-$('closeProtocolBottom').onclick=()=>{sampleQuery='';$('sampleSearch').value='';closeProtocol()};
+function applySampleSearch(){if(!act)return;$('samplesBody').querySelectorAll('tr').forEach(row=>{const sample=samples[Number(row.querySelector('[data-i]')?.dataset.i)];if(sample)row.hidden=!matchesSampleQuery(sample)});if(confirmatory)$('confirmatoryBody').querySelectorAll('tr').forEach(row=>{const sample=confirmatory.rows[Number(row.querySelector('[data-ci]')?.dataset.ci)];if(sample)row.hidden=!matchesSampleQuery(sample)})}
+renderSamples=function(){renderSamplesBeforeSearch();applySampleSearch()};
+const renderConfirmatoryBeforeSearch=renderConfirmatory;renderConfirmatory=function(){renderConfirmatoryBeforeSearch();applySampleSearch()};
+$('tubeSearch').addEventListener('input',event=>{tubeQuery=norm(event.target.value.trim());applySampleSearch()});
+$('identifierSearch').addEventListener('input',event=>{identifierQuery=norm(event.target.value.trim());applySampleSearch()});
+function clearSampleSearch(){tubeQuery='';identifierQuery='';$('tubeSearch').value='';$('identifierSearch').value=''}
+const setActBeforeSearch=setAct;setAct=function(next){clearSampleSearch();setActBeforeSearch(next)};
+$('closeProtocolBottom').onclick=()=>{clearSampleSearch();closeProtocol()};
 
 // Prevent accidental removal of a configured technique.
 $('diagnosesList').addEventListener('click',event=>{const remove=event.target.closest('[data-remove-technique]');if(remove&&!window.confirm('¿Eliminar esta técnica de Mis datos? Se perderán su código y datos habituales.'))event.stopImmediatePropagation()},true);
