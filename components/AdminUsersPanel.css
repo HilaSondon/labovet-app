@@ -14,3 +14,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+.admin-logo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.admin-logo-actions small { flex-basis: 100%; color: var(--muted); }
+.admin-logo-upload, .admin-logo-actions button { padding: 4px 7px; border: 1px solid var(--line); border-radius: 6px; background: #f7fbf9; color: var(--green); font-size: 11px; font-weight: 800; cursor: pointer; }
+.admin-logo-upload input { display: none; }
+.admin-logo-actions button { color: var(--red); }

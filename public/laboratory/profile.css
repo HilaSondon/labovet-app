@@ -10,6 +10,8 @@
 .logo-upload { position:relative; display:flex; align-items:center; justify-content:center; min-height:43px; border:1px dashed #9fbeb4; border-radius:8px; background:#f7fbf9; color:var(--green); font-size:13px; font-weight:800; cursor:pointer; }
 .logo-upload input { position:absolute; inset:0; opacity:0; cursor:pointer; }
 .logo-field small { font-weight:400; line-height:1.4; }
+.logo-field #assignedLabLogo { display:flex; align-items:center; justify-content:center; min-height:70px; padding:9px; border:1px dashed #9fbeb4; border-radius:8px; background:#f7fbf9; color:#637972; font-size:12px; }
+.logo-field .assigned-lab-logo { display:block; max-width:100%; max-height:90px; object-fit:contain; }
 #toast { top:50%; right:auto; bottom:auto; left:50%; display:flex; align-items:center; gap:11px; max-width:calc(100% - 32px); padding:15px 20px; border:1px solid #ffffff30; border-radius:12px; box-shadow:0 18px 55px #082c2655; transform:translate(-50%,-42%) scale(.96); transition:opacity .18s,transform .18s; }
 #toast::before { content:'✓'; display:grid; width:25px; height:25px; place-items:center; border-radius:50%; background:#fff; color:var(--green); font-weight:900; }
 #toast.show { transform:translate(-50%,-50%) scale(1); }

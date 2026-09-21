@@ -22,13 +22,14 @@ export default function LaboratoryWorkspace({ user, isAdmin, section }: { user: 
     let active = true;
     Promise.all([
       getDoc(doc(db, "users", user.uid, "laboratory", "settings")),
+      getDoc(doc(db, "users", user.uid)),
       getDoc(doc(db, "systemConfig", "laboratoryCodes")),
       user.getIdToken(),
-    ]).then(([settings, codes, accessToken]) => {
+    ]).then(([settings, account, codes, accessToken]) => {
       if (!active) return;
       setPayload({
         type: "vetconver-laboratory-hydrate",
-        profile: settings.exists() ? settings.data().profile || {} : {},
+        profile: { ...(settings.exists() ? settings.data().profile || {} : {}), labLogoData: account.data()?.laboratoryLogoData || null },
         codeMappings: codes.exists() ? codes.data().codeMappings || [] : [],
         catalogOverrides: codes.exists() ? codes.data().catalogOverrides || {} : {},
         accessToken,
@@ -42,8 +43,12 @@ export default function LaboratoryWorkspace({ user, isAdmin, section }: { user: 
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return;
       if (event.data?.type === "vetconver-laboratory-ready" && payload) frame.current?.contentWindow?.postMessage(payload, window.location.origin);
       if (event.data?.type === "vetconver-laboratory-save-profile") {
+        // The laboratory logo is assigned by an administrator and must not be
+        // overwritten by a stale profile from an open laboratory session.
+        const editableProfile = { ...event.data.profile };
+        delete editableProfile.labLogoData;
         await setDoc(doc(db, "users", user.uid, "laboratory", "settings"), {
-          profile: event.data.profile || {}, updatedAt: serverTimestamp(), updatedBy: user.uid,
+          profile: editableProfile, updatedAt: serverTimestamp(), updatedBy: user.uid,
         }, { merge: true });
       }
       if (event.data?.type === "vetconver-laboratory-save-codes" && isAdmin) {

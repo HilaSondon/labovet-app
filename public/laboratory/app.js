@@ -146,7 +146,6 @@ $("confirmDiagnoses").onclick=confirmDiagnosisSelection;
 document.head.insertAdjacentHTML("beforeend",'<link rel="stylesheet" href="profile.css">');
 
 $("saveProfile").onclick=()=>{readProfile();renderDirectors();toast("Cambios guardados correctamente.")};
-$("labLogo").onchange=e=>{const file=e.target.files[0],label=e.target.nextElementSibling;if(file)label.textContent=`Logo seleccionado: ${file.name}`};
 
 function requestDiagnosticText(data){return norm(data.pages.flatMap(p=>p.lines).join(" "))}
 const originalParseActa=parseActa;
@@ -368,14 +367,6 @@ function reportSnapshot(){
  const rows=samples.map(mapRow),secondary=confirmatory?{...confirmatory.technique,value:techniqueRule(confirmatory.technique).value,rows:confirmatory.rows.map(mapRow)}:null;
  return {number:$("reportNumber").value||'Sin número',actNumber:act.actNumber,diagnosis:canonicalDiagnosis(act.diagnosticText||recognizedDiagnostic()?.name||act.motive),motive:act.motive,submotive:act.submotive,species:act.species,sampleDate:act.sampleDate,receivedDate:$("receivedDate").value,startDate:$("startDate").value,endDate:$("endDate").value,vet:$("vetName").value,holder:act.holder,establishment:$("establishmentInput")?.value.trim()||'',renspa:act.renspa,locality:act.locality,conclusion:$("conclusion").value,lab:{name:profile.labName,code:profile.labCode,contact:[profile.labAddress,profile.labPhone,profile.labEmail].filter(Boolean).join(' / '),director:profile.directors.find(d=>String(d.code)===String($("director").value))?.name||'',logo:profile.labLogoData||null},rows,primary:{...primary,value:techniqueRule(primary).value,rows},secondary};
 }
-$("labLogo").onchange=async e=>{
- const file=e.target.files[0];if(!file)return;
- try{
-  const image=new Image(),url=URL.createObjectURL(file);image.src=url;
-  try{await image.decode();const scale=Math.min(1,600/Math.max(image.naturalWidth,image.naturalHeight)),canvas=document.createElement('canvas');canvas.width=Math.round(image.naturalWidth*scale);canvas.height=Math.round(image.naturalHeight*scale);canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);profile.labLogoData=canvas.toDataURL('image/png');persist();e.target.nextElementSibling.textContent=`Logo guardado: ${file.name}`}finally{URL.revokeObjectURL(url)}
- }catch(error){toast('No se pudo guardar el logo: '+error.message)}
-};
-document.querySelector('.logo-field small').textContent='Se incorpora al encabezado de los informes PDF y Excel.';
 for(const [id,kind] of [['downloadPdf','pdf'],['downloadExcel','xlsx']])$(id).onclick=async()=>{
  if(act?.formatValidation?.valid===false)return toast('El formato del acta cambió. No se puede generar ningún archivo hasta que lo revise el administrador.');
  if(!vetVerified)return toast('Confirmá el veterinario sugerido antes de descargar.');
@@ -418,6 +409,10 @@ const downloadJsonBeforeFormatValidation=$("downloadJson").onclick;$("downloadJs
 // Firebase persistence is owned by the authenticated VetConver parent window.
 const laboratoryRole=new URLSearchParams(location.search).get('role')||'laboratory';
 let laboratoryHydrated=false;
+const assignedLogoField=document.querySelector('.logo-field');
+assignedLogoField.innerHTML='<span>Logo del laboratorio</span><div id="assignedLabLogo"></div><small>El administrador asigna el logo que aparece en tus informes PDF y Excel.</small>';
+function renderAssignedLabLogo(){const host=$('assignedLabLogo');host.replaceChildren();if(profile.labLogoData){const img=new Image();img.src=profile.labLogoData;img.alt='Logo asignado al laboratorio';img.className='assigned-lab-logo';host.append(img)}else host.textContent='Todavía no hay un logo asignado.'}
+renderAssignedLabLogo();
 function laboratoryParentMessage(payload){if(window.parent!==window)window.parent.postMessage(payload,location.origin)}
 const persistLocalLaboratory=persist;persist=function(){persistLocalLaboratory();if(laboratoryHydrated)laboratoryParentMessage({type:'vetconver-laboratory-save-profile',profile})};
 const persistLocalCodes=persistCodeMappings;persistCodeMappings=function(){persistLocalCodes();if(laboratoryHydrated&&laboratoryRole==='admin')laboratoryParentMessage({type:'vetconver-laboratory-save-codes',codeMappings,catalogOverrides:JSON.parse(localStorage.getItem('vetconverCatalogOverrides')||'{}')})};
@@ -427,11 +422,11 @@ window.addEventListener('message',event=>{
  const incoming=event.data.profile||{};profile={...structuredClone(defaults),...incoming,diagnoses:migrateDiagnoses(incoming.diagnoses),veterinarians:incoming.veterinarians||{}};
  if(Array.isArray(event.data.codeMappings)&&event.data.codeMappings.length)codeMappings=event.data.codeMappings;
  localStorage.setItem('vetconverCatalogOverrides',JSON.stringify(event.data.catalogOverrides||{}));
- laboratoryHydrated=true;renderProfile();renderDirectors();renderVets();renderCodeMappingsGrouped();renderCodeCatalogs();
+ laboratoryHydrated=true;renderProfile();renderAssignedLabLogo();renderDirectors();renderVets();renderCodeMappingsGrouped();renderCodeCatalogs();
 });
 document.addEventListener('input',event=>{if(laboratoryHydrated&&laboratoryRole==='admin'&&event.target.dataset?.catalogEdit)laboratoryParentMessage({type:'vetconver-laboratory-save-codes',codeMappings,catalogOverrides:JSON.parse(localStorage.getItem('vetconverCatalogOverrides')||'{}')})});
 if(laboratoryRole!=='admin'){
- document.querySelector('[data-view="codes"]')?.remove();$("codes")?.remove();document.querySelector('.logo-field')?.remove();
+ document.querySelector('[data-view="codes"]')?.remove();$("codes")?.remove();
 }
 laboratoryParentMessage({type:'vetconver-laboratory-ready'});
 

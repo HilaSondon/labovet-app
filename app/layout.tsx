@@ -4,6 +4,7 @@ import "./globals.css";
 import "./account.css";
 import "./landing.css";
 import VisitTracker from "../components/VisitTracker";
+import FloatingWhatsApp from "../components/FloatingWhatsApp";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
 
@@ -15,5 +16,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="es"><body className={geist.variable}>{children}<VisitTracker /><a className="whatsapp-float" href="https://wa.me/5492244429316" target="_blank" rel="noreferrer" aria-label="Consultar por WhatsApp">WhatsApp ↗</a></body></html>;
+  return <html lang="es"><body className={geist.variable}>{children}<VisitTracker /><FloatingWhatsApp /></body></html>;
 }

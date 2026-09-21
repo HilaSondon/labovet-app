@@ -33,7 +33,8 @@ test("la versión pública comunica el producto actual", async () => {
   assert.match(page, /id="rubros"/);
   assert.match(page, /id="como-funciona"/);
   assert.match(page, /Una herramienta creada desde la experiencia real/);
-  assert.match(layout, /className="whatsapp-float"/);
+  assert.match(layout, /<FloatingWhatsApp \/>/);
+  assert.match(await readFile(new URL("components/FloatingWhatsApp.tsx", root), "utf8"), /onAuthStateChanged\(auth/);
   for (const route of ["veterinarios", "laboratorios", "sobre-vetconver"]) {
     await access(new URL(`app/${route}/page.tsx`, root));
   }
@@ -63,6 +64,21 @@ test("conserva veterinarios y agrega laboratorios con aprobación administrativa
   assert.doesNotMatch(laboratoryScript, /fetch\("\/api\/parse-pdf"/);
   assert.match(await readFile(new URL("app/api/auth/dev-verify/route.ts", root), "utf8"), /NODE_ENV/);
   await access(new URL("public/laboratory/index.html", root));
+});
+
+test("el administrador asigna logos separados para los informes de cada laboratorio", async () => {
+  const [admin, workspace, laboratory, report] = await Promise.all([
+    readFile(new URL("components/AdminUsersPanel.tsx", root), "utf8"),
+    readFile(new URL("components/LaboratoryWorkspace.tsx", root), "utf8"),
+    readFile(new URL("public/laboratory/app.js", root), "utf8"),
+    readFile(new URL("public/laboratory/report-export.js", root), "utf8"),
+  ]);
+  assert.match(admin, /laboratoryLogoData: logo/);
+  assert.match(admin, /updateDoc\(doc\(db, "users", user\.uid\)/);
+  assert.match(workspace, /delete editableProfile\.labLogoData/);
+  assert.match(workspace, /labLogoData: account\.data\(\)\?\.laboratoryLogoData/);
+  assert.match(laboratory, /logo:profile\.labLogoData\|\|null/);
+  assert.match(report, /imageData\(data\.lab\.logo\)/);
 });
 
 test("tolera siglas parentéticas inconsistentes en submotivos de las actas", async () => {

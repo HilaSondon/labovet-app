@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
+  deleteField,
   doc,
   getDocs,
   serverTimestamp,
@@ -36,7 +37,33 @@ type AdminUser = {
   mercadoPagoPreapprovalId: string;
   request?: { plan: PlanId; status: string };
   createdAt?: { toDate?: () => Date };
+  hasLabLogo?: boolean;
 };
+
+async function prepareLaboratoryLogo(file: File): Promise<string> {
+  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) throw new Error("Usá una imagen PNG, JPG o WebP.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("El archivo no debe superar 10 MB.");
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    let scale = Math.min(1, 480 / image.naturalWidth, 320 / image.naturalHeight);
+    const canvas = document.createElement("canvas");
+    let data = "";
+    do {
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
+      data = canvas.toDataURL("image/png");
+      scale *= 0.75;
+    } while (data.length > 350_000 && canvas.width > 80 && canvas.height > 80);
+    if (data.length > 350_000) throw new Error("El logo es demasiado complejo. Probá un PNG más simple.");
+    return data;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 
 const statuses: { value: SubscriptionStatus; label: string }[] = [
   { value: "pending", label: "Pendiente" },
@@ -165,6 +192,7 @@ export default function AdminUsersPanel({
                   }
                 : undefined,
               createdAt: data.createdAt,
+              hasLabLogo: Boolean(data.laboratoryLogoData),
             };
           })
           .sort((a, b) => a.name.localeCompare(b.name)),
@@ -229,6 +257,41 @@ export default function AdminUsersPanel({
       setFeedback(
         "No pudimos guardar el cambio. Revisá los permisos de administrador.",
       );
+    } finally {
+      setSaving("");
+    }
+  };
+
+  const assignLaboratoryLogo = async (user: AdminUser, file: File) => {
+    setSaving(user.uid);
+    setFeedback("");
+    try {
+      const logo = await prepareLaboratoryLogo(file);
+      await updateDoc(doc(db, "users", user.uid), {
+        laboratoryLogoData: logo, laboratoryLogoUpdatedAt: serverTimestamp(), laboratoryLogoUpdatedBy: currentUid,
+      });
+      setUsers((current) => current.map((item) => item.uid === user.uid ? { ...item, hasLabLogo: true } : item));
+      setFeedback(`Logo asignado a ${user.name}. Aparecerá en PDF y Excel cuando el laboratorio recargue su sesión.`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "No se pudo guardar el logo.");
+    } finally {
+      setSaving("");
+    }
+  };
+
+  const removeLaboratoryLogo = async (user: AdminUser) => {
+    if (!window.confirm(`¿Quitar el logo de ${user.name} de sus próximos informes?`)) return;
+    setSaving(user.uid);
+    setFeedback("");
+    try {
+      await updateDoc(doc(db, "users", user.uid), {
+        laboratoryLogoData: deleteField(), laboratoryLogoUpdatedAt: serverTimestamp(), laboratoryLogoUpdatedBy: currentUid,
+      });
+      setUsers((current) => current.map((item) => item.uid === user.uid ? { ...item, hasLabLogo: false } : item));
+      setFeedback(`Se quitó el logo de ${user.name}.`);
+    } catch (error) {
+      console.error("No pudimos quitar el logo", error);
+      setFeedback("No se pudo quitar el logo del laboratorio.");
     } finally {
       setSaving("");
     }
@@ -427,6 +490,17 @@ export default function AdminUsersPanel({
                 {user.request?.status === "pending" && (
                   <em>Solicitó: {PLAN_DEFINITIONS[user.request.plan].name}</em>
                 )}
+                {user.role === "laboratory" && <div className="admin-logo-actions">
+                  <small>{user.hasLabLogo ? "Logo asignado" : "Sin logo para informes"}</small>
+                  <label className="admin-logo-upload">{user.hasLabLogo ? "Cambiar logo" : "Asignar logo"}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" disabled={saving === user.uid} onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void assignLaboratoryLogo(user, file);
+                      event.target.value = "";
+                    }} />
+                  </label>
+                  {user.hasLabLogo && <button type="button" disabled={saving === user.uid} onClick={() => removeLaboratoryLogo(user)}>Quitar</button>}
+                </div>}
               </div>
               <select
                 value={user.role}
