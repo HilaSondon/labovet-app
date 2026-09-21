@@ -310,7 +310,19 @@ const openBulkBeforePicker=openBulk;openBulk=function(button){
  }
  const close=document.createElement('button');close.type='button';close.className='bulk-close';close.textContent='×';close.setAttribute('aria-label','Cerrar');
  close.onclick=()=>{box.remove();button.focus()};box.append(close);
+ positionBulkPopover(button,box);
 };
+function positionBulkPopover(anchor,box){
+ const rect=anchor.getBoundingClientRect(),footer=document.querySelector('.download-bar:not([hidden])'),footerTop=footer?.getBoundingClientRect().top??innerHeight;
+ const topLimit=12,bottomLimit=Math.min(innerHeight-12,footerTop-12),spaceBelow=bottomLimit-rect.bottom-6,spaceAbove=rect.top-topLimit-6;
+ const placeAbove=spaceAbove>spaceBelow&&spaceBelow<box.offsetHeight;
+ const available=Math.max(100,placeAbove?spaceAbove:spaceBelow);
+ box.style.maxHeight=`${available}px`;
+ const list=box.classList.contains('bulk-choice-list')?box.querySelector('select'):null;
+ if(list)list.size=Math.min(list.size,Math.max(2,Math.floor((available-45)/28)));
+ box.style.left=`${Math.max(12,Math.min(rect.left,innerWidth-box.offsetWidth-12))}px`;
+ box.style.top=`${Math.max(topLimit,placeAbove?rect.top-box.offsetHeight-6:rect.bottom+6)}px`;
+}
 document.addEventListener('pointerdown',e=>{const box=document.querySelector('.bulk-popover');if(box&&!box.contains(e.target)&&!e.target.closest('[data-open-bulk]'))box.remove()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelector('.bulk-popover')?.remove()});
 

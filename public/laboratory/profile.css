@@ -56,6 +56,7 @@
 .bulk-choice-list select{width:100%;border:0;border-radius:7px;outline:0;background:#fff}
 .bulk-choice-list select option{padding:9px 10px;border-radius:5px;cursor:pointer}
 .bulk-choice-list select option:checked{background:var(--mint);color:var(--green);font-weight:800}
+.bulk-popover{overflow-y:auto;font-size:12px}.bulk-popover label,.bulk-popover small{font-size:11px}.bulk-popover input,.bulk-popover select{padding:7px 9px;font-size:12px}.bulk-popover button:not(.bulk-close){padding:8px;font-size:12px}.bulk-popover.bulk-choice-list{width:270px;padding:25px 7px 7px}.bulk-choice-list select{padding:0;font-size:12px}.bulk-choice-list select option{padding:6px 8px}
 #parseWarnings.format-blocked{border:1px solid #d94a4a;background:#fff0f0;color:#8f1f1f}
 #parseWarnings.format-blocked b{font-size:16px}
 #parseWarnings.format-blocked p{margin:8px 0}

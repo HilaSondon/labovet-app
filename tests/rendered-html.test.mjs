@@ -116,6 +116,17 @@ test("el acta PDF se selecciona o arrastra en la zona vacía sin ejemplo de bruc
   assert.match(script, /loadActaFile\(files\[0\]\)/);
 });
 
+test("los menús de cambios masivos se ubican según el espacio disponible", async () => {
+  const [script, css] = await Promise.all([
+    readFile(new URL("public/laboratory/app.js", root), "utf8"),
+    readFile(new URL("public/laboratory/profile.css", root), "utf8"),
+  ]);
+  assert.match(script, /positionBulkPopover\(button,box\)/);
+  assert.match(script, /footerTop/);
+  assert.match(script, /placeAbove/);
+  assert.match(css, /\.bulk-popover\{overflow-y:auto;font-size:12px\}/);
+});
+
 test("tolera siglas parentéticas inconsistentes en submotivos de las actas", async () => {
   const script = await readFile(new URL("public/laboratory/app.js", root), "utf8");
   const source = script.match(/function codeTextWithoutParenthetical\(value\)\{[^}]+\}/)?.[0];
