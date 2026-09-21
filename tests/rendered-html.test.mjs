@@ -83,6 +83,8 @@ test("el administrador asigna logos separados para los informes de cada laborato
   assert.match(workspace, /labLogoData: account\.data\(\)\?\.laboratoryLogoData/);
   assert.match(laboratory, /logo:profile\.labLogoData\|\|null/);
   assert.match(report, /imageData\(data\.lab\.logo\)/);
+  assert.match(report, /imageData\('assets\/vetconver-logo\.png',\.32\)/);
+  assert.match(report, /logo\(logos\[0\],14\);logo\(logos\[1\],169,15,11\)/);
 });
 
 test("tolera siglas parentéticas inconsistentes en submotivos de las actas", async () => {

@@ -64,22 +64,22 @@ function reagentLines(data){
  }
  return lines;
 }
-async function imageData(url){
+async function imageData(url,opacity=1){
  if(!url)return null;
  const img=new Image();img.src=url;await img.decode();
- const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;canvas.getContext('2d').drawImage(img,0,0);
+ const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;const context=canvas.getContext('2d');context.globalAlpha=opacity;context.drawImage(img,0,0);
  return {base64:canvas.toDataURL('image/png'),width:img.naturalWidth,height:img.naturalHeight};
 }
 export async function buildPdf(data){
  const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
- const logos=await Promise.all([imageData(data.lab.logo),imageData('assets/vetconver-logo.png')]);
+ const logos=await Promise.all([imageData(data.lab.logo),imageData('assets/vetconver-logo.png',.32)]);
  const {cols,groups}=columns(data),rows=reportRows(data);const bands=[];
  const text=(s,x,y,size=9,bold=false,align='left')=>{doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.setTextColor(20);doc.text(Array.isArray(s)?s:clean(s),x,y,{align})};
  const wrap=(s,width,size=9,bold=false)=>{doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);return doc.splitTextToSize(clean(s),width)};
  const rule=y=>{doc.setDrawColor(35);doc.setLineWidth(.25);doc.line(14,y,196,y)};
- const logo=(image,x)=>{if(!image)return;const k=Math.min(27/image.width,22/image.height);doc.addImage(image.base64,'PNG',x+(27-image.width*k)/2,10+(22-image.height*k)/2,image.width*k,image.height*k)};
+ const logo=(image,x,maxWidth=27,maxHeight=22)=>{if(!image)return;const k=Math.min(maxWidth/image.width,maxHeight/image.height);doc.addImage(image.base64,'PNG',x+(27-image.width*k)/2,10+(22-image.height*k)/2,image.width*k,image.height*k)};
  function header(){
-  logo(logos[0],14);logo(logos[1],169);
+  logo(logos[0],14);logo(logos[1],169,15,11);
   let y=12;
   for(const [value,size,bold] of [[data.lab.code,10,true],[data.lab.name,11,true],[data.lab.director?`Director técnico: ${data.lab.director}`:'',9,false],[data.lab.contact,8,false]]){
    const lines=wrap(value,122,size,bold);text(lines,105,y,size,bold,'center');y+=lines.length*size*.39+1;
@@ -138,7 +138,7 @@ export async function buildPdf(data){
 export async function buildExcel(data){
  if(!window.ExcelJS)await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='vendor/exceljs.min.js';s.onload=resolve;s.onerror=()=>reject(Error('No se pudo cargar la exportación de Excel.'));document.head.append(s)});
  const wb=new window.ExcelJS.Workbook();wb.creator='VetConver';
- const {cols,groups}=columns(data),rows=reportRows(data),logos=await Promise.all([imageData(data.lab.logo),imageData('assets/vetconver-logo.png')]);
+ const {cols,groups}=columns(data),rows=reportRows(data),logos=await Promise.all([imageData(data.lab.logo),imageData('assets/vetconver-logo.png',.32)]);
  const logoIds=logos.map(im=>im?wb.addImage({base64:im.base64,extension:'png'}):null);
  const n=cols.length,split=Math.max(2,Math.floor(n/2));
  function merge(ws,row,start,end,value,options={}){
@@ -150,7 +150,7 @@ export async function buildExcel(data){
   cols.forEach((c,i)=>ws.getColumn(i+1).width=c.width*.54);
   [data.lab.code,data.lab.name,data.lab.director?`Director técnico: ${data.lab.director}`:'',data.lab.contact].forEach((v,i)=>{merge(ws,i+1,1,n,v,{font:{size:i===1?11:9,bold:i<2},alignment:{horizontal:'center'}});ws.getRow(i+1).height=20});
   // Logos occupy the whitespace beside the centered heading.
-  logoIds.forEach((id,i)=>{if(id!==null){const im=logos[i],k=Math.min(75/im.width,54/im.height);ws.addImage(id,{tl:{col:i?n-0.9:0,row:0.2},ext:{width:im.width*k,height:im.height*k}})}});
+  logoIds.forEach((id,i)=>{if(id!==null){const im=logos[i],k=Math.min((i?42:75)/im.width,(i?30:54)/im.height);ws.addImage(id,{tl:{col:i?n-0.7:0,row:i?0.6:0.2},ext:{width:im.width*k,height:im.height*k}})}});
   merge(ws,6,1,split,`PROTOCOLO Nº: ${data.number}`,{font:{bold:true}});merge(ws,6,split+1,n,`ACTA Nº: ${data.actNumber}`,{font:{bold:true}});ws.getRow(6).height=22;
   return ws;
  }
