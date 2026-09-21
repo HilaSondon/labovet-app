@@ -271,6 +271,21 @@ function LoadingScreen() {
   );
 }
 
+function LandingHeader({ page, onLogin }: { page: "general" | "veterinarians" | "laboratories" | "about"; onLogin: () => void }) {
+  return <header className="landing-nav">
+    <Link href="/" aria-label="VetConver, ir al inicio"><Brand /></Link>
+    <nav aria-label="Navegación principal">
+      <Link className={page === "general" ? "selected" : ""} href="/">Inicio</Link>
+      <Link className={page === "veterinarians" ? "selected" : ""} href="/veterinarios">Veterinarios</Link>
+      <Link className={page === "laboratories" ? "selected" : ""} href="/laboratorios">Laboratorios</Link>
+      <Link className={page === "about" ? "selected" : ""} href="/sobre-vetconver">Sobre mí</Link>
+      {(page === "veterinarians" || page === "laboratories") && <><a href="#como-funciona">Cómo funciona</a><a href="#rubros">Rubros</a></>}
+      {page === "veterinarians" && <a href="#servicio">Servicio administrativo</a>}
+    </nav>
+    <button className="landing-login" onClick={onLogin}>Ingresar</button>
+  </header>;
+}
+
 function MarketingHome({ page }: { page: "general" | "laboratories" | "about" }) {
   const [authMode, setAuthMode] = useState<AuthMode | null>(null);
   const initialAccountType = page === "laboratories" ? "laboratory" : "veterinarian";
@@ -295,17 +310,7 @@ function MarketingHome({ page }: { page: "general" | "laboratories" | "about" })
     },
   ] as const;
   return <main className="landing-site">
-    <header className="landing-nav">
-      <Link href="/" aria-label="VetConver, ir al inicio"><Brand /></Link>
-      <nav aria-label="Navegación principal">
-        <Link className={page === "general" ? "selected" : ""} href="/">Inicio</Link>
-        <Link href="/veterinarios">Veterinarios</Link>
-        <Link className={page === "laboratories" ? "selected" : ""} href="/laboratorios">Laboratorios</Link>
-        <Link className={page === "about" ? "selected" : ""} href="/sobre-vetconver">Sobre mí</Link>
-        {page === "laboratories" && <><a href="#como-funciona">Cómo funciona</a><a href="#rubros">Rubros</a></>}
-      </nav>
-      <button className="landing-login" onClick={() => setAuthMode("login")}>Ingresar</button>
-    </header>
+    <LandingHeader page={page} onLogin={() => setAuthMode("login")} />
 
     {page === "general" ? <>
       <div className="landing-intro"><span>UN MISMO OBJETIVO</span><h1>Más tiempo para <em>lo importante.</em></h1><p>Herramientas y servicios para veterinarios y laboratorios.</p></div>
@@ -332,30 +337,7 @@ function PublicHome() {
   const [authMode, setAuthMode] = useState<AuthMode | null>(null);
   return (
     <main className="public-site">
-      <header className="public-nav">
-        <Link href="/" className="public-logo">
-          <Brand />
-        </Link>
-        <nav>
-          <Link href="/">Inicio</Link>
-          <Link href="/laboratorios">Laboratorios</Link>
-          <Link href="/sobre-vetconver">Sobre mí</Link>
-          <a href="#como-funciona">Cómo funciona</a>
-          <a href="#rubros">Rubros</a>
-          <a href="#servicio">Servicio administrativo</a>
-        </nav>
-        <div>
-          <button className="nav-login" onClick={() => setAuthMode("login")}>
-            Ingresar
-          </button>
-          <button
-            className="nav-register"
-            onClick={() => setAuthMode("register")}
-          >
-            Registrarse
-          </button>
-        </div>
-      </header>
+      <LandingHeader page="veterinarians" onLogin={() => setAuthMode("login")} />
 
       <section className="hero" id="inicio">
         <div className="hero-copy">
