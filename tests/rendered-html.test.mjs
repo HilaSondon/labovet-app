@@ -25,7 +25,11 @@ test("la versión pública comunica el producto actual", async () => {
   assert.match(page, /más de diez laboratorios/);
   assert.match(page, /No soy veterinario ni represento a SENASA/);
   assert.match(page, /function MarketingHome/);
-  assert.match(page, /Del acta recibida a resultados listos en segundos/);
+  assert.match(page, /Del acta PDF a GRECERT en pocos pasos/);
+  assert.match(page, /Simplificamos tu/);
+  assert.match(page, /simplemente adjuntándolo/);
+  assert.match(page, /Marcá todas las muestras como negativas/);
+  assert.match(page, /Configurá los antígenos/);
   assert.match(page, /function LandingHeader/);
   assert.match(page, /<LandingHeader page="veterinarians"/);
   assert.match(page, /<LandingHeader page=\{page\}/);
