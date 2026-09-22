@@ -476,25 +476,40 @@ $('closeProtocolBottom').onclick=()=>{clearSampleSearch();closeProtocol()};
 $('diagnosesList').addEventListener('click',event=>{const remove=event.target.closest('[data-remove-technique]');if(remove&&!window.confirm('¿Eliminar esta técnica de Mis datos? Se perderán su código y datos habituales.'))event.stopImmediatePropagation()},true);
 
 // Merge only valid, unique laboratory reports and show why download is blocked.
+function mergeReportDetails(item){
+ const sample=item.muestra,date=String(sample.fechaDeToma||sample.fechaDeRecepcion||''),dateLabel=/^\d{4}-\d{2}-\d{2}/.test(date)?date.slice(0,10).split('-').reverse().join('/'):date||'sin fecha';
+ const analyses=sample.analisis.map(analysis=>{const code=String(analysis.codigoEnsayo||''),diagnosis=profile.diagnoses.find(d=>d.techniques.some(t=>String(t.code)===code)),technique=diagnosis?.techniques.find(t=>String(t.code)===code);return diagnosis?`${diagnosis.name} (${technique.technique})`:`Ensayo ${code||'sin código'}`}).join(', ');
+ const cuit=formatCuit(item.cuitDeFuncionario||''),vet=cuit?(profile.veterinarians[cuit]||registryVets[cuit])?.name||cuit:'no incluido en el JSON';
+ const quantity=Number(sample.cantidadDeLote)||sample.analisis[0]?.subMuestras?.length||0;
+ return `N° de protocolo: ${item.numeroInforme} · Fecha de toma: ${dateLabel} · Cantidad: ${quantity} · Análisis: ${analyses||'sin indicar'} · Veterinario: ${vet}`;
+}
 readJsonFiles=async function(files){
  merged=[];const reports=[],seen=new Map(),duplicates=new Set();
  for(const file of files){
   try{
+   if(!/\.json$/i.test(file.name)&&file.type!=='application/json')throw Error('el archivo debe ser JSON');
    const parsed=JSON.parse(await file.text()),items=Array.isArray(parsed)?parsed:[parsed];
    if(!items.length||!items.every(item=>item&&typeof item==='object'&&!Array.isArray(item)&&item.muestra&&Array.isArray(item.muestra.analisis)&&String(item.numeroInforme||'').trim()))throw Error('falta el número de informe o la estructura de análisis');
    for(const item of items){const number=String(item.numeroInforme).trim(),lab=String(item.codigoLaboratorio||'').trim(),key=`${lab}|${number}`;if(seen.has(key))duplicates.add(`${lab||'Laboratorio sin código'} · ${number}`);else seen.set(key,file.name);merged.push(item)}
-   reports.push({name:file.name,ok:true,count:items.length});
+   reports.push({name:file.name,ok:true,items});
   }catch(error){reports.push({name:file.name,ok:false,error:error.message})}
  }
- $('mergeEmpty').hidden=true;$('mergeSummary').hidden=false;
+ $('mergeEmpty').classList.add('merge-loaded');$('mergeSummary').hidden=false;
  $('mergeFiles').textContent=reports.filter(report=>report.ok).length;
  $('mergeReports').textContent=merged.length;
- $('mergeSamples').textContent=merged.reduce((total,report)=>total+(report.muestra.analisis.reduce((sum,analysis)=>sum+(analysis.subMuestras?.length||0),0)),0);
+ $('mergeSamples').textContent=merged.reduce((total,report)=>total+(Number(report.muestra.cantidadDeLote)||report.muestra.analisis[0]?.subMuestras?.length||0),0);
  $('mergeDuplicates').textContent=duplicates.size;
  const list=$('mergeList');list.replaceChildren();
- for(const report of reports){const item=document.createElement('li');item.textContent=`${report.ok?'✓':'⚠'} ${report.name}${report.ok?` · ${report.count} informe(s)`:` · ${report.error}`}`;list.append(item)}
+ for(const report of reports){const item=document.createElement('li'),name=document.createElement('strong');name.textContent=`${report.ok?'✓':'⚠'} ${report.name}`;item.append(name);if(report.ok){for(const protocol of report.items){const detail=document.createElement('div');detail.className='merge-report-detail';detail.textContent=mergeReportDetails(protocol);item.append(detail)}}else{const error=document.createElement('div');error.className='merge-report-detail merge-duplicate';error.textContent=report.error;item.append(error)}list.append(item)}
  for(const duplicate of duplicates){const item=document.createElement('li');item.className='merge-duplicate';item.textContent=`⚠ Protocolo repetido: ${duplicate}`;list.append(item)}
  $('mergeDownload').disabled=!merged.length||duplicates.size>0||reports.some(report=>!report.ok);
 };
-$('jsonFiles').onchange=async event=>{try{await readJsonFiles([...event.target.files]);if($('mergeDownload').disabled)toast(merged.length?'Hay protocolos repetidos o archivos inválidos. Revisá la lista.':'No se encontraron protocolos JSON válidos.')}catch(error){toast('No se pudieron leer los JSON: '+error.message)}};
+async function loadMergeFiles(files){if(!files.length)return;try{await readJsonFiles(files);if($('mergeDownload').disabled)toast(merged.length?'Hay protocolos repetidos o archivos inválidos. Revisá la lista.':'No se encontraron protocolos JSON válidos.')}catch(error){toast('No se pudieron leer los JSON: '+error.message)}}
+$('selectJsonButton').onclick=()=>$('jsonFiles').click();
+$('jsonFiles').onchange=event=>{const files=[...event.target.files];event.target.value='';loadMergeFiles(files)};
+const mergeDropZone=$('mergeEmpty');let mergeDragDepth=0;
+mergeDropZone.addEventListener('dragenter',event=>{if(![...event.dataTransfer.types].includes('Files'))return;event.preventDefault();mergeDragDepth++;mergeDropZone.classList.add('drag-over')});
+mergeDropZone.addEventListener('dragover',event=>{if(![...event.dataTransfer.types].includes('Files'))return;event.preventDefault();event.dataTransfer.dropEffect='copy'});
+mergeDropZone.addEventListener('dragleave',()=>{mergeDragDepth=Math.max(0,mergeDragDepth-1);if(!mergeDragDepth)mergeDropZone.classList.remove('drag-over')});
+mergeDropZone.addEventListener('drop',event=>{event.preventDefault();mergeDragDepth=0;mergeDropZone.classList.remove('drag-over');loadMergeFiles([...event.dataTransfer.files])});
 $('mergeDownload').onclick=()=>{if($('mergeDownload').disabled||!merged.length)return toast('Revisá los protocolos repetidos antes de descargar.');const url=URL.createObjectURL(new Blob([JSON.stringify(merged,null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download=`Protocolos unidos ${today()}.json`;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)};

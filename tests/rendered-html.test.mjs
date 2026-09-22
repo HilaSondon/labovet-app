@@ -127,6 +127,20 @@ test("los menús de cambios masivos se ubican según el espacio disponible", asy
   assert.match(css, /\.bulk-popover\{overflow-y:auto;font-size:12px\}/);
 });
 
+test("la unión de JSON permite selección y arrastre múltiple con detalle por protocolo", async () => {
+  const [html, script] = await Promise.all([
+    readFile(new URL("public/laboratory/index.html", root), "utf8"),
+    readFile(new URL("public/laboratory/app.js", root), "utf8"),
+  ]);
+  assert.match(html, /id="mergeEmpty"[^>]*>.*id="selectJsonButton".*id="jsonFiles"[^>]*multiple/s);
+  assert.match(script, /mergeDropZone\.addEventListener\('drop'/);
+  assert.match(script, /loadMergeFiles\(\[\.\.\.event\.dataTransfer\.files\]\)/);
+  for (const field of ["numeroInforme", "fechaDeToma", "cantidadDeLote", "codigoEnsayo", "cuitDeFuncionario"]) {
+    assert.match(script, new RegExp(field));
+  }
+  assert.match(script, /no incluido en el JSON/);
+});
+
 test("tolera siglas parentéticas inconsistentes en submotivos de las actas", async () => {
   const script = await readFile(new URL("public/laboratory/app.js", root), "utf8");
   const source = script.match(/function codeTextWithoutParenthetical\(value\)\{[^}]+\}/)?.[0];
