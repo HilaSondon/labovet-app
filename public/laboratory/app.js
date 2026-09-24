@@ -452,7 +452,7 @@ laboratoryParentMessage({type:'vetconver-laboratory-ready'});
 if(window.parent!==window&&laboratoryRole==='laboratory'){
  window.addEventListener('message',event=>{
   if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=='vetconver-laboratory-navigate')return;
-  if(['protocol','profile','vets','merge'].includes(event.data.section)){
+  if(['protocol','anemiaBatch','profile','vets','merge'].includes(event.data.section)){
    document.body.classList.add('embedded-laboratory');
    showView(event.data.section);
   }
