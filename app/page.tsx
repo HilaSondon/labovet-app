@@ -47,7 +47,7 @@ export default function Home({ publicPage = "general" }: { publicPage?: "general
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [view, setView] = useState<"sigatm" | "sigatm-guide" | "vetconver-guide" | "subscription" | "admin" | "analytics" | "laboratory">("sigatm");
-  const [laboratorySection, setLaboratorySection] = useState<"protocol" | "profile" | "vets" | "merge">("protocol");
+  const [laboratorySection, setLaboratorySection] = useState<"protocol" | "anemiaBatch" | "profile" | "vets" | "merge">("protocol");
 
   useEffect(
     () =>
@@ -207,6 +207,7 @@ export default function Home({ publicPage = "general" }: { publicPage?: "general
           {!isLaboratory && <button className={view === "vetconver-guide" ? "active" : ""} onClick={() => setView("vetconver-guide")}>Cómo usar VetConver</button>}
           {isLaboratory ? ([
             ["protocol", "Nuevo protocolo"],
+            ["anemiaBatch", "Anemias masivas"],
             ["profile", "Mis datos"],
             ["vets", "Veterinarios"],
             ["merge", "Unir JSON"],

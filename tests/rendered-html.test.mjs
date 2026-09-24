@@ -141,6 +141,29 @@ test("la unión de JSON permite selección y arrastre múltiple con detalle por 
   assert.match(script, /no incluido en el JSON/);
 });
 
+test("la carga masiva de anemias usa la plantilla oficial y valida antes de generar JSON", async () => {
+  const [page, workspace, html, script] = await Promise.all([
+    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("components/LaboratoryWorkspace.tsx", root), "utf8"),
+    readFile(new URL("public/laboratory/index.html", root), "utf8"),
+    readFile(new URL("public/laboratory/batch-anemia.js", root), "utf8"),
+  ]);
+  assert.match(page, /"anemiaBatch", "Anemias masivas"/);
+  assert.match(workspace, /"anemiaBatch"/);
+  assert.match(html, /id="anemiaBatch"/);
+  assert.match(html, /Plantilla%20carga%20masiva%20anemias\.xlsx/);
+  assert.match(html, /id="anemiaDropZone"[^>]*>.*id="selectAnemiaExcel".*id="anemiaExcel"/s);
+  assert.match(script, /"FECHA TOMA", "FECHA RECEPCION", "FECHA INICIO", "FECHA FIN"/);
+  assert.match(script, /fechaDeToma: jsonDate\(protocol\.takeDate\)/);
+  assert.match(script, /fechaDeRecepcion: jsonDate\(protocol\.receptionDate\)/);
+  assert.match(script, /protocol\.declared !== protocol\.samples\.length/);
+  assert.match(script, /canonicalDiagnosis\(row\.diagnosis\) === "ANEMIAS"/);
+  assert.match(script, /lookup\(idRows, sample\.idType\)/);
+  assert.match(script, /lookup\(categoryOptions, sample\.category\)/);
+  assert.match(script, /zone\.addEventListener\("drop"/);
+  await access(new URL("public/laboratory/Plantilla carga masiva anemias.xlsx", root));
+});
+
 test("tolera siglas parentéticas inconsistentes en submotivos de las actas", async () => {
   const script = await readFile(new URL("public/laboratory/app.js", root), "utf8");
   const source = script.match(/function codeTextWithoutParenthetical\(value\)\{[^}]+\}/)?.[0];

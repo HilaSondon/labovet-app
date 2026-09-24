@@ -13,7 +13,7 @@ type LaboratoryMessage = {
   accessToken?: string;
 };
 
-export default function LaboratoryWorkspace({ user, isAdmin, section }: { user: User; isAdmin: boolean; section: "protocol" | "profile" | "vets" | "merge" }) {
+export default function LaboratoryWorkspace({ user, isAdmin, section }: { user: User; isAdmin: boolean; section: "protocol" | "anemiaBatch" | "profile" | "vets" | "merge" }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [payload, setPayload] = useState<LaboratoryMessage | null>(null);
   const [error, setError] = useState("");
