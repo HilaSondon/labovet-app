@@ -148,9 +148,10 @@ test("la carga masiva de anemias usa la plantilla oficial y valida antes de gene
     readFile(new URL("public/laboratory/index.html", root), "utf8"),
     readFile(new URL("public/laboratory/batch-anemia.js", root), "utf8"),
   ]);
-  assert.match(page, /"anemiaBatch", "Anemias masivas"/);
+  assert.doesNotMatch(page, /"anemiaBatch", "Anemias masivas"/);
   assert.match(workspace, /"anemiaBatch"/);
   assert.match(html, /id="anemiaBatch"/);
+  assert.doesNotMatch(html, /data-view="anemiaBatch">Anemias masivas/);
   assert.match(html, /Plantilla%20carga%20masiva%20anemias\.xlsx/);
   assert.match(html, /id="anemiaDropZone"[^>]*>.*id="selectAnemiaExcel".*id="anemiaExcel"/s);
   assert.match(script, /"FECHA TOMA", "FECHA RECEPCION", "FECHA INICIO", "FECHA FIN"/);

@@ -207,7 +207,6 @@ export default function Home({ publicPage = "general" }: { publicPage?: "general
           {!isLaboratory && <button className={view === "vetconver-guide" ? "active" : ""} onClick={() => setView("vetconver-guide")}>Cómo usar VetConver</button>}
           {isLaboratory ? ([
             ["protocol", "Nuevo protocolo"],
-            ["anemiaBatch", "Anemias masivas"],
             ["profile", "Mis datos"],
             ["vets", "Veterinarios"],
             ["merge", "Unir JSON"],
