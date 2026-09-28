@@ -70,6 +70,20 @@ test("conserva veterinarios y agrega laboratorios con aprobación administrativa
   await access(new URL("public/laboratory/index.html", root));
 });
 
+test("el administrador crea accesos verificados con nombre de usuario", async () => {
+  const [page, panel, route] = await Promise.all([
+    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("components/AdminUsersPanel.tsx", root), "utf8"),
+    readFile(new URL("app/api/admin/create-user/route.ts", root), "utf8"),
+  ]);
+  assert.match(page, /`\$\{email\.toLowerCase\(\)\}@acceso\.vetconver\.com\.ar`/);
+  assert.match(panel, /\+ Crear usuario/);
+  assert.match(panel, /Correo de contacto opcional/);
+  assert.match(route, /admin\?\.role !== "admin"/);
+  assert.match(route, /emailVerified: true/);
+  assert.match(route, /subscriptionStatus: "active"/);
+});
+
 test("el administrador asigna logos separados para los informes de cada laboratorio", async () => {
   const [admin, workspace, laboratory, report] = await Promise.all([
     readFile(new URL("components/AdminUsersPanel.tsx", root), "utf8"),

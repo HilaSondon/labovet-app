@@ -20,3 +20,12 @@
 .admin-logo-upload, .admin-logo-actions button { padding: 4px 7px; border: 1px solid var(--line); border-radius: 6px; background: #f7fbf9; color: var(--green); font-size: 11px; font-weight: 800; cursor: pointer; }
 .admin-logo-upload input { display: none; }
 .admin-logo-actions button { color: var(--red); }
+.admin-create-user { margin: 18px 0; padding: 22px; }
+.admin-create-user h2 { margin: 6px 0; font: 700 24px Georgia, serif; }
+.admin-create-user p { margin: 0; color: var(--muted); font-size: 13px; }
+.admin-create-user form { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 10px; align-items: end; margin-top: 18px; }
+.admin-create-user label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 800; }
+.admin-create-user input, .admin-create-user select { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); }
+.admin-create-user button { min-height: 39px; }
+@media (max-width: 900px) { .admin-create-user form { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 620px) { .admin-create-user form { grid-template-columns: 1fr; } }

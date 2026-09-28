@@ -700,7 +700,8 @@ function AuthModal({
           `/registro-enviado?email=${encodeURIComponent(email)}`,
         );
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const loginEmail = email.includes("@") ? email : `${email.toLowerCase()}@acceso.vetconver.com.ar`;
+        await signInWithEmailAndPassword(auth, loginEmail, password);
       }
     } catch (caught) {
       const code = String((caught as { code?: string }).code || "");
@@ -776,8 +777,8 @@ function AuthModal({
             </>
           )}
           <label>
-            Correo electrónico
-            <input name="email" type="email" autoComplete="email" required />
+            {mode === "login" ? "Correo o nombre de usuario" : "Correo electrónico"}
+            <input name="email" type={mode === "login" ? "text" : "email"} autoComplete="email" required />
           </label>
           <label>
             Contraseña

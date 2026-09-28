@@ -22,6 +22,8 @@ type AdminUser = {
   uid: string;
   name: string;
   email: string;
+  username: string;
+  contactEmail: string;
   role: string;
   plan: PlanId;
   subscriptionStatus: SubscriptionStatus;
@@ -118,6 +120,8 @@ export default function AdminUsersPanel({
   const [saving, setSaving] = useState("");
   const [feedback, setFeedback] = useState("");
   const [cleaning, setCleaning] = useState(false);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
 
   const cleanupTestUsers = async () => {
     const confirmation = window.prompt(
@@ -170,6 +174,8 @@ export default function AdminUsersPanel({
               uid: item.id,
               name: String(data.name || "Usuario sin nombre"),
               email: String(data.email || "Sin correo"),
+              username: String(data.username || ""),
+              contactEmail: String(data.contactEmail || ""),
               role: String(data.role || "veterinarian"),
               plan: legacyAccount ? "large_animals" : normalizePlan(data.plan),
               subscriptionStatus: legacyAccount
@@ -218,7 +224,9 @@ export default function AdminUsersPanel({
       (user) =>
         (!query ||
           user.name.toLowerCase().includes(query) ||
-          user.email.toLowerCase().includes(query)) &&
+          user.email.toLowerCase().includes(query) ||
+          user.username.toLowerCase().includes(query) ||
+          user.contactEmail.toLowerCase().includes(query)) &&
         (!statusFilter ||
           user.subscriptionStatus === statusFilter ||
           (statusFilter === "mercadopago" && user.paymentMethod === "mercadopago") ||
@@ -379,6 +387,33 @@ export default function AdminUsersPanel({
     (user) => user.plan === "administrative_service",
   ).length;
 
+  const createManagedUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const current = auth.currentUser;
+    if (!current) return setFeedback("Tu sesión ya no está activa.");
+    setCreatingUser(true);
+    setFeedback("");
+    try {
+      const form = new FormData(formElement);
+      const response = await fetch("/api/admin/create-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await current.getIdToken(true)}` },
+        body: JSON.stringify(Object.fromEntries(form.entries())),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "No se pudo crear el usuario.");
+      formElement.reset();
+      setShowCreateUser(false);
+      await loadUsers();
+      setFeedback(`Cuenta creada. Usuario de acceso: ${result.username}.`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "No se pudo crear el usuario.");
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
   return (
     <>
       <header className="topbar module-topbar admin-header">
@@ -388,6 +423,9 @@ export default function AdminUsersPanel({
           <p>Asigná planes y controlá quién puede utilizar cada módulo.</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          <button className="outline-btn" type="button" onClick={() => setShowCreateUser((visible) => !visible)}>
+            {showCreateUser ? "Cancelar alta" : "+ Crear usuario"}
+          </button>
           <button className="outline-btn" style={{ color: "var(--red)", borderColor: "var(--red)" }} type="button" onClick={cleanupTestUsers} disabled={cleaning}>
             {cleaning ? "Eliminando…" : "Borrar usuarios de prueba"}
           </button>
@@ -396,6 +434,18 @@ export default function AdminUsersPanel({
           </button>
         </div>
       </header>
+
+      {showCreateUser && <section className="panel admin-create-user">
+        <div><span className="eyebrow">ALTA ADMINISTRATIVA</span><h2>Crear acceso listo para usar</h2><p>El correo de contacto es opcional y no se utiliza para iniciar sesión.</p></div>
+        <form onSubmit={createManagedUser}>
+          <label>Nombre o laboratorio<input name="name" required /></label>
+          <label>Nombre de usuario<input name="username" minLength={3} maxLength={40} pattern="[a-zA-Z0-9._-]+" autoCapitalize="none" required /></label>
+          <label>Contraseña provisoria<input name="password" type="text" minLength={8} required /></label>
+          <label>Correo de contacto opcional<input name="contactEmail" type="email" /></label>
+          <label>Tipo de cuenta<select name="role" defaultValue="laboratory"><option value="laboratory">Laboratorio</option><option value="veterinarian">Veterinario</option></select></label>
+          <button className="outline-btn" disabled={creatingUser}>{creatingUser ? "Creando…" : "Crear cuenta activa"}</button>
+        </form>
+      </section>}
 
       <section className="module-stats admin-user-stats">
         <article className="panel stat-card">
@@ -480,13 +530,14 @@ export default function AdminUsersPanel({
               <div>
                 <b>{user.name}</b>
                 <small>
-                  {user.email}
+                  {user.username ? `Usuario: ${user.username}` : user.email}
                   {user.role === "admin"
                     ? " · Administrador"
                     : user.role === "laboratory"
                       ? " · Laboratorio"
                       : " · Veterinario"}
                 </small>
+                {user.contactEmail && <small>Contacto: {user.contactEmail}</small>}
                 {user.request?.status === "pending" && (
                   <em>Solicitó: {PLAN_DEFINITIONS[user.request.plan].name}</em>
                 )}
