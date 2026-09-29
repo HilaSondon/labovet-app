@@ -479,9 +479,8 @@ $('diagnosesList').addEventListener('click',event=>{const remove=event.target.cl
 function mergeReportDetails(item){
  const sample=item.muestra,date=String(sample.fechaDeToma||sample.fechaDeRecepcion||''),dateLabel=/^\d{4}-\d{2}-\d{2}/.test(date)?date.slice(0,10).split('-').reverse().join('/'):date||'sin fecha';
  const analyses=sample.analisis.map(analysis=>{const code=String(analysis.codigoEnsayo||''),diagnosis=profile.diagnoses.find(d=>d.techniques.some(t=>String(t.code)===code)),technique=diagnosis?.techniques.find(t=>String(t.code)===code);return diagnosis?`${diagnosis.name} (${technique.technique})`:`Ensayo ${code||'sin código'}`}).join(', ');
- const cuit=formatCuit(item.cuitDeFuncionario||''),vet=cuit?(profile.veterinarians[cuit]||registryVets[cuit])?.name||cuit:'no incluido en el JSON';
  const quantity=Number(sample.cantidadDeLote)||sample.analisis[0]?.subMuestras?.length||0;
- return `N° de protocolo: ${item.numeroInforme} · Fecha de toma: ${dateLabel} · Cantidad: ${quantity} · Análisis: ${analyses||'sin indicar'} · Veterinario: ${vet}`;
+ return `N° de protocolo: ${item.numeroInforme} · Fecha de toma: ${dateLabel} · Cantidad: ${quantity} · Análisis: ${analyses||'sin indicar'}`;
 }
 readJsonFiles=async function(files){
  merged=[];const reports=[],seen=new Map(),duplicates=new Set();

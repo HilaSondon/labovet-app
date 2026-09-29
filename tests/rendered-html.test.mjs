@@ -151,10 +151,10 @@ test("la unión de JSON permite selección y arrastre múltiple con detalle por 
   assert.match(script, /\$\('mergeClose'\)\.onclick=.*merged=\[\]/);
   assert.match(script, /mergeDropZone\.addEventListener\('drop'/);
   assert.match(script, /loadMergeFiles\(\[\.\.\.event\.dataTransfer\.files\]\)/);
-  for (const field of ["numeroInforme", "fechaDeToma", "cantidadDeLote", "codigoEnsayo", "cuitDeFuncionario"]) {
+  for (const field of ["numeroInforme", "fechaDeToma", "cantidadDeLote", "codigoEnsayo"]) {
     assert.match(script, new RegExp(field));
   }
-  assert.match(script, /no incluido en el JSON/);
+  assert.doesNotMatch(script, /no incluido en el JSON/);
 });
 
 test("la carga masiva de anemias usa la plantilla oficial y valida antes de generar JSON", async () => {
