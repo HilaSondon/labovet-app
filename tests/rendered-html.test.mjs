@@ -147,6 +147,8 @@ test("la unión de JSON permite selección y arrastre múltiple con detalle por 
     readFile(new URL("public/laboratory/app.js", root), "utf8"),
   ]);
   assert.match(html, /id="mergeEmpty"[^>]*>.*id="selectJsonButton".*id="jsonFiles"[^>]*multiple/s);
+  assert.match(html, /id="mergeClose"[^>]*>Cerrar y volver a cargar/);
+  assert.match(script, /\$\('mergeClose'\)\.onclick=.*merged=\[\]/);
   assert.match(script, /mergeDropZone\.addEventListener\('drop'/);
   assert.match(script, /loadMergeFiles\(\[\.\.\.event\.dataTransfer\.files\]\)/);
   for (const field of ["numeroInforme", "fechaDeToma", "cantidadDeLote", "codigoEnsayo", "cuitDeFuncionario"]) {

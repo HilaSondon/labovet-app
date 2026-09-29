@@ -506,6 +506,7 @@ readJsonFiles=async function(files){
 };
 async function loadMergeFiles(files){if(!files.length)return;try{await readJsonFiles(files);if($('mergeDownload').disabled)toast(merged.length?'Hay protocolos repetidos o archivos inválidos. Revisá la lista.':'No se encontraron protocolos JSON válidos.')}catch(error){toast('No se pudieron leer los JSON: '+error.message)}}
 $('selectJsonButton').onclick=()=>$('jsonFiles').click();
+$('mergeClose').onclick=()=>{merged=[];$('jsonFiles').value='';$('mergeList').replaceChildren();$('mergeSummary').hidden=true;$('mergeEmpty').hidden=false;$('mergeEmpty').classList.remove('merge-loaded','drag-over');$('mergeDownload').disabled=true;for(const id of ['mergeFiles','mergeReports','mergeSamples','mergeDuplicates'])$(id).textContent='0'};
 $('jsonFiles').onchange=event=>{const files=[...event.target.files];event.target.value='';loadMergeFiles(files)};
 const mergeDropZone=$('mergeEmpty');let mergeDragDepth=0;
 mergeDropZone.addEventListener('dragenter',event=>{if(![...event.dataTransfer.types].includes('Files'))return;event.preventDefault();mergeDragDepth++;mergeDropZone.classList.add('drag-over')});
