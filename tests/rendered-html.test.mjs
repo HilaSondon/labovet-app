@@ -104,6 +104,19 @@ test("el administrador asigna logos separados para los informes de cada laborato
   assert.doesNotMatch(report, /El Plan Nacional de Control y Erradicación de Brucelosis Bovina/);
 });
 
+test("aísla la configuración local entre cuentas de laboratorio", async () => {
+  const [workspace, script] = await Promise.all([
+    readFile(new URL("components/LaboratoryWorkspace.tsx", root), "utf8"),
+    readFile(new URL("public/laboratory/app.js", root), "utf8"),
+  ]);
+  assert.match(workspace, /key=\{user\.uid\}/);
+  assert.match(workspace, /account=\$\{encodeURIComponent\(user\.uid\)\}/);
+  assert.match(script, /useLocalLaboratoryCache=.*embedded.*!=="1"/);
+  assert.match(script, /document\.body\.style\.visibility="hidden"/);
+  assert.match(script, /localStorage\.removeItem\("vetconverLabProfile"\)/);
+  assert.match(script, /document\.body\.style\.visibility=''/);
+});
+
 test("el protocolo busca tubos y caravanas por separado sin recortar el JSON", async () => {
   const [html, script] = await Promise.all([
     readFile(new URL("public/laboratory/index.html", root), "utf8"),

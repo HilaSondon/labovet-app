@@ -72,6 +72,6 @@ export default function LaboratoryWorkspace({ user, isAdmin, section }: { user: 
 
   return <section className="laboratory-workspace">
     {error && <div className="laboratory-load-error">{error}</div>}
-    <iframe ref={frame} className="sigatm-frame" src={`/laboratory/index.html?embedded=1&role=${isAdmin ? "admin" : "laboratory"}`} title="VetConver para laboratorios" onLoad={() => frame.current?.contentWindow?.postMessage({ type: "vetconver-laboratory-navigate", section }, window.location.origin)} />
+    <iframe key={user.uid} ref={frame} className="sigatm-frame" src={`/laboratory/index.html?embedded=1&role=${isAdmin ? "admin" : "laboratory"}&account=${encodeURIComponent(user.uid)}`} title="VetConver para laboratorios" onLoad={() => frame.current?.contentWindow?.postMessage({ type: "vetconver-laboratory-navigate", section }, window.location.origin)} />
   </section>;
 }
