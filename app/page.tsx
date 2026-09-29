@@ -328,7 +328,7 @@ function MarketingHome({ page }: { page: "general" | "laboratories" | "about" })
       <section className="landing-detail-hero about-detail"><div><span>QUIÉN ESTÁ DETRÁS DE VETCONVER</span><h1>Una herramienta creada desde la experiencia real.</h1><p>Soy Hilario Sondón. Desarrollé VetConver a partir de más de 4 años de experiencia trabajando en la administración de un laboratorio veterinario, buscando simplificar tareas que conozco de primera mano.</p><a className="landing-about-link" href="https://wa.me/5492244429316" target="_blank" rel="noreferrer">Hablemos por WhatsApp <span>→</span></a></div></section>
       <section className="landing-detail-body"><span>DE LA EXPERIENCIA AL PRODUCTO</span><h2>Conozco estas tareas porque trabajé con ellas.</h2><p>El trabajo con actas, planillas, códigos y resultados me mostró cuánto tiempo se pierde al volver a cargar los mismos datos. VetConver nació para simplificar ese recorrido y acompañar a quienes lo hacen todos los días.</p><div className="landing-feature-grid"><article><b>EXPERIENCIA</b><p>Más de 4 años en laboratorio veterinario.</p></article><article><b>CONOCIMIENTO</b><p>Trabajo práctico con SIGATM y GRECERT.</p></article><article><b>ACOMPAÑAMIENTO</b><p>Atención directa y mejoras continuas según las necesidades de veterinarios y laboratorios.</p></article></div><p className="landing-note">VetConver es una iniciativa independiente; no representa a SENASA, SIGATM ni GRECERT. La fotografía personal se incorporará más adelante.</p></section>
     </>}
-    <footer className="landing-footer"><span>© {new Date().getFullYear()} VetConver</span><span>Simplificamos tu trabajo diario.</span><a href="https://www.instagram.com/vetconver/" target="_blank" rel="noreferrer">Instagram · @vetconver</a></footer>
+    <footer className="landing-footer"><span>© {new Date().getFullYear()} VetConver</span><span className="legal-links"><Link href="/terminos">Términos y Condiciones</Link><Link href="/privacidad">Política de Privacidad</Link></span><a href="https://www.instagram.com/vetconver/" target="_blank" rel="noreferrer">Instagram · @vetconver</a></footer>
     {authMode && <AuthModal mode={authMode} onMode={setAuthMode} onClose={() => setAuthMode(null)} initialAccountType={initialAccountType} />}
   </main>;
 }
@@ -626,6 +626,7 @@ function PublicHome() {
       <footer className="public-footer">
         <span>© {new Date().getFullYear()} VetConver</span>
         <b>Planillas SIGATM para veterinarios</b>
+        <span className="legal-links"><Link href="/terminos">Términos y Condiciones</Link><Link href="/privacidad">Política de Privacidad</Link></span>
         <a href="tel:2244429316">2244-429316</a>
         <a
           href="https://www.instagram.com/vetconver/"
@@ -687,6 +688,9 @@ function AuthModal({
           role,
           plan: role === "laboratory" ? "laboratory" : "unassigned",
           subscriptionStatus: "pending",
+          termsVersion: "2026-09-29",
+          privacyVersion: "2026-09-29",
+          legalAcceptedAt: serverTimestamp(),
           createdAt: serverTimestamp(),
         });
         const verificationResponse = await fetch("/api/auth/send-verification", {
@@ -807,6 +811,7 @@ function AuthModal({
             <span>→</span>
           </button>
         </form>
+        <p className="auth-legal">Al registrarte o usar VetConver, aceptás nuestros <Link href="/terminos" target="_blank">Términos y Condiciones</Link> y la <Link href="/privacidad" target="_blank">Política de Privacidad</Link>.</p>
       </section>
     </div>
   );

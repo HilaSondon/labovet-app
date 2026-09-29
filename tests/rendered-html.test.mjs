@@ -44,6 +44,22 @@ test("la versión pública comunica el producto actual", async () => {
   }
 });
 
+test("publica términos y privacidad sin casilla obligatoria", async () => {
+  const [page, terms, privacy] = await Promise.all([
+    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("app/terminos/page.tsx", root), "utf8"),
+    readFile(new URL("app/privacidad/page.tsx", root), "utf8"),
+  ]);
+  assert.match(page, /Al registrarte o usar VetConver/);
+  assert.match(page, /termsVersion: "2026-09-29"/);
+  assert.match(page, /privacyVersion: "2026-09-29"/);
+  assert.doesNotMatch(page, /type="checkbox"[^>]*(terms|privacy|legal)/i);
+  assert.match(terms, /no pertenece, representa ni se encuentra afiliado a SENASA, SIGATM o GRECERT/);
+  assert.match(terms, /responsabilidades que no puedan ser válidamente limitadas/);
+  assert.match(privacy, /no lo guarda intencionalmente/);
+  assert.match(privacy, /separada por el identificador único de cada cuenta/);
+});
+
 test("conserva veterinarios y agrega laboratorios con aprobación administrativa", async () => {
   const [page, rules, laboratory, adminFirebase, accessRoute, laboratoryScript] = await Promise.all([
     readFile(new URL("app/page.tsx", root), "utf8"),
