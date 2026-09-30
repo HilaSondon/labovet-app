@@ -170,6 +170,12 @@ test("los menús de cambios masivos se ubican según el espacio disponible", asy
   assert.match(css, /\.bulk-popover\{overflow-y:auto;font-size:12px\}/);
 });
 
+test("el protocolo inicia en la fecha de recepción y finaliza hoy", async () => {
+  const script = await readFile(new URL("public/laboratory/app.js", root), "utf8");
+  assert.match(script, /const receptionDate=isoDate\(act\.receptionDate\|\|act\.sampleDate\)/);
+  assert.match(script, /\$\("receivedDate"\)\.value=receptionDate;\$\("startDate"\)\.value=receptionDate;\$\("endDate"\)\.value=today\(\)/);
+});
+
 test("la unión de JSON permite selección y arrastre múltiple con detalle por protocolo", async () => {
   const [html, script] = await Promise.all([
     readFile(new URL("public/laboratory/index.html", root), "utf8"),
