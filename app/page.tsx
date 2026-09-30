@@ -16,7 +16,7 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore/lite";
 import { auth, db } from "../lib/firebase";
 import AdminUsersPanel from "../components/AdminUsersPanel";
-import { AccountAccess, useSingleSession } from "../components/AccountAccess";
+import { AccountAccess } from "../components/AccountAccess";
 import SubscriptionPanel from "../components/SubscriptionPanel";
 import GuidePanel from "../components/GuidePanel";
 import VisitAnalyticsPanel from "../components/VisitAnalyticsPanel";
@@ -138,17 +138,6 @@ export default function Home({ publicPage = "general" }: { publicPage?: "general
       new Date(profile.paymentGraceEndsAtIso).getTime() <= currentTime,
   );
 
-  const sessionAllowed = useSingleSession(
-    user,
-    Boolean(
-      user &&
-      profile &&
-      profile.role !== "admin" &&
-      !accessExpired && !retryExpired &&
-      ["active", "trial", "payment_retry"].includes(profile.subscriptionStatus || "pending"),
-    ),
-  );
-
   if (loading) return <LoadingScreen />;
   if (!user) return publicPage === "veterinarians" ? <PublicHome /> : <MarketingHome page={publicPage} />;
   if (!profile) return <LoadingScreen />;
@@ -171,25 +160,6 @@ export default function Home({ publicPage = "general" }: { publicPage?: "general
       />
     );
   }
-  if (sessionAllowed === null) return <LoadingScreen />;
-  if (!sessionAllowed)
-    return (
-      <main className="access-status">
-        <Brand />
-        <span>SEGURIDAD DE LA CUENTA</span>
-        <h1>Esta sesión ya no está activa</h1>
-        <p>
-          VetConver permite hasta dos dispositivos registrados y un uso
-          simultáneo. Si ingresaste desde otro equipo, esta sesión se cerró
-          automáticamente.
-        </p>
-        <a href="https://wa.me/5492244429316" target="_blank" rel="noreferrer">
-          Administrar dispositivos
-        </a>
-        <button onClick={() => signOut(auth)}>Cerrar sesión</button>
-      </main>
-    );
-
   return (
     <main className="workspace">
       <header className="workspace-bar">
