@@ -130,41 +130,10 @@ export default function AdminUsersPanel({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState("");
   const [feedback, setFeedback] = useState("");
-  const [cleaning, setCleaning] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
   const [accountType, setAccountType] = useState<"veterinarian" | "laboratory" | "admin">("veterinarian");
   const [managedUser, setManagedUser] = useState<AdminUser | null>(null);
-
-  const cleanupTestUsers = async () => {
-    const confirmation = window.prompt(
-      "Esta acción elimina definitivamente todas las cuentas excepto tu administrador. Escribí BORRAR USUARIOS para continuar.",
-    );
-    if (confirmation !== "BORRAR USUARIOS") return;
-    const current = auth.currentUser;
-    if (!current) return setFeedback("Tu sesión ya no está activa.");
-    setCleaning(true);
-    setFeedback("");
-    try {
-      const response = await fetch("/api/admin/cleanup-users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${await current.getIdToken(true)}`,
-        },
-        body: JSON.stringify({ confirmation }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "No se pudo completar");
-      await loadUsers();
-      setFeedback(`Limpieza completa: ${result.deletedAuthenticationUsers} cuentas y ${result.deletedProfiles} perfiles eliminados. Tu administrador se conservó.`);
-    } catch (error) {
-      console.error("No pudimos limpiar los usuarios", error);
-      setFeedback("No pudimos borrar las cuentas. No se modificó tu administrador.");
-    } finally {
-      setCleaning(false);
-    }
-  };
 
   const loadUsers = async () => {
     setLoading(true);
@@ -505,9 +474,6 @@ export default function AdminUsersPanel({
         <div style={{ display: "flex", gap: 8 }}>
           <button className="outline-btn" type="button" onClick={() => setShowCreateUser((visible) => !visible)}>
             {showCreateUser ? "Cancelar alta" : "+ Crear usuario"}
-          </button>
-          <button className="outline-btn" style={{ color: "var(--red)", borderColor: "var(--red)" }} type="button" onClick={cleanupTestUsers} disabled={cleaning}>
-            {cleaning ? "Eliminando…" : "Borrar usuarios de prueba"}
           </button>
           <button className="outline-btn" type="button" onClick={loadUsers}>
             Actualizar lista

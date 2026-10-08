@@ -114,6 +114,8 @@ test("el panel administrativo separa cuentas y gestiona cobros sin tocar datos o
   assert.match(page, /!isLaboratory && !isAdmin.*Cómo cargar en SIGATM/);
   assert.match(panel, /Veterinarios <span>/);
   assert.match(panel, /Laboratorios <span>/);
+  assert.doesNotMatch(panel, /Borrar usuarios de prueba/);
+  assert.doesNotMatch(panel, /\/api\/admin\/cleanup-users/);
   assert.match(panel, /adminBilling/);
   assert.doesNotMatch(panel, /Historial de pagos/);
   assert.doesNotMatch(panel, /Importe acordado/);
