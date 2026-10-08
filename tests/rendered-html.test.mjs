@@ -100,6 +100,32 @@ test("el administrador crea accesos verificados con nombre de usuario", async ()
   assert.match(route, /subscriptionStatus: "active"/);
 });
 
+test("el panel administrativo separa cuentas y gestiona cobros sin tocar datos operativos", async () => {
+  const [panel, route, rules] = await Promise.all([
+    readFile(new URL("components/AdminUsersPanel.tsx", root), "utf8"),
+    readFile(new URL("app/api/admin/delete-user/route.ts", root), "utf8"),
+    readFile(new URL("firestore.rules", root), "utf8"),
+  ]);
+  assert.match(panel, /Veterinarios <span>/);
+  assert.match(panel, /Laboratorios <span>/);
+  assert.match(panel, /adminBilling/);
+  assert.match(panel, /adminUserRecords/);
+  assert.match(panel, /"adminUserRecords", managedUser\.uid, "payments"/);
+  assert.match(panel, /Historial de pagos/);
+  assert.match(panel, /Importe acordado/);
+  assert.match(panel, /Servicios o diagnósticos incluidos/);
+  assert.match(panel, /\/api\/admin\/delete-user/);
+  assert.match(route, /adminProfile\?\.role !== "admin"/);
+  assert.match(route, /userId === adminUid/);
+  assert.match(route, /target\.role === "admin"/);
+  assert.match(route, /confirmation !== expected/);
+  assert.match(route, /auth\.deleteUser\(userId\)/);
+  assert.match(route, /db\.recursiveDelete\(targetRef\)/);
+  assert.match(route, /adminUserRecords/);
+  assert.match(rules, /match \/adminUserRecords\/\{userId\}/);
+  assert.match(rules, /allow read, create, update, delete: if isAdmin\(\)/);
+});
+
 test("el administrador asigna logos separados para los informes de cada laboratorio", async () => {
   const [admin, workspace, laboratory, report] = await Promise.all([
     readFile(new URL("components/AdminUsersPanel.tsx", root), "utf8"),

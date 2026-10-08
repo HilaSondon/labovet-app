@@ -53,5 +53,13 @@ service cloud.firestore {
           ]));
       allow delete: if isAdmin();
     }
+
+    match /adminUserRecords/{userId} {
+      allow read, create, update, delete: if isAdmin();
+
+      match /{document=**} {
+        allow read, write: if isAdmin();
+      }
+    }
   }
 }

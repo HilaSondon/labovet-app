@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  addDoc,
   collection,
   deleteField,
   doc,
@@ -40,6 +41,33 @@ type AdminUser = {
   request?: { plan: PlanId; status: string };
   createdAt?: { toDate?: () => Date };
   hasLabLogo?: boolean;
+  adminBilling: {
+    contactName: string;
+    phone: string;
+    taxId: string;
+    location: string;
+    agreedAmount: string;
+    billingFrequency: "monthly" | "quarterly" | "annual" | "custom";
+    nextDueDate: string;
+    lastPaymentDate: string;
+    serviceDetails: string;
+    notes: string;
+  };
+};
+
+type AdminPayment = {
+  id: string;
+  date: string;
+  amount: number;
+  period: string;
+  method: string;
+  note: string;
+};
+
+const emptyBilling: AdminUser["adminBilling"] = {
+  contactName: "", phone: "", taxId: "", location: "", agreedAmount: "",
+  billingFrequency: "monthly", nextDueDate: "", lastPaymentDate: "",
+  serviceDetails: "", notes: "",
 };
 
 async function prepareLaboratoryLogo(file: File): Promise<string> {
@@ -104,6 +132,7 @@ const isoDate = (value: unknown) => {
 const shortDate = (value: string) => {
   if (!value) return "—";
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.split("-").reverse().join("/");
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "—" : new Intl.DateTimeFormat("es-AR").format(date);
 };
@@ -122,6 +151,10 @@ export default function AdminUsersPanel({
   const [cleaning, setCleaning] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
+  const [accountType, setAccountType] = useState<"veterinarian" | "laboratory" | "admin">("veterinarian");
+  const [managedUser, setManagedUser] = useState<AdminUser | null>(null);
+  const [payments, setPayments] = useState<AdminPayment[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
 
   const cleanupTestUsers = async () => {
     const confirmation = window.prompt(
@@ -157,12 +190,16 @@ export default function AdminUsersPanel({
     setLoading(true);
     setFeedback("");
     try {
-      const [snapshot, requestSnapshot] = await Promise.all([
+      const [snapshot, requestSnapshot, adminSnapshot] = await Promise.all([
         getDocs(collection(db, "users")),
         getDocs(collection(db, "subscriptionRequests")),
+        getDocs(collection(db, "adminUserRecords")),
       ]);
       const requests = new Map(
         requestSnapshot.docs.map((item) => [item.id, item.data()]),
+      );
+      const adminRecords = new Map(
+        adminSnapshot.docs.map((item) => [item.id, item.data()]),
       );
       setUsers(
         snapshot.docs
@@ -199,6 +236,11 @@ export default function AdminUsersPanel({
                 : undefined,
               createdAt: data.createdAt,
               hasLabLogo: Boolean(data.laboratoryLogoData),
+              adminBilling: {
+                ...emptyBilling,
+                ...(adminRecords.get(item.id)?.billing && typeof adminRecords.get(item.id)?.billing === "object" ? adminRecords.get(item.id)?.billing : {}),
+                agreedAmount: String(adminRecords.get(item.id)?.billing?.agreedAmount || ""),
+              },
             };
           })
           .sort((a, b) => a.name.localeCompare(b.name)),
@@ -231,9 +273,10 @@ export default function AdminUsersPanel({
           user.subscriptionStatus === statusFilter ||
           (statusFilter === "mercadopago" && user.paymentMethod === "mercadopago") ||
           (statusFilter === "transfer" && user.paymentMethod === "transfer") ||
-          (statusFilter === "problems" && ["payment_retry", "suspended", "expired"].includes(user.subscriptionStatus))),
+          (statusFilter === "problems" && ["payment_retry", "suspended", "expired"].includes(user.subscriptionStatus))) &&
+        user.role === accountType,
     );
-  }, [search, statusFilter, users]);
+  }, [accountType, search, statusFilter, users]);
 
   const updateLocal = (
     uid: string,
@@ -265,6 +308,120 @@ export default function AdminUsersPanel({
       setFeedback(
         "No pudimos guardar el cambio. Revisá los permisos de administrador.",
       );
+    } finally {
+      setSaving("");
+    }
+  };
+
+  const openManagement = async (user: AdminUser) => {
+    setManagedUser({ ...user, adminBilling: { ...user.adminBilling } });
+    setPayments([]);
+    setLoadingPayments(true);
+    try {
+      const snapshot = await getDocs(collection(db, "adminUserRecords", user.uid, "payments"));
+      setPayments(snapshot.docs.map((item) => ({
+        id: item.id,
+        date: String(item.data().date || ""),
+        amount: Number(item.data().amount || 0),
+        period: String(item.data().period || ""),
+        method: String(item.data().method || ""),
+        note: String(item.data().note || ""),
+      })).sort((a, b) => b.date.localeCompare(a.date)));
+    } catch (error) {
+      console.error("No pudimos cargar el historial de pagos", error);
+      setFeedback("No pudimos cargar el historial de pagos.");
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  const changeBilling = (field: keyof AdminUser["adminBilling"], value: string) => {
+    setManagedUser((current) => current ? {
+      ...current,
+      adminBilling: { ...current.adminBilling, [field]: value },
+    } : current);
+  };
+
+  const saveAdministrativeDetails = async () => {
+    if (!managedUser) return;
+    setSaving(managedUser.uid);
+    setFeedback("");
+    try {
+      await setDoc(doc(db, "adminUserRecords", managedUser.uid), {
+        userId: managedUser.uid,
+        billing: managedUser.adminBilling,
+        updatedAt: serverTimestamp(),
+        updatedBy: currentUid,
+      }, { merge: true });
+      setUsers((current) => current.map((item) => item.uid === managedUser.uid ? managedUser : item));
+      setFeedback(`Ficha administrativa actualizada para ${managedUser.name}.`);
+    } catch (error) {
+      console.error("No pudimos guardar la ficha administrativa", error);
+      setFeedback("No pudimos guardar la ficha administrativa.");
+    } finally {
+      setSaving("");
+    }
+  };
+
+  const registerPayment = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!managedUser) return;
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    const date = String(values.get("date") || "");
+    const amount = Number(values.get("amount") || 0);
+    const period = String(values.get("period") || "").trim();
+    const method = String(values.get("method") || "").trim();
+    const note = String(values.get("note") || "").trim();
+    if (!date || !Number.isFinite(amount) || amount <= 0) return setFeedback("Ingresá una fecha y un importe válido.");
+    setSaving(managedUser.uid);
+    try {
+      const payment = await addDoc(collection(db, "adminUserRecords", managedUser.uid, "payments"), {
+        date, amount, period, method, note, createdAt: serverTimestamp(), createdBy: currentUid,
+      });
+      const nextBilling = { ...managedUser.adminBilling, lastPaymentDate: date };
+      await setDoc(doc(db, "adminUserRecords", managedUser.uid), {
+        userId: managedUser.uid,
+        billing: nextBilling,
+        updatedAt: serverTimestamp(),
+        updatedBy: currentUid,
+      }, { merge: true });
+      const updated = { ...managedUser, adminBilling: nextBilling };
+      setManagedUser(updated);
+      setUsers((current) => current.map((item) => item.uid === updated.uid ? updated : item));
+      setPayments((current) => [{ id: payment.id, date, amount, period, method, note }, ...current]);
+      form.reset();
+      setFeedback(`Pago registrado para ${managedUser.name}.`);
+    } catch (error) {
+      console.error("No pudimos registrar el pago", error);
+      setFeedback("No pudimos registrar el pago.");
+    } finally {
+      setSaving("");
+    }
+  };
+
+  const deleteUser = async (user: AdminUser) => {
+    if (user.uid === currentUid || user.role === "admin") return setFeedback("Las cuentas administradoras no pueden eliminarse desde este panel.");
+    const identifier = user.username || user.email;
+    const confirmation = window.prompt(`Esta acción elimina definitivamente a ${user.name}. Para confirmar, escribí exactamente: ${identifier}`);
+    if (confirmation !== identifier) return;
+    const current = auth.currentUser;
+    if (!current) return setFeedback("Tu sesión ya no está activa.");
+    setSaving(user.uid);
+    try {
+      const response = await fetch("/api/admin/delete-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await current.getIdToken(true)}` },
+        body: JSON.stringify({ userId: user.uid, confirmation }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "No se pudo eliminar el usuario.");
+      setManagedUser(null);
+      setUsers((currentUsers) => currentUsers.filter((item) => item.uid !== user.uid));
+      setFeedback(`Se eliminó definitivamente la cuenta de ${user.name}.`);
+    } catch (error) {
+      console.error("No pudimos eliminar el usuario", error);
+      setFeedback(error instanceof Error ? error.message : "No se pudo eliminar el usuario.");
     } finally {
       setSaving("");
     }
@@ -383,9 +540,14 @@ export default function AdminUsersPanel({
   const pendingUsers = users.filter(
     (user) => user.subscriptionStatus === "pending",
   ).length;
-  const managedUsers = users.filter(
-    (user) => user.plan === "administrative_service",
-  ).length;
+  const estimatedMonthlyRevenue = users.reduce((total, user) => {
+    if (user.subscriptionStatus !== "active") return total;
+    const amount = Number(user.adminBilling.agreedAmount || 0);
+    if (!Number.isFinite(amount)) return total;
+    if (user.adminBilling.billingFrequency === "quarterly") return total + amount / 3;
+    if (user.adminBilling.billingFrequency === "annual") return total + amount / 12;
+    return user.adminBilling.billingFrequency === "monthly" ? total + amount : total;
+  }, 0);
 
   const createManagedUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -419,8 +581,8 @@ export default function AdminUsersPanel({
       <header className="topbar module-topbar admin-header">
         <div>
           <span className="eyebrow">ADMINISTRACIÓN</span>
-          <h1>Usuarios y accesos</h1>
-          <p>Asigná planes y controlá quién puede utilizar cada módulo.</p>
+          <h1>Usuarios, suscripciones y pagos</h1>
+          <p>Administrá accesos y llevá el seguimiento comercial sin alterar los datos operativos.</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="outline-btn" type="button" onClick={() => setShowCreateUser((visible) => !visible)}>
@@ -466,9 +628,9 @@ export default function AdminUsersPanel({
           <small>requieren asignación</small>
         </article>
         <article className="panel stat-card">
-          <span>Servicio administrativo</span>
-          <strong>{managedUsers}</strong>
-          <small>gestionados por VetConver</small>
+          <span>Ingreso mensual estimado</span>
+          <strong>$ {Math.round(estimatedMonthlyRevenue).toLocaleString("es-AR")}</strong>
+          <small>según importes cargados</small>
         </article>
       </section>
 
@@ -481,10 +643,16 @@ export default function AdminUsersPanel({
         </div>
       )}
 
+      <nav className="admin-account-tabs" aria-label="Tipos de cuenta">
+        <button className={accountType === "veterinarian" ? "active" : ""} onClick={() => setAccountType("veterinarian")}>Veterinarios <span>{users.filter((user) => user.role === "veterinarian").length}</span></button>
+        <button className={accountType === "laboratory" ? "active" : ""} onClick={() => setAccountType("laboratory")}>Laboratorios <span>{users.filter((user) => user.role === "laboratory").length}</span></button>
+        <button className={accountType === "admin" ? "active" : ""} onClick={() => setAccountType("admin")}>Administradores <span>{users.filter((user) => user.role === "admin").length}</span></button>
+      </nav>
+
       <section className="panel admin-users-panel">
         <div className="admin-users-toolbar">
           <div>
-            <h2>Listado de usuarios</h2>
+            <h2>{accountType === "laboratory" ? "Laboratorios" : accountType === "admin" ? "Administradores" : "Veterinarios"}</h2>
             <p>
               Los cambios se aplican en el próximo inicio de sesión o
               actualización del usuario.
@@ -515,12 +683,12 @@ export default function AdminUsersPanel({
 
         <div className="admin-users-head subscription-admin-grid">
           <span>Usuario</span>
-          <span>Tipo</span>
-          <span>Plan</span>
-          <span>Método</span>
+          <span>Contacto</span>
           <span>Estado</span>
-          <span>Fechas y pagos</span>
-          <span>Acción</span>
+          <span>Plan / servicio</span>
+          <span>Importe</span>
+          <span>Pago y vencimiento</span>
+          <span>Acciones</span>
         </div>
         {loading ? (
           <div className="admin-users-empty">Cargando usuarios…</div>
@@ -553,37 +721,15 @@ export default function AdminUsersPanel({
                   {user.hasLabLogo && <button type="button" disabled={saving === user.uid} onClick={() => removeLaboratoryLogo(user)}>Quitar</button>}
                 </div>}
               </div>
-              <select
-                value={user.role}
-                disabled={user.uid === currentUid}
-                onChange={(event) => {
-                  const role = event.target.value;
-                  updateLocal(user.uid, { role, ...(role === "laboratory" ? { plan: "laboratory", subscriptionStatus: "pending" } : {}) });
-                }}
-              >
-                <option value="veterinarian">Veterinario</option>
-                <option value="laboratory">Laboratorio</option>
-                {user.role === "admin" && <option value="admin">Administrador</option>}
-              </select>
-              <select
-                value={plans.includes(user.plan) ? user.plan : "unassigned"}
-                onChange={(event) =>
-                  updateLocal(user.uid, { plan: event.target.value as PlanId })
-                }
-              >
-                {plans.map((plan) => (
-                  <option key={plan} value={plan}>
-                    {PLAN_DEFINITIONS[plan].name}
-                  </option>
-                ))}
-              </select>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <b>{user.paymentMethod === "mercadopago" ? "Mercado Pago" : user.paymentMethod === "transfer" ? "Transferencia" : user.subscriptionStatus === "trial" ? "Sin elegir" : "—"}</b>
-                {user.subscriptionCancelAtPeriodEnd && <small>Cancelación programada</small>}
+              <div className="admin-contact-cell">
+                <b>{user.adminBilling.contactName || "Sin responsable"}</b>
+                <small>{user.contactEmail || "Sin correo de contacto"}</small>
+                <small>{user.adminBilling.phone || "Sin teléfono"}</small>
               </div>
               <select
                 className={`subscription-${user.subscriptionStatus}`}
                 value={user.subscriptionStatus}
+                disabled={user.role === "admin"}
                 onChange={(event) =>
                   updateLocal(user.uid, {
                     subscriptionStatus: event.target
@@ -597,12 +743,17 @@ export default function AdminUsersPanel({
                   </option>
                 ))}
               </select>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {user.subscriptionStatus === "trial" && <small>Prueba: {shortDate(user.trialStartedAtIso)} → {shortDate(user.subscriptionEndsAtIso)}</small>}
-                {user.paymentMethod === "mercadopago" && <small>Último pago: {shortDate(user.lastPaymentApprovedAt || user.lastPaymentAttemptAt)}{user.lastPaymentStatus ? ` · ${user.lastPaymentStatus}` : ""}</small>}
-                {user.paymentMethod === "mercadopago" && <small>{user.subscriptionCancelAtPeriodEnd ? "Acceso hasta" : "Próximo cobro"}: {shortDate(user.subscriptionEndsAtIso)}</small>}
-                {user.subscriptionStatus === "payment_retry" && <small style={{ color: "var(--red)" }}>Gracia hasta: {shortDate(user.paymentGraceEndsAtIso)}</small>}
-                {user.paymentMethod !== "mercadopago" && <input className="admin-expiration-input" value={user.subscriptionEndsAt} onChange={(event) => updateLocal(user.uid, { subscriptionEndsAt: event.target.value })} placeholder="DD/MM/AAAA" />}
+              <select disabled={user.role === "admin"} value={plans.includes(user.plan) ? user.plan : "unassigned"} onChange={(event) => updateLocal(user.uid, { plan: event.target.value as PlanId })}>
+                {plans.map((plan) => <option key={plan} value={plan}>{PLAN_DEFINITIONS[plan].name}</option>)}
+              </select>
+              <div className="admin-money-cell">
+                <b>{user.adminBilling.agreedAmount ? `$ ${Number(user.adminBilling.agreedAmount).toLocaleString("es-AR")}` : "Sin definir"}</b>
+                <small>{user.adminBilling.billingFrequency === "monthly" ? "Mensual" : user.adminBilling.billingFrequency === "quarterly" ? "Trimestral" : user.adminBilling.billingFrequency === "annual" ? "Anual" : "Personalizada"}</small>
+              </div>
+              <div className="admin-due-cell">
+                <small>Último pago: {shortDate(user.adminBilling.lastPaymentDate || user.lastPaymentApprovedAt)}</small>
+                <b>Próximo: {shortDate(user.adminBilling.nextDueDate || user.subscriptionEndsAtIso || user.subscriptionEndsAt)}</b>
+                <small>{user.paymentMethod === "mercadopago" ? "Mercado Pago" : user.paymentMethod === "transfer" ? "Transferencia" : "Sin método"}</small>
               </div>
               {user.request?.status === "pending" ? (
                 <div className="request-actions">
@@ -621,19 +772,12 @@ export default function AdminUsersPanel({
                     Rechazar
                   </button>
                 </div>
-              ) : user.paymentMethod === "mercadopago" && user.mercadoPagoPreapprovalId && !user.subscriptionCancelAtPeriodEnd && ["active", "payment_retry"].includes(user.subscriptionStatus) ? (
-                <div className="request-actions" style={{ flexDirection: "column" }}>
-                  <button type="button" onClick={() => saveAccess(user)} disabled={saving === user.uid}>Guardar</button>
-                  <button type="button" style={{ background: "var(--red)" }} onClick={() => cancelMercadoPago(user)} disabled={saving === user.uid}>Cancelar MP</button>
-                </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => saveAccess(user)}
-                  disabled={saving === user.uid}
-                >
-                  {saving === user.uid ? "Guardando…" : "Guardar"}
-                </button>
+                <div className="admin-row-actions">
+                  {user.role !== "admin" && <button type="button" onClick={() => saveAccess(user)} disabled={saving === user.uid}>{saving === user.uid ? "Guardando…" : "Guardar acceso"}</button>}
+                  <button className="secondary" type="button" onClick={() => openManagement(user)}>Gestionar</button>
+                  {user.paymentMethod === "mercadopago" && user.mercadoPagoPreapprovalId && !user.subscriptionCancelAtPeriodEnd && ["active", "payment_retry"].includes(user.subscriptionStatus) && <button className="danger-link" type="button" onClick={() => cancelMercadoPago(user)} disabled={saving === user.uid}>Cancelar MP</button>}
+                </div>
               )}
             </article>
           ))
@@ -643,6 +787,49 @@ export default function AdminUsersPanel({
           </div>
         )}
       </section>
+
+      {managedUser && <div className="admin-detail-backdrop" role="presentation" onMouseDown={(event) => {
+        if (event.target === event.currentTarget) setManagedUser(null);
+      }}>
+        <section className="admin-detail-panel" role="dialog" aria-modal="true" aria-label={`Gestionar ${managedUser.name}`}>
+          <header>
+            <div><span className="eyebrow">FICHA ADMINISTRATIVA</span><h2>{managedUser.name}</h2><p>{managedUser.username ? `Usuario: ${managedUser.username}` : managedUser.email}</p></div>
+            <button className="admin-detail-close" type="button" onClick={() => setManagedUser(null)} aria-label="Cerrar">×</button>
+          </header>
+
+          <div className="admin-detail-grid">
+            <label>Responsable<input value={managedUser.adminBilling.contactName} onChange={(event) => changeBilling("contactName", event.target.value)} /></label>
+            <label>Teléfono / WhatsApp<input value={managedUser.adminBilling.phone} onChange={(event) => changeBilling("phone", event.target.value)} /></label>
+            <label>CUIT<input value={managedUser.adminBilling.taxId} onChange={(event) => changeBilling("taxId", event.target.value)} placeholder="00-00000000-0" /></label>
+            <label>Localidad / provincia<input value={managedUser.adminBilling.location} onChange={(event) => changeBilling("location", event.target.value)} /></label>
+            <label>Importe acordado<input type="number" min="0" step="0.01" value={managedUser.adminBilling.agreedAmount} onChange={(event) => changeBilling("agreedAmount", event.target.value)} /></label>
+            <label>Frecuencia<select value={managedUser.adminBilling.billingFrequency} onChange={(event) => changeBilling("billingFrequency", event.target.value)}><option value="monthly">Mensual</option><option value="quarterly">Trimestral</option><option value="annual">Anual</option><option value="custom">Personalizada</option></select></label>
+            <label>Próximo vencimiento<input type="date" value={managedUser.adminBilling.nextDueDate} onChange={(event) => changeBilling("nextDueDate", event.target.value)} /></label>
+            <label>Último pago<input type="date" value={managedUser.adminBilling.lastPaymentDate} onChange={(event) => changeBilling("lastPaymentDate", event.target.value)} /></label>
+            <label className="wide">Servicios o diagnósticos incluidos<textarea rows={2} value={managedUser.adminBilling.serviceDetails} onChange={(event) => changeBilling("serviceDetails", event.target.value)} placeholder="Ej.: Brucelosis, AIE y aves" /></label>
+            <label className="wide">Notas privadas<textarea rows={3} value={managedUser.adminBilling.notes} onChange={(event) => changeBilling("notes", event.target.value)} placeholder="Acuerdos, condiciones o recordatorios internos" /></label>
+          </div>
+          <button className="admin-primary-action" type="button" disabled={saving === managedUser.uid} onClick={saveAdministrativeDetails}>{saving === managedUser.uid ? "Guardando…" : "Guardar ficha"}</button>
+
+          <section className="admin-payment-section">
+            <div><span className="eyebrow">SEGUIMIENTO</span><h3>Registrar pago</h3></div>
+            <form onSubmit={registerPayment}>
+              <label>Fecha<input name="date" type="date" required /></label>
+              <label>Importe<input name="amount" type="number" min="0.01" step="0.01" required /></label>
+              <label>Período<input name="period" placeholder="Ej.: octubre 2026" /></label>
+              <label>Medio<select name="method"><option value="Transferencia">Transferencia</option><option value="Mercado Pago">Mercado Pago</option><option value="Efectivo">Efectivo</option><option value="Otro">Otro</option></select></label>
+              <label className="wide">Observación<input name="note" /></label>
+              <button disabled={saving === managedUser.uid}>Registrar pago</button>
+            </form>
+            <div className="admin-payment-history">
+              <h3>Historial de pagos</h3>
+              {loadingPayments ? <p>Cargando…</p> : payments.length ? payments.map((payment) => <article key={payment.id}><b>{shortDate(payment.date)}</b><strong>$ {payment.amount.toLocaleString("es-AR")}</strong><span>{payment.period || "Sin período"}</span><small>{payment.method}{payment.note ? ` · ${payment.note}` : ""}</small></article>) : <p>Todavía no hay pagos registrados.</p>}
+            </div>
+          </section>
+
+          {managedUser.uid !== currentUid && managedUser.role !== "admin" && <footer className="admin-danger-zone"><div><b>Eliminar usuario</b><small>Elimina la cuenta, su perfil y sus datos asociados. Esta acción no se puede deshacer.</small></div><button type="button" disabled={saving === managedUser.uid} onClick={() => deleteUser(managedUser)}>Eliminar definitivamente</button></footer>}
+        </section>
+      </div>}
     </>
   );
 }
