@@ -120,6 +120,13 @@ test("el panel administrativo separa cuentas y gestiona cobros sin tocar datos o
   assert.match(subscriptions, /adminUserRecords/);
   assert.match(subscriptions, /"adminUserRecords", uid, "payments"/);
   assert.match(subscriptions, /Historial/);
+  assert.match(subscriptions, /Ingresar pago/);
+  assert.match(subscriptions, /payment-modal/);
+  assert.match(subscriptions, /row\.role === accountType/);
+  assert.match(subscriptions, /automaticNextDueDate\(payment\.date, row\.billing\.billingFrequency\)/);
+  assert.match(subscriptions, /frequency === "monthly" \? 1 : frequency === "quarterly" \? 3 : frequency === "annual" \? 12/);
+  assert.match(subscriptions, /onClick=\{\(event\) => \{ if \(!\(event\.target as HTMLElement\)\.closest\("input,select,button"\)\) void loadPayments\(row\.uid\)/);
+  assert.doesNotMatch(subscriptions, />Guardar<\/button>/);
   assert.match(subscriptions, /Servicio \/ diagnósticos/);
   assert.match(subscriptions, /Próximo vencimiento/);
   assert.match(panel, /\/api\/admin\/delete-user/);
