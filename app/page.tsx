@@ -16,6 +16,7 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore/lite";
 import { auth, db } from "../lib/firebase";
 import AdminUsersPanel from "../components/AdminUsersPanel";
+import AdminSubscriptionsPanel from "../components/AdminSubscriptionsPanel";
 import { AccountAccess } from "../components/AccountAccess";
 import SubscriptionPanel from "../components/SubscriptionPanel";
 import GuidePanel from "../components/GuidePanel";
@@ -46,7 +47,7 @@ export default function Home({ publicPage = "general" }: { publicPage?: "general
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
-  const [view, setView] = useState<"sigatm" | "sigatm-guide" | "vetconver-guide" | "subscription" | "admin" | "analytics" | "laboratory">("sigatm");
+  const [view, setView] = useState<"sigatm" | "sigatm-guide" | "vetconver-guide" | "subscription" | "admin" | "admin-subscriptions" | "analytics" | "laboratory">("sigatm");
   const [laboratorySection, setLaboratorySection] = useState<"protocol" | "anemiaBatch" | "profile" | "vets" | "merge">("protocol");
 
   useEffect(
@@ -173,14 +174,14 @@ export default function Home({ publicPage = "general" }: { publicPage?: "general
           >
             Planillas SIGATM
           </button>}
-          {!isLaboratory && <button className={view === "sigatm-guide" ? "active" : ""} onClick={() => setView("sigatm-guide")}>Cómo cargar en SIGATM</button>}
-          {!isLaboratory && <button className={view === "vetconver-guide" ? "active" : ""} onClick={() => setView("vetconver-guide")}>Cómo usar VetConver</button>}
+          {!isLaboratory && !isAdmin && <button className={view === "sigatm-guide" ? "active" : ""} onClick={() => setView("sigatm-guide")}>Cómo cargar en SIGATM</button>}
+          {!isLaboratory && !isAdmin && <button className={view === "vetconver-guide" ? "active" : ""} onClick={() => setView("vetconver-guide")}>Cómo usar VetConver</button>}
           {isLaboratory ? ([
             ["protocol", "Nuevo protocolo"],
             ["profile", "Mis datos"],
             ["vets", "Veterinarios"],
             ["merge", "Unir JSON"],
-          ] as const).map(([section, label]) => <button key={section} className={laboratorySection === section ? "active" : ""} onClick={() => setLaboratorySection(section)}>{label}</button>) : isAdmin && <button className={view === "laboratory" ? "active" : ""} onClick={() => setView("laboratory")}>Laboratorios</button>}
+          ] as const).map(([section, label]) => <button key={section} className={laboratorySection === section ? "active" : ""} onClick={() => setLaboratorySection(section)}>{label}</button>) : null}
           {!isAdmin && !isLaboratory && (
             <>
               <button className={view === "subscription" ? "active" : ""} onClick={() => setView("subscription")}>Mi suscripción</button>
@@ -189,7 +190,8 @@ export default function Home({ publicPage = "general" }: { publicPage?: "general
           {isAdmin && (
             <>
               <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>Usuarios</button>
-              <button className={view === "analytics" ? "active" : ""} onClick={() => setView("analytics")}>Visitas</button>
+              <button className={view === "admin-subscriptions" ? "active" : ""} onClick={() => setView("admin-subscriptions")}>Suscripciones</button>
+              <button className={view === "analytics" ? "active" : ""} onClick={() => setView("analytics")}>Vistas</button>
             </>
           )}
         </nav>
@@ -214,6 +216,10 @@ export default function Home({ publicPage = "general" }: { publicPage?: "general
       ) : view === "admin" && isAdmin ? (
         <section className="admin-page">
           <AdminUsersPanel currentUid={user.uid} />
+        </section>
+      ) : view === "admin-subscriptions" && isAdmin ? (
+        <section className="admin-page admin-subscriptions-page">
+          <AdminSubscriptionsPanel currentUid={user.uid} />
         </section>
       ) : view === "analytics" && isAdmin ? (
         <VisitAnalyticsPanel user={user} />

@@ -1,6 +1,6 @@
 .admin-users-head.subscription-admin-grid,
 .admin-user-row.subscription-admin-grid {
-  grid-template-columns: 1.35fr 1.1fr .9fr 1fr .8fr 1.15fr 1fr;
+  grid-template-columns: 1.35fr 1.15fr .8fr 1fr .9fr 1fr;
 }
 
 @media (max-width: 900px) {
@@ -34,8 +34,8 @@
 .admin-account-tabs button { border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); padding: 12px 16px; font-weight: 800; cursor: pointer; }
 .admin-account-tabs button.active { color: var(--green); border-bottom-color: var(--green); }
 .admin-account-tabs span { display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-left: 5px; border-radius: 999px; background: #e8f4ef; font-size: 11px; }
-.admin-contact-cell, .admin-money-cell, .admin-due-cell, .admin-row-actions { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.admin-contact-cell small, .admin-money-cell small, .admin-due-cell small { overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.admin-contact-cell, .admin-row-actions { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.admin-contact-cell small { overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
 .admin-row-actions button { width: 100%; }
 .admin-row-actions .secondary { background: white; color: var(--green); border: 1px solid var(--green); }
 .admin-row-actions .danger-link { background: transparent; color: var(--red); border: 0; font-size: 11px; }
@@ -47,17 +47,9 @@
 .admin-detail-panel header p { margin: 0; color: var(--muted); }
 .admin-detail-close { align-self: flex-start; width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 50%; background: white; color: var(--ink); font-size: 24px; cursor: pointer; }
 .admin-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 22px 0 14px; }
-.admin-detail-grid label, .admin-payment-section form label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 800; }
-.admin-detail-grid .wide, .admin-payment-section form .wide { grid-column: 1 / -1; }
-.admin-detail-grid input, .admin-detail-grid select, .admin-detail-grid textarea, .admin-payment-section input, .admin-payment-section select { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); font: inherit; }
+.admin-detail-grid label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 800; }
+.admin-detail-grid input { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); font: inherit; }
 .admin-primary-action { padding: 11px 18px; border: 0; border-radius: 8px; background: var(--green); color: white; font-weight: 800; }
-.admin-payment-section { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--line); }
-.admin-payment-section h3 { margin: 5px 0 14px; }
-.admin-payment-section form { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: white; }
-.admin-payment-section form button { align-self: end; min-height: 40px; border: 0; border-radius: 8px; background: var(--green); color: white; font-weight: 800; }
-.admin-payment-history { margin-top: 20px; }
-.admin-payment-history article { display: grid; grid-template-columns: 90px 120px 1fr 1.5fr; gap: 10px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line); }
-.admin-payment-history small { color: var(--muted); }
 .admin-danger-zone { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-top: 30px; padding: 16px; border: 1px solid #efc2c2; border-radius: 12px; background: #fff7f7; }
 .admin-danger-zone div { display: flex; flex-direction: column; gap: 4px; }
 .admin-danger-zone small { color: var(--muted); }
@@ -67,8 +59,6 @@
   .admin-account-tabs { overflow-x: auto; }
   .admin-account-tabs button { white-space: nowrap; }
   .admin-detail-panel { padding: 18px; }
-  .admin-detail-grid, .admin-payment-section form { grid-template-columns: 1fr; }
-  .admin-detail-grid .wide, .admin-payment-section form .wide { grid-column: auto; }
-  .admin-payment-history article { grid-template-columns: 1fr 1fr; }
+  .admin-detail-grid { grid-template-columns: 1fr; }
   .admin-danger-zone { align-items: stretch; flex-direction: column; }
 }

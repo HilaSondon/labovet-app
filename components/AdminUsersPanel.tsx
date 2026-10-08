@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  addDoc,
   collection,
   deleteField,
   doc,
@@ -53,15 +52,6 @@ type AdminUser = {
     serviceDetails: string;
     notes: string;
   };
-};
-
-type AdminPayment = {
-  id: string;
-  date: string;
-  amount: number;
-  period: string;
-  method: string;
-  note: string;
 };
 
 const emptyBilling: AdminUser["adminBilling"] = {
@@ -129,14 +119,6 @@ const isoDate = (value: unknown) => {
   return "";
 };
 
-const shortDate = (value: string) => {
-  if (!value) return "—";
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.split("-").reverse().join("/");
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : new Intl.DateTimeFormat("es-AR").format(date);
-};
-
 export default function AdminUsersPanel({
   currentUid,
 }: {
@@ -153,8 +135,6 @@ export default function AdminUsersPanel({
   const [creatingUser, setCreatingUser] = useState(false);
   const [accountType, setAccountType] = useState<"veterinarian" | "laboratory" | "admin">("veterinarian");
   const [managedUser, setManagedUser] = useState<AdminUser | null>(null);
-  const [payments, setPayments] = useState<AdminPayment[]>([]);
-  const [loadingPayments, setLoadingPayments] = useState(false);
 
   const cleanupTestUsers = async () => {
     const confirmation = window.prompt(
@@ -313,26 +293,8 @@ export default function AdminUsersPanel({
     }
   };
 
-  const openManagement = async (user: AdminUser) => {
+  const openManagement = (user: AdminUser) => {
     setManagedUser({ ...user, adminBilling: { ...user.adminBilling } });
-    setPayments([]);
-    setLoadingPayments(true);
-    try {
-      const snapshot = await getDocs(collection(db, "adminUserRecords", user.uid, "payments"));
-      setPayments(snapshot.docs.map((item) => ({
-        id: item.id,
-        date: String(item.data().date || ""),
-        amount: Number(item.data().amount || 0),
-        period: String(item.data().period || ""),
-        method: String(item.data().method || ""),
-        note: String(item.data().note || ""),
-      })).sort((a, b) => b.date.localeCompare(a.date)));
-    } catch (error) {
-      console.error("No pudimos cargar el historial de pagos", error);
-      setFeedback("No pudimos cargar el historial de pagos.");
-    } finally {
-      setLoadingPayments(false);
-    }
   };
 
   const changeBilling = (field: keyof AdminUser["adminBilling"], value: string) => {
@@ -358,43 +320,6 @@ export default function AdminUsersPanel({
     } catch (error) {
       console.error("No pudimos guardar la ficha administrativa", error);
       setFeedback("No pudimos guardar la ficha administrativa.");
-    } finally {
-      setSaving("");
-    }
-  };
-
-  const registerPayment = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!managedUser) return;
-    const form = event.currentTarget;
-    const values = new FormData(form);
-    const date = String(values.get("date") || "");
-    const amount = Number(values.get("amount") || 0);
-    const period = String(values.get("period") || "").trim();
-    const method = String(values.get("method") || "").trim();
-    const note = String(values.get("note") || "").trim();
-    if (!date || !Number.isFinite(amount) || amount <= 0) return setFeedback("Ingresá una fecha y un importe válido.");
-    setSaving(managedUser.uid);
-    try {
-      const payment = await addDoc(collection(db, "adminUserRecords", managedUser.uid, "payments"), {
-        date, amount, period, method, note, createdAt: serverTimestamp(), createdBy: currentUid,
-      });
-      const nextBilling = { ...managedUser.adminBilling, lastPaymentDate: date };
-      await setDoc(doc(db, "adminUserRecords", managedUser.uid), {
-        userId: managedUser.uid,
-        billing: nextBilling,
-        updatedAt: serverTimestamp(),
-        updatedBy: currentUid,
-      }, { merge: true });
-      const updated = { ...managedUser, adminBilling: nextBilling };
-      setManagedUser(updated);
-      setUsers((current) => current.map((item) => item.uid === updated.uid ? updated : item));
-      setPayments((current) => [{ id: payment.id, date, amount, period, method, note }, ...current]);
-      form.reset();
-      setFeedback(`Pago registrado para ${managedUser.name}.`);
-    } catch (error) {
-      console.error("No pudimos registrar el pago", error);
-      setFeedback("No pudimos registrar el pago.");
     } finally {
       setSaving("");
     }
@@ -540,14 +465,7 @@ export default function AdminUsersPanel({
   const pendingUsers = users.filter(
     (user) => user.subscriptionStatus === "pending",
   ).length;
-  const estimatedMonthlyRevenue = users.reduce((total, user) => {
-    if (user.subscriptionStatus !== "active") return total;
-    const amount = Number(user.adminBilling.agreedAmount || 0);
-    if (!Number.isFinite(amount)) return total;
-    if (user.adminBilling.billingFrequency === "quarterly") return total + amount / 3;
-    if (user.adminBilling.billingFrequency === "annual") return total + amount / 12;
-    return user.adminBilling.billingFrequency === "monthly" ? total + amount : total;
-  }, 0);
+  const laboratoryUsers = users.filter((user) => user.role === "laboratory").length;
 
   const createManagedUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -628,9 +546,9 @@ export default function AdminUsersPanel({
           <small>requieren asignación</small>
         </article>
         <article className="panel stat-card">
-          <span>Ingreso mensual estimado</span>
-          <strong>$ {Math.round(estimatedMonthlyRevenue).toLocaleString("es-AR")}</strong>
-          <small>según importes cargados</small>
+          <span>Laboratorios</span>
+          <strong>{laboratoryUsers}</strong>
+          <small>cuentas de laboratorio</small>
         </article>
       </section>
 
@@ -684,10 +602,9 @@ export default function AdminUsersPanel({
         <div className="admin-users-head subscription-admin-grid">
           <span>Usuario</span>
           <span>Contacto</span>
-          <span>Estado</span>
+          <span>Tipo</span>
           <span>Plan / servicio</span>
-          <span>Importe</span>
-          <span>Pago y vencimiento</span>
+          <span>Estado</span>
           <span>Acciones</span>
         </div>
         {loading ? (
@@ -727,6 +644,21 @@ export default function AdminUsersPanel({
                 <small>{user.adminBilling.phone || "Sin teléfono"}</small>
               </div>
               <select
+                value={user.role}
+                disabled={user.uid === currentUid}
+                onChange={(event) => {
+                  const role = event.target.value;
+                  updateLocal(user.uid, { role, ...(role === "laboratory" ? { plan: "laboratory", subscriptionStatus: "pending" } : {}) });
+                }}
+              >
+                <option value="veterinarian">Veterinario</option>
+                <option value="laboratory">Laboratorio</option>
+                {user.role === "admin" && <option value="admin">Administrador</option>}
+              </select>
+              <select disabled={user.role === "admin"} value={plans.includes(user.plan) ? user.plan : "unassigned"} onChange={(event) => updateLocal(user.uid, { plan: event.target.value as PlanId })}>
+                {plans.map((plan) => <option key={plan} value={plan}>{PLAN_DEFINITIONS[plan].name}</option>)}
+              </select>
+              <select
                 className={`subscription-${user.subscriptionStatus}`}
                 value={user.subscriptionStatus}
                 disabled={user.role === "admin"}
@@ -743,18 +675,6 @@ export default function AdminUsersPanel({
                   </option>
                 ))}
               </select>
-              <select disabled={user.role === "admin"} value={plans.includes(user.plan) ? user.plan : "unassigned"} onChange={(event) => updateLocal(user.uid, { plan: event.target.value as PlanId })}>
-                {plans.map((plan) => <option key={plan} value={plan}>{PLAN_DEFINITIONS[plan].name}</option>)}
-              </select>
-              <div className="admin-money-cell">
-                <b>{user.adminBilling.agreedAmount ? `$ ${Number(user.adminBilling.agreedAmount).toLocaleString("es-AR")}` : "Sin definir"}</b>
-                <small>{user.adminBilling.billingFrequency === "monthly" ? "Mensual" : user.adminBilling.billingFrequency === "quarterly" ? "Trimestral" : user.adminBilling.billingFrequency === "annual" ? "Anual" : "Personalizada"}</small>
-              </div>
-              <div className="admin-due-cell">
-                <small>Último pago: {shortDate(user.adminBilling.lastPaymentDate || user.lastPaymentApprovedAt)}</small>
-                <b>Próximo: {shortDate(user.adminBilling.nextDueDate || user.subscriptionEndsAtIso || user.subscriptionEndsAt)}</b>
-                <small>{user.paymentMethod === "mercadopago" ? "Mercado Pago" : user.paymentMethod === "transfer" ? "Transferencia" : "Sin método"}</small>
-              </div>
               {user.request?.status === "pending" ? (
                 <div className="request-actions">
                   <button
@@ -802,30 +722,8 @@ export default function AdminUsersPanel({
             <label>Teléfono / WhatsApp<input value={managedUser.adminBilling.phone} onChange={(event) => changeBilling("phone", event.target.value)} /></label>
             <label>CUIT<input value={managedUser.adminBilling.taxId} onChange={(event) => changeBilling("taxId", event.target.value)} placeholder="00-00000000-0" /></label>
             <label>Localidad / provincia<input value={managedUser.adminBilling.location} onChange={(event) => changeBilling("location", event.target.value)} /></label>
-            <label>Importe acordado<input type="number" min="0" step="0.01" value={managedUser.adminBilling.agreedAmount} onChange={(event) => changeBilling("agreedAmount", event.target.value)} /></label>
-            <label>Frecuencia<select value={managedUser.adminBilling.billingFrequency} onChange={(event) => changeBilling("billingFrequency", event.target.value)}><option value="monthly">Mensual</option><option value="quarterly">Trimestral</option><option value="annual">Anual</option><option value="custom">Personalizada</option></select></label>
-            <label>Próximo vencimiento<input type="date" value={managedUser.adminBilling.nextDueDate} onChange={(event) => changeBilling("nextDueDate", event.target.value)} /></label>
-            <label>Último pago<input type="date" value={managedUser.adminBilling.lastPaymentDate} onChange={(event) => changeBilling("lastPaymentDate", event.target.value)} /></label>
-            <label className="wide">Servicios o diagnósticos incluidos<textarea rows={2} value={managedUser.adminBilling.serviceDetails} onChange={(event) => changeBilling("serviceDetails", event.target.value)} placeholder="Ej.: Brucelosis, AIE y aves" /></label>
-            <label className="wide">Notas privadas<textarea rows={3} value={managedUser.adminBilling.notes} onChange={(event) => changeBilling("notes", event.target.value)} placeholder="Acuerdos, condiciones o recordatorios internos" /></label>
           </div>
-          <button className="admin-primary-action" type="button" disabled={saving === managedUser.uid} onClick={saveAdministrativeDetails}>{saving === managedUser.uid ? "Guardando…" : "Guardar ficha"}</button>
-
-          <section className="admin-payment-section">
-            <div><span className="eyebrow">SEGUIMIENTO</span><h3>Registrar pago</h3></div>
-            <form onSubmit={registerPayment}>
-              <label>Fecha<input name="date" type="date" required /></label>
-              <label>Importe<input name="amount" type="number" min="0.01" step="0.01" required /></label>
-              <label>Período<input name="period" placeholder="Ej.: octubre 2026" /></label>
-              <label>Medio<select name="method"><option value="Transferencia">Transferencia</option><option value="Mercado Pago">Mercado Pago</option><option value="Efectivo">Efectivo</option><option value="Otro">Otro</option></select></label>
-              <label className="wide">Observación<input name="note" /></label>
-              <button disabled={saving === managedUser.uid}>Registrar pago</button>
-            </form>
-            <div className="admin-payment-history">
-              <h3>Historial de pagos</h3>
-              {loadingPayments ? <p>Cargando…</p> : payments.length ? payments.map((payment) => <article key={payment.id}><b>{shortDate(payment.date)}</b><strong>$ {payment.amount.toLocaleString("es-AR")}</strong><span>{payment.period || "Sin período"}</span><small>{payment.method}{payment.note ? ` · ${payment.note}` : ""}</small></article>) : <p>Todavía no hay pagos registrados.</p>}
-            </div>
-          </section>
+          <button className="admin-primary-action" type="button" disabled={saving === managedUser.uid} onClick={saveAdministrativeDetails}>{saving === managedUser.uid ? "Guardando…" : "Guardar datos"}</button>
 
           {managedUser.uid !== currentUid && managedUser.role !== "admin" && <footer className="admin-danger-zone"><div><b>Eliminar usuario</b><small>Elimina la cuenta, su perfil y sus datos asociados. Esta acción no se puede deshacer.</small></div><button type="button" disabled={saving === managedUser.uid} onClick={() => deleteUser(managedUser)}>Eliminar definitivamente</button></footer>}
         </section>

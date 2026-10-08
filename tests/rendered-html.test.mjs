@@ -101,19 +101,27 @@ test("el administrador crea accesos verificados con nombre de usuario", async ()
 });
 
 test("el panel administrativo separa cuentas y gestiona cobros sin tocar datos operativos", async () => {
-  const [panel, route, rules] = await Promise.all([
+  const [page, panel, subscriptions, route, rules] = await Promise.all([
+    readFile(new URL("app/page.tsx", root), "utf8"),
     readFile(new URL("components/AdminUsersPanel.tsx", root), "utf8"),
+    readFile(new URL("components/AdminSubscriptionsPanel.tsx", root), "utf8"),
     readFile(new URL("app/api/admin/delete-user/route.ts", root), "utf8"),
     readFile(new URL("firestore.rules", root), "utf8"),
   ]);
+  assert.match(page, /<AdminSubscriptionsPanel currentUid=\{user\.uid\}/);
+  assert.match(page, />Suscripciones<\/button>/);
+  assert.match(page, />Vistas<\/button>/);
+  assert.match(page, /!isLaboratory && !isAdmin.*Cómo cargar en SIGATM/);
   assert.match(panel, /Veterinarios <span>/);
   assert.match(panel, /Laboratorios <span>/);
   assert.match(panel, /adminBilling/);
-  assert.match(panel, /adminUserRecords/);
-  assert.match(panel, /"adminUserRecords", managedUser\.uid, "payments"/);
-  assert.match(panel, /Historial de pagos/);
-  assert.match(panel, /Importe acordado/);
-  assert.match(panel, /Servicios o diagnósticos incluidos/);
+  assert.doesNotMatch(panel, /Historial de pagos/);
+  assert.doesNotMatch(panel, /Importe acordado/);
+  assert.match(subscriptions, /adminUserRecords/);
+  assert.match(subscriptions, /"adminUserRecords", uid, "payments"/);
+  assert.match(subscriptions, /Historial/);
+  assert.match(subscriptions, /Servicio \/ diagnósticos/);
+  assert.match(subscriptions, /Próximo vencimiento/);
   assert.match(panel, /\/api\/admin\/delete-user/);
   assert.match(route, /adminProfile\?\.role !== "admin"/);
   assert.match(route, /userId === adminUid/);
@@ -532,7 +540,7 @@ test("registra visitas propias y las muestra solo al administrador", async () =>
     readFile(new URL("app/api/analytics/visit/route.ts", root), "utf8"),
     readFile(new URL("app/api/analytics/summary/route.ts", root), "utf8"),
   ]);
-  assert.match(page, />Visitas</);
+  assert.match(page, />Vistas</);
   assert.match(tracker, /analyticsVisitorId/);
   assert.match(tracker, /headers\.Authorization/);
   assert.match(visitRoute, /uniqueVisitors/);
