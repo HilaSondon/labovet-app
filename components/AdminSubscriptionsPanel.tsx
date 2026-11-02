@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { addDoc, collection, doc, getDocs, serverTimestamp, setDoc } from "firebase/firestore/lite";
+import { addDoc, collection, doc, getDocs, serverTimestamp, setDoc, updateDoc } from "firebase/firestore/lite";
 import { db } from "../lib/firebase";
 import "./AdminSubscriptionsPanel.css";
 
@@ -132,12 +132,27 @@ export default function AdminSubscriptionsPanel({ currentUid }: { currentUid: st
         ...payment, createdAt: serverTimestamp(), createdBy: currentUid,
       });
       const billing = { ...row.billing, lastPaymentDate: payment.date, nextDueDate: automaticNextDueDate(payment.date, row.billing.billingFrequency) || row.billing.nextDueDate };
-      await setDoc(doc(db, "adminUserRecords", row.uid), { userId: row.uid, billing, updatedAt: serverTimestamp(), updatedBy: currentUid }, { merge: true });
-      setRows((current) => current.map((item) => item.uid === row.uid ? { ...item, billing } : item));
+      const accessUntil = billing.nextDueDate && /^\d{4}-\d{2}-\d{2}$/.test(billing.nextDueDate)
+        ? billing.nextDueDate.split("-").reverse().join("/")
+        : "";
+      await Promise.all([
+        setDoc(doc(db, "adminUserRecords", row.uid), { userId: row.uid, billing, updatedAt: serverTimestamp(), updatedBy: currentUid }, { merge: true }),
+        updateDoc(doc(db, "users", row.uid), {
+          subscriptionStatus: "active",
+          paymentMethod: "transfer",
+          subscriptionEndsAt: accessUntil,
+          subscriptionEndsAtIso: null,
+          subscriptionCancelAtPeriodEnd: false,
+          paymentGraceEndsAtIso: null,
+          subscriptionUpdatedAt: serverTimestamp(),
+          subscriptionUpdatedBy: currentUid,
+        }),
+      ]);
+      setRows((current) => current.map((item) => item.uid === row.uid ? { ...item, billing, accessStatus: "active" } : item));
       setPayments((current) => ({ ...current, [row.uid]: [{ id: reference.id, ...payment }, ...(current[row.uid] || [])] }));
       form.reset();
       setPaymentRow(null);
-      setFeedback(`Pago registrado para ${row.name}.`);
+      setFeedback(`Pago registrado y acceso activado para ${row.name}.`);
     } catch (error) {
       console.error("No pudimos registrar el pago", error);
       setFeedback("No pudimos registrar el pago.");
