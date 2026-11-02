@@ -130,7 +130,7 @@ export function resolveUserAccess(data?: Record<string, unknown>): UserAccess {
   if (
     !legacyAccess &&
     endsAt &&
-    (status === "active" || status === "trial") &&
+    status === "trial" &&
     /^\d{2}\/\d{2}\/\d{4}$/.test(endsAt)
   ) {
     const [day, month, year] = endsAt.split("/").map(Number);

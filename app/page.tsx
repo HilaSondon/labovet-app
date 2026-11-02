@@ -121,17 +121,7 @@ export default function Home({ publicPage = "general" }: { publicPage?: "general
       currentTime > 0 &&
       new Date(profile.subscriptionEndsAtIso).getTime() <= currentTime,
   );
-  const transferEnd = profile?.subscriptionEndsAt && /^\d{2}\/\d{2}\/\d{4}$/.test(profile.subscriptionEndsAt)
-    ? new Date(profile.subscriptionEndsAt.split("/").reverse().join("-") + "T23:59:59").getTime()
-    : 0;
-  const transferExpired = Boolean(
-    profile?.subscriptionStatus === "active" &&
-      profile.paymentMethod === "transfer" &&
-      transferEnd > 0 &&
-      currentTime > 0 &&
-      transferEnd <= currentTime,
-  );
-  const accessExpired = cancellationExpired || trialExpired || transferExpired;
+  const accessExpired = cancellationExpired || trialExpired;
   const retryExpired = Boolean(
     profile?.subscriptionStatus === "payment_retry" &&
       profile.paymentGraceEndsAtIso &&

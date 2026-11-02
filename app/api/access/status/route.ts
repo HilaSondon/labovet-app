@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
 import { authenticatedUser } from "../../../../lib/server-auth";
 
-function transferHasExpired(value: unknown) {
-  if (typeof value !== "string" || !/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return false;
-  const [day, month, year] = value.split("/").map(Number);
-  return new Date(year, month - 1, day, 23, 59, 59).getTime() <= Date.now();
-}
-
 export async function GET(request: Request) {
   let identity;
   try {
@@ -37,14 +31,11 @@ export async function GET(request: Request) {
     const cancelledExpired = Boolean(profile.subscriptionCancelAtPeriodEnd) &&
       typeof profile.subscriptionEndsAtIso === "string" &&
       new Date(profile.subscriptionEndsAtIso).getTime() <= Date.now();
-    const manualExpired = status === "active" &&
-      profile.paymentMethod === "transfer" &&
-      transferHasExpired(profile.subscriptionEndsAt);
     const retryExpired = status === "payment_retry" &&
       typeof profile.paymentGraceEndsAtIso === "string" &&
       new Date(profile.paymentGraceEndsAtIso).getTime() <= Date.now();
 
-    if (trialExpired || cancelledExpired || manualExpired || retryExpired) {
+    if (trialExpired || cancelledExpired || retryExpired) {
       status = "expired";
       await reference.set({
         subscriptionStatus: "expired",

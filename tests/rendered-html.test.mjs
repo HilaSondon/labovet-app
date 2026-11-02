@@ -127,11 +127,9 @@ test("el panel administrativo separa cuentas y gestiona cobros sin tocar datos o
   assert.match(subscriptions, /row\.role === accountType/);
   assert.match(subscriptions, /automaticNextDueDate\(payment\.date, row\.billing\.billingFrequency\)/);
   assert.match(subscriptions, /frequency === "monthly" \? 1 : frequency === "quarterly" \? 3 : frequency === "annual" \? 12/);
-  assert.match(subscriptions, /updateDoc\(doc\(db, "users", row\.uid\)/);
-  assert.match(subscriptions, /subscriptionStatus: "active"/);
-  assert.match(subscriptions, /subscriptionEndsAt: accessUntil/);
-  assert.match(subscriptions, /Pago registrado y acceso activado/);
-  assert.match(panel, /accessDateIsPast\(user\.subscriptionEndsAt\)/);
+  assert.doesNotMatch(subscriptions, /updateDoc\(doc\(db, "users", row\.uid\)/);
+  assert.match(subscriptions, /El acceso se administra desde Usuarios/);
+  assert.match(panel, /const subscriptionEndsAt = manuallyActivated \? ""/);
   assert.match(panel, /subscriptionEndsAtIso: null/);
   assert.match(panel, /subscriptionCancelAtPeriodEnd: false/);
   assert.match(subscriptions, /onClick=\{\(event\) => \{ if \(!\(event\.target as HTMLElement\)\.closest\("input,select,button"\)\) void loadPayments\(row\.uid\)/);
@@ -468,6 +466,21 @@ test("inicia siete días de prueba al verificar el correo y bloquea al vencer", 
   assert.match(trialRoute, /7 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(trialRoute, /email_verified/);
   assert.match(accessPanel, /Tu prueba gratuita terminó/);
+});
+
+test("el acceso manual permanece activo y las fechas comerciales no lo bloquean", async () => {
+  const [page, accessRoute, accessControl, users, subscriptions] = await Promise.all([
+    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("app/api/access/status/route.ts", root), "utf8"),
+    readFile(new URL("lib/access-control.ts", root), "utf8"),
+    readFile(new URL("components/AdminUsersPanel.tsx", root), "utf8"),
+    readFile(new URL("components/AdminSubscriptionsPanel.tsx", root), "utf8"),
+  ]);
+  assert.doesNotMatch(page, /transferExpired/);
+  assert.doesNotMatch(accessRoute, /manualExpired|transferHasExpired/);
+  assert.match(accessControl, /status === "trial" &&/);
+  assert.match(users, /const subscriptionEndsAt = manuallyActivated \? ""/);
+  assert.doesNotMatch(subscriptions, /updateDoc\(doc\(db, "users", row\.uid\)/);
 });
 
 test("diferencia Mercado Pago de transferencia y registra la solicitud manual", async () => {

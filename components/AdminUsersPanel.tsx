@@ -119,13 +119,6 @@ const isoDate = (value: unknown) => {
   return "";
 };
 
-const accessDateIsPast = (value: string) => {
-  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return true;
-  const [day, month, year] = value.split("/").map(Number);
-  const date = new Date(year, month - 1, day, 23, 59, 59);
-  return Number.isNaN(date.getTime()) || date.getTime() <= Date.now();
-};
-
 export default function AdminUsersPanel({
   currentUid,
 }: {
@@ -253,10 +246,7 @@ export default function AdminUsersPanel({
       const manuallyActivated =
         user.subscriptionStatus === "active" &&
         user.paymentMethod !== "mercadopago";
-      const subscriptionEndsAt =
-        manuallyActivated && accessDateIsPast(user.subscriptionEndsAt)
-          ? defaultExpiration()
-          : user.subscriptionEndsAt;
+      const subscriptionEndsAt = manuallyActivated ? "" : user.subscriptionEndsAt;
       await updateDoc(doc(db, "users", user.uid), {
         role: user.role,
         plan: user.plan,
