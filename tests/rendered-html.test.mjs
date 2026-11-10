@@ -596,3 +596,12 @@ test("mide origen y embudo sin guardar contenido veterinario", async () => {
   assert.doesNotMatch(eventRoute, /const \{ event, visitorId, (email|name|identifier)/);
   assert.match(eventRoute, /Origen inválido/);
 });
+
+test("normaliza la coma decimal antes de generar resultados numéricos de laboratorio", async () => {
+  const laboratory = await readFile(new URL("public/laboratory/app.js", root), "utf8");
+  assert.match(laboratory, /function parseResultNumber\(value\)/);
+  assert.match(laboratory, /replace\(",","\."\)/);
+  assert.match(laboratory, /Number\.isFinite\(parsed\)/);
+  assert.match(laboratory, /x\.resultadoNumero=parseResultNumber\(r\.resultNumber\)/);
+  assert.doesNotMatch(laboratory, /x\.resultadoNumero=Number\(r\.resultNumber\)/);
+});
