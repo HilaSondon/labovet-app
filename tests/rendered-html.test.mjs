@@ -605,3 +605,10 @@ test("normaliza la coma decimal antes de generar resultados numéricos de labora
   assert.match(laboratory, /x\.resultadoNumero=parseResultNumber\(r\.resultNumber\)/);
   assert.doesNotMatch(laboratory, /x\.resultadoNumero=Number\(r\.resultNumber\)/);
 });
+
+test("asigna porcentaje solamente a resultados numéricos de técnicas ELISA", async () => {
+  const laboratory = await readFile(new URL("public/laboratory/app.js", root), "utf8");
+  assert.match(laboratory, /function resultUnitCode\(config\)\{return norm\(config\?\.technique\)\.includes\("ELISA"\)\?41:null\}/);
+  assert.match(laboratory, /x\.resultadoNumero=parseResultNumber\(r\.resultNumber\);if\(unitCode\)x\.codigoUnidadDeMedida=unitCode/);
+  assert.doesNotMatch(laboratory, /codigoUnidadDeMedida:41/);
+});
