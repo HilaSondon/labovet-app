@@ -612,3 +612,12 @@ test("asigna porcentaje solamente a resultados numéricos de técnicas ELISA", a
   assert.match(laboratory, /x\.resultadoNumero=parseResultNumber\(r\.resultNumber\);if\(unitCode\)x\.codigoUnidadDeMedida=unitCode/);
   assert.doesNotMatch(laboratory, /codigoUnidadDeMedida:41/);
 });
+
+test("completa las confirmatorias no realizadas solo al generar el JSON", async () => {
+  const laboratory = await readFile(new URL("public/laboratory/app.js", root), "utf8");
+  assert.match(laboratory, /function confirmatoryJsonRows\(rows\)/);
+  assert.match(laboratory, /return match\|\|\{notAnalyzed:true,identifier:sample\.identifier\|\|sample\.tube\|\|"S\/N",categoryCode:sample\.categoryCode\}/);
+  assert.match(laboratory, /if\(r\.notAnalyzed\)return\{codigoResultadoLetra:181,identificacion:r\.identifier\|\|r\.tube\|\|"S\/N",codigoDeCategoria:Number\(r\.categoryCode\)\}/);
+  assert.match(laboratory, /makeAnalysis\(confirmatory\.technique,confirmatoryJsonRows\(confirmatory\.rows\)\)/);
+  assert.match(laboratory, /confirmatory\.rows\.map\(\(r,i\)=>\(\{r,i\}\)\)/);
+});
