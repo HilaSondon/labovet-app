@@ -606,11 +606,12 @@ test("normaliza la coma decimal antes de generar resultados numéricos de labora
   assert.doesNotMatch(laboratory, /x\.resultadoNumero=Number\(r\.resultNumber\)/);
 });
 
-test("asigna porcentaje solamente a resultados numéricos de técnicas ELISA", async () => {
+test("asigna la unidad correcta solamente a resultados numéricos de ELISA y FPA", async () => {
   const laboratory = await readFile(new URL("public/laboratory/app.js", root), "utf8");
-  assert.match(laboratory, /function resultUnitCode\(config\)\{return norm\(config\?\.technique\)\.includes\("ELISA"\)\?41:null\}/);
+  assert.match(laboratory, /function resultUnitCode\(config\)\{const technique=norm\(config\?\.technique\);if\(technique\.includes\("ELISA"\)\)return 41;if\(technique\.includes\("FPA"\)\)return 121;return null\}/);
   assert.match(laboratory, /x\.resultadoNumero=parseResultNumber\(r\.resultNumber\);if\(unitCode\)x\.codigoUnidadDeMedida=unitCode/);
   assert.doesNotMatch(laboratory, /codigoUnidadDeMedida:41/);
+  assert.doesNotMatch(laboratory, /codigoUnidadDeMedida:121/);
 });
 
 test("completa las confirmatorias no realizadas solo al generar el JSON", async () => {
